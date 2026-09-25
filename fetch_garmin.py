@@ -4,15 +4,15 @@
 #     "garminconnect==0.3.2",
 # ]
 # ///
-"""Hakee harjoitukset Garmin Connectista ja kirjoittaa ne tiedostoon data/activities.json.
+"""Fetch activities from Garmin Connect and write them to data/activities.json.
 
-Käyttö:
-    uv run fetch_garmin.py              # viimeiset 365 päivää
-    uv run fetch_garmin.py --days 730   # viimeiset 2 vuotta
+Usage:
+    uv run fetch_garmin.py              # last 365 days
+    uv run fetch_garmin.py --days 730   # last 2 years
 
-Kirjautuminen tehdään AINOASTAAN tallennetuilla tunnisteilla. Skripti ei koskaan
-kirjaudu salasanalla, koska Garmin estää toistuvat kirjautumiset (HTTP 429).
-Jos tunnisteet ovat vanhentuneet, uusi ne garmin-mcp-auth-työkalulla.
+Authentication uses ONLY saved tokens. This script never logs in with a password,
+because Garmin blocks repeated logins (HTTP 429).
+If the tokens have expired, renew them with the garmin-mcp-auth tool.
 """
 
 import argparse
@@ -38,8 +38,8 @@ def connect(tokenstore: Path) -> Garmin:
     """Avaa yhteyden tallennetuilla tunnisteilla. Ei koskaan käytä salasanaa."""
     if not (tokenstore / "garmin_tokens.json").is_file():
         sys.exit(
-            f"Tunnisteita ei löytynyt kansiosta {tokenstore}.\n"
-            "Luo ne garmin-mcp-auth-työkalulla. Tämä skripti ei kirjaudu salasanalla."
+            f"No saved tokens found in {tokenstore}.\n"
+            "Create them with the garmin-mcp-auth tool. This script never logs in with a password."
         )
 
     # Garmin() ilman sähköpostia ja salasanaa: jos tunnisteiden lataus epäonnistuu,
@@ -48,11 +48,11 @@ def connect(tokenstore: Path) -> Garmin:
     try:
         garmin.login(str(tokenstore))
     except GarminConnectTooManyRequestsError:
-        sys.exit("Garmin palautti 429 (liikaa pyyntöjä). Odota ja yritä myöhemmin uudelleen.")
+        sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
     except (GarminConnectAuthenticationError, GarminConnectConnectionError) as e:
         sys.exit(
-            f"Tallennetut tunnisteet eivät kelpaa ({e}).\n"
-            "Uusi ne garmin-mcp-auth-työkalulla ja aja skripti uudelleen."
+            f"The saved tokens are not valid ({e}).\n"
+            "Renew them with the garmin-mcp-auth tool and run this script again."
         )
     return garmin
 
@@ -72,18 +72,18 @@ def simplify(activity: dict) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--days", type=int, default=365, help="kuinka monta päivää taaksepäin (oletus 365)")
+    parser.add_argument("--days", type=int, default=365, help="how many days back to fetch (default 365)")
     args = parser.parse_args()
 
     tokenstore = Path(os.getenv("GARMINTOKENS") or DEFAULT_TOKENSTORE).expanduser()
     garmin = connect(tokenstore)
 
     start = date.today() - timedelta(days=args.days)
-    print(f"Haetaan harjoitukset {start} - {date.today()} ...")
+    print(f"Fetching activities {start} - {date.today()} ...")
     try:
         raw = garmin.get_activities_by_date(start.isoformat(), date.today().isoformat())
     except GarminConnectTooManyRequestsError:
-        sys.exit("Garmin palautti 429 (liikaa pyyntöjä). Odota ja yritä myöhemmin uudelleen.")
+        sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
 
     activities = sorted((simplify(a) for a in raw), key=lambda a: a["start_time"] or "", reverse=True)
     payload = {
@@ -98,7 +98,7 @@ def main() -> None:
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(OUTPUT)
 
-    print(f"Tallennettu {len(activities)} harjoitusta tiedostoon {OUTPUT}")
+    print(f"Saved {len(activities)} activities to {OUTPUT}")
 
 
 if __name__ == "__main__":

@@ -9,21 +9,21 @@ rem Siirry kansioon, jossa tämä tiedosto on (toimii mistä tahansa käynnistet
 cd /d "%~dp0"
 
 echo.
-echo === 1/3 Haetaan harjoitukset Garminilta ===
+echo === 1/3 Fetching activities from Garmin ===
 uv run fetch_garmin.py
 if errorlevel 1 (
     echo.
-    echo Garmin-haku epaonnistui. Sovellus kaynnistyy aiemmin haetulla datalla.
+    echo Garmin fetch failed. The app will start with previously fetched data.
     echo.
 )
 
 echo.
-echo === 2/3 Avataan selain: http://localhost:8000 ===
+echo === 2/3 Opening browser: http://localhost:8000 ===
 rem Pieni viive, jotta palvelin ehtii käynnistyä ennen kuin selain avaa sivun
 start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8000"
 
 echo.
-echo === 3/3 Palvelin kaynnissa. Pida tama ikkuna auki. Sammuta: Ctrl+C tai sulje ikkuna. ===
+echo === 3/3 Server running. Keep this window open. To stop: Ctrl+C or close the window. ===
 echo.
 uv run --no-project python -m http.server 8000 --bind 127.0.0.1
 

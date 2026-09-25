@@ -8,4 +8,4 @@ if not exist data mkdir data
 
 echo ===== %date% %time% ===== >> data\hae_data.log
 uv run fetch_garmin.py >> data\hae_data.log 2>&1
-echo Paluukoodi: %errorlevel% >> data\hae_data.log
+echo Exit code: %errorlevel% >> data\hae_data.log
