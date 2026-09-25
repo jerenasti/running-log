@@ -103,6 +103,7 @@ details summary{cursor:pointer}
 details ul{margin:.5rem 0 0;padding-left:1.2rem}
 .missing{color:var(--accent)}
 
+.btn.more{margin-top:14px;font-size:.95rem;padding:.5rem .9rem}
 .updated{margin:0;color:var(--muted);font-size:.95rem;display:flex;align-items:center;gap:.5rem}
 .updated::before{content:'';width:.6rem;height:.6rem;border-radius:50%;background:var(--pine);flex:none}
 .updated[hidden]{display:none}
@@ -176,13 +177,15 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
     </section>
 
     <section class="panel">
-      <h2>Viimeisimmät harjoitukset</h2>
+      <h2>Harjoitukset</h2>
+      <p class="sub" id="recentSub"></p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Päivä</th><th>Harjoitus</th><th class="num">Matka</th><th class="num">Aika</th><th class="num">Vauhti</th><th class="num">Keskisyke</th></tr></thead>
           <tbody id="recent"></tbody>
         </table>
       </div>
+      <button class="btn ghost more" id="showAll" type="button" hidden></button>
     </section>
 
     <details id="colinfo"></details>
@@ -204,7 +207,7 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
 (function(){
 const $ = s => document.querySelector(s);
 const STORE_KEY = 'juoksupaivakirja:v1';
-const state = { acts: [], cols: {}, source: '', period: '12', sport: 'run', live: false };
+const state = { acts: [], cols: {}, source: '', period: '12', sport: 'run', live: false, showAll: false };
 const charts = {};
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -466,7 +469,15 @@ function render(){
 
   drawCharts(r);
 
-  const recent = r.inRange.slice(-10).reverse();
+  // Oletuksena 10 uusinta; "Näytä kaikki" näyttää koko valitun aikavälin
+  const RECENT_N = 10;
+  const recent = (state.showAll ? r.inRange.slice() : r.inRange.slice(-RECENT_N)).reverse();
+  const hidden = r.inRange.length - RECENT_N;
+  $('#recentSub').textContent = state.showAll || hidden <= 0
+    ? 'Kaikki valitun aikavälin harjoitukset, uusimmat ensin.'
+    : RECENT_N + ' uusinta harjoitusta.';
+  $('#showAll').hidden = hidden <= 0;
+  $('#showAll').textContent = state.showAll ? 'Näytä vain ' + RECENT_N + ' uusinta' : 'Näytä kaikki ' + r.inRange.length + ' harjoitusta';
   $('#recent').innerHTML = recent.length ? recent.map(a => `
     <tr><td>${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type || '–')}</td>
     <td class="num">${nf1.format(a.km)} km</td><td class="num">${fmtDur(a.sec)}</td>
@@ -535,6 +546,7 @@ $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.ta
 $('#demo').addEventListener('click', () => loadRows(demoRows(), ['Activity Type','Date','Title','Distance','Time','Avg HR'], 'esimerkkidata'));
 $('#period').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.period = b.dataset.v; save(); render(); });
 $('#sport').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.sport = b.dataset.v; save(); render(); });
+$('#showAll').addEventListener('click', () => { state.showAll = !state.showAll; render(); });
 
 let dragDepth = 0;
 window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
