@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Juoksupäiväkirja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#EDF1EF;--surface:#FFFFFF;--ink:#16221D;--muted:#5C6B64;--line:#D3DCD7;
+  --accent:#B8323F;--pine:#2F5D4A;--pine-soft:#A9C2B5;
+  --display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --text:'Source Sans 3',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101714;--surface:#18211D;--ink:#E4EBE7;--muted:#95A59D;--line:#2B3732;
+    --accent:#E3646F;--pine:#86BBA1;--pine-soft:#3F5E50;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101714;--surface:#18211D;--ink:#E4EBE7;--muted:#95A59D;--line:#2B3732;
+  --accent:#E3646F;--pine:#86BBA1;--pine-soft:#3F5E50;color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--text);font-size:17px;line-height:1.5}
+main{max-width:1080px;margin:0 auto;padding:28px 20px 64px}
+img,svg,canvas{max-width:100%}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 32px;margin-bottom:28px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2.7rem,8vw,4.4rem);line-height:.92;margin:0;letter-spacing:-.005em}
+.lede{margin:.6rem 0 0;color:var(--muted);max-width:50ch}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{font:600 1rem/1.2 var(--text);padding:.65rem 1.05rem;border-radius:8px;border:1.5px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;display:inline-block}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:hover{opacity:.88}
+button:focus-visible,.sr-only:focus-visible+label{outline:3px solid var(--accent);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.notice{border-left:4px solid var(--accent);background:var(--surface);padding:12px 16px;margin:0 0 20px;border-radius:0 8px 8px 0}
+.notice[hidden]{display:none}
+.status{color:var(--muted);margin:0 0 20px;font-size:.95rem}
+.status[hidden]{display:none}
+.btn.garmin{background:var(--pine);border-color:var(--pine);color:var(--bg)}
+.btn[disabled]{opacity:.6;cursor:progress}
+.btn[hidden]{display:none}
+.empty .live{margin:0 0 1rem;padding:12px 16px;border-left:4px solid var(--pine);background:var(--bg);border-radius:0 8px 8px 0}
+.empty .live[hidden]{display:none}
+
+.empty{border:2px dashed var(--line);border-radius:14px;padding:28px clamp(18px,4vw,40px);background:var(--surface);transition:border-color .15s}
+.empty.drag,body.drag .empty{border-color:var(--pine)}
+.empty h2{margin-top:0}
+.empty ol{padding-left:1.3rem;margin:0 0 1rem;max-width:62ch}
+.empty li{margin:.35rem 0}
+.empty .hint{color:var(--muted);margin:0}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.source{color:var(--muted);font-size:.95rem}
+.source button{background:none;border:0;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer;padding:0;margin-left:.5rem}
+.filters{display:flex;flex-wrap:wrap;gap:10px}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{font:600 .95rem var(--text);background:transparent;color:var(--muted);border:0;padding:.45rem .8rem;cursor:pointer}
+.seg button+button{border-left:1.5px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--pine);color:var(--bg)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:3px solid var(--ink);margin-bottom:26px}
+.stat{padding:12px 16px 0 0}
+.stat+.stat{padding-left:16px;border-left:1px solid var(--line)}
+.stat .v{font-family:var(--display);font-weight:600;font-size:clamp(2rem,5vw,2.8rem);line-height:1;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:.5em;font-weight:500;margin-left:.15em;color:var(--muted)}
+.stat .l{color:var(--muted);font-size:.95rem;margin-top:4px}
+.stat .s{color:var(--muted);font-size:.85rem}
+@media (max-width:640px){
+  .stats{grid-template-columns:1fr 1fr}
+  .stat:nth-child(3){padding-left:0;border-left:0}
+  .stat:nth-child(n+3){border-top:1px solid var(--line);margin-top:12px}
+}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px clamp(14px,3vw,24px);margin-bottom:20px}
+h2{font-family:var(--display);font-weight:600;font-size:1.75rem;line-height:1.1;margin:0 0 4px}
+.panel .sub{color:var(--muted);margin:0 0 14px;font-size:.95rem}
+.chart-box{position:relative;height:320px}
+.chart-box.short{height:250px}
+
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;min-width:560px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:.9rem}
+td.num,th.num{text-align:right}
+td.title{white-space:normal;min-width:10ch}
+
+details{color:var(--muted);font-size:.95rem}
+details summary{cursor:pointer}
+details ul{margin:.5rem 0 0;padding-left:1.2rem}
+.missing{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1>Juoksupäiväkirja</h1>
+      <p class="lede">Näe, miten harjoittelusi kehittyy viikko viikolta. Data haetaan Garmin Connectista automaattisesti, ja CSV-lataus toimii varavaihtoehtona.</p>
+    </div>
+    <div class="actions">
+      <button class="btn garmin" id="garmin" type="button" hidden>Näytä Garmin-data</button>
+      <input type="file" id="file" class="sr-only" accept=".csv,text/csv">
+      <label for="file" class="btn">Lataa CSV-tiedosto</label>
+      <button class="btn ghost" id="demo" type="button">Kokeile esimerkkidatalla</button>
+    </div>
+  </header>
+
+  <p class="notice" id="notice" role="alert" hidden></p>
+  <p class="status" id="status" role="status" aria-live="polite" hidden></p>
+
+  <section class="empty" id="empty">
+    <p class="live" id="liveHint" hidden>Garmin-data on haettu tiedostoon data/activities.json. Valitse Näytä Garmin-data. Voit myös ladata oman CSV-tiedoston alla olevien ohjeiden mukaan.</p>
+    <h2>Varavaihtoehto: lataa CSV Garminilta</h2>
+    <ol>
+      <li>Avaa Garmin Connect selaimessa ja kirjaudu sisään.</li>
+      <li>Valitse Aktiviteetit ja sitten Kaikki aktiviteetit.</li>
+      <li>Vieritä listaa alaspäin, kunnes kaikki haluamasi harjoitukset näkyvät. Vienti sisältää vain listaan latautuneet rivit.</li>
+      <li>Valitse sivun yläreunasta Vie CSV.</li>
+      <li>Pudota tiedosto tähän tai valitse se Lataa CSV-tiedosto -painikkeella.</li>
+    </ol>
+    <p class="hint">Tiedosto käsitellään vain omassa selaimessasi. Sitä ei lähetetä minnekään.</p>
+  </section>
+
+  <div id="dash" hidden>
+    <div class="toolbar">
+      <div class="source" id="source"></div>
+      <div class="filters">
+        <div class="seg" role="group" aria-label="Aikaväli" id="period">
+          <button type="button" data-v="12">12 vk</button>
+          <button type="button" data-v="26">26 vk</button>
+          <button type="button" data-v="52">Vuosi</button>
+          <button type="button" data-v="all">Kaikki</button>
+        </div>
+        <div class="seg" role="group" aria-label="Lajit" id="sport">
+          <button type="button" data-v="run">Juoksut</button>
+          <button type="button" data-v="all">Kaikki lajit</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <section class="panel">
+      <h2>Viikkokilometrit</h2>
+      <p class="sub">Kuluva viikko on korostettu. Vie osoitin pylvään päälle nähdäksesi viikon tiedot.</p>
+      <div class="chart-box"><canvas id="weekChart" aria-label="Viikkokilometrit pylväskaaviona" role="img"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <h2>Keskivauhdin kehitys</h2>
+      <p class="sub">Viikon keskivauhti. Mitä ylempänä viiva on, sitä nopeammin olet juossut.</p>
+      <div class="chart-box short"><canvas id="paceChart" aria-label="Keskivauhti viikoittain viivakaaviona" role="img"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <h2>Viimeisimmät harjoitukset</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Päivä</th><th>Harjoitus</th><th class="num">Matka</th><th class="num">Aika</th><th class="num">Vauhti</th><th class="num">Keskisyke</th></tr></thead>
+          <tbody id="recent"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <details id="colinfo"></details>
+  </div>
+</main>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const STORE_KEY = 'juoksupaivakirja:v1';
+const state = { acts: [], cols: {}, source: '', period: '12', sport: 'run', live: false };
+const charts = {};
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Sarakkeiden tunnistus (englanti ja suomi) ---------- */
+const KEYS = {
+  type:  { name:'Laji',      exact:['activity type','aktiviteetin tyyppi','aktiviteettityyppi','tyyppi','laji'], incl:['activity type','tyyppi','laji'] },
+  date:  { name:'Päivämäärä',exact:['date','päivämäärä','pvm'], incl:['date','päivämäärä','pvm'] },
+  title: { name:'Otsikko',   exact:['title','otsikko','nimi'], incl:['title','otsikko'] },
+  dist:  { name:'Matka',     exact:['distance','matka','etäisyys'], incl:['distance','matka','etäisyys'] },
+  time:  { name:'Aika',      exact:['time','aika','kesto'], incl:['time','aika','kesto'],
+           excl:['lap','kierros','best','paras','moving','liike','elapsed','kulunut','pace','vauhti','date','päivä'] },
+  hr:    { name:'Keskisyke', exact:['avg hr','keskisyke','average heart rate'], incl:['avg hr','keskisyke','keskim. syke','average heart','keskimääräinen syke'] }
+};
+function findCol(headers, spec){
+  const norm = headers.map(h => String(h || '').toLowerCase().trim());
+  for (const k of spec.exact){ const i = norm.indexOf(k); if (i >= 0) return headers[i]; }
+  for (let i = 0; i < norm.length; i++){
+    const h = norm[i];
+    if (spec.excl && spec.excl.some(e => h.includes(e))) continue;
+    if (spec.incl.some(k => h.includes(k))) return headers[i];
+  }
+  return null;
+}
+
+/* ---------- Arvojen jäsennys ---------- */
+function parseNum(s){
+  if (s == null) return NaN;
+  s = String(s).trim().replace(/\s/g, '');
+  if (!s || s === '--') return NaN;
+  const hasC = s.includes(','), hasD = s.includes('.');
+  if (hasC && hasD){
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g,'').replace(',', '.');
+    else s = s.replace(/,/g,'');
+  } else if (hasC){
+    s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g,'') : s.replace(',', '.');
+  }
+  const n = parseFloat(s);
+  return isFinite(n) ? n : NaN;
+}
+function parseDuration(s){
+  if (s == null) return NaN;
+  s = String(s).trim().replace(',', '.');
+  if (!s || s === '--') return NaN;
+  const p = s.split(':').map(Number);
+  if (p.some(isNaN)) return NaN;
+  if (p.length === 3) return p[0]*3600 + p[1]*60 + p[2];
+  if (p.length === 2) return p[0]*60 + p[1];
+  return NaN;
+}
+function parseDate(s){
+  if (!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2})[:.](\d{2}))?/);
+  if (m) return new Date(+m[1], m[2]-1, +m[3], +(m[4]||0), +(m[5]||0));
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(?:klo\s+)?(\d{1,2})[:.](\d{2}))?/);
+  if (m) return new Date(+m[3], m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], m[1]-1, +m[2]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+/* ---------- Muotoilu ---------- */
+const nf1 = new Intl.NumberFormat('fi-FI', { maximumFractionDigits:1, minimumFractionDigits:1 });
+const nf0 = new Intl.NumberFormat('fi-FI', { maximumFractionDigits:0 });
+function fmtPace(spk){
+  if (!isFinite(spk) || spk <= 0) return '–';
+  let m = Math.floor(spk/60), s = Math.round(spk - m*60);
+  if (s === 60){ m++; s = 0; }
+  return m + ':' + String(s).padStart(2,'0');
+}
+function fmtDur(sec){
+  if (!isFinite(sec)) return '–';
+  sec = Math.round(sec);
+  const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60;
+  return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(s).padStart(2,'0');
+}
+const fmtDay = d => d.getDate() + '.' + (d.getMonth()+1) + '.';
+const fmtDate = d => fmtDay(d) + d.getFullYear();
+function mondayOf(d){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+function isoWeek(d){
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y0) / 864e5 + 1) / 7);
+}
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isRun = a => !a.type || /run|juoks|treadmill|trail|polku/i.test(a.type);
+
+/* ---------- Ilmoitukset ---------- */
+function notice(msg){ const n = $('#notice'); n.textContent = msg || ''; n.hidden = !msg; }
+
+/* ---------- Datan lataus ---------- */
+function loadRows(rows, headers, source){
+  const cols = {};
+  for (const k in KEYS) cols[k] = findCol(headers, KEYS[k]);
+  if (!cols.date || !cols.dist){
+    notice('Tiedostosta ei löytynyt päivämäärä- tai matkasaraketta. Tarkista, että viet listan Garmin Connectin Aktiviteetit-sivulta Vie CSV -toiminnolla. Löydetyt sarakkeet: ' + headers.join(', '));
+    return;
+  }
+  let acts = rows.map(r => ({
+    date:  parseDate(r[cols.date]),
+    type:  cols.type ? String(r[cols.type] || '') : '',
+    title: cols.title ? String(r[cols.title] || '') : '',
+    km:    parseNum(r[cols.dist]),
+    sec:   cols.time ? parseDuration(r[cols.time]) : NaN,
+    hr:    cols.hr ? parseNum(r[cols.hr]) : NaN
+  })).filter(a => a.date && isFinite(a.km) && a.km > 0);
+
+  if (!acts.length){
+    notice('Tiedostosta ei löytynyt yhtään harjoitusta, jolla olisi sekä päivämäärä että matka.');
+    return;
+  }
+  const kms = acts.map(a => a.km).sort((a,b) => a-b);
+  if (kms[Math.floor(kms.length/2)] > 300) acts.forEach(a => a.km /= 1000); // matka metreinä
+  acts.sort((a,b) => a.date - b.date);
+
+  state.acts = acts; state.cols = cols; state.source = source; state.live = false;
+  if (typeof updateGarminBtn === 'function') updateGarminBtn();
+  notice('');
+  save();
+  render();
+}
+function handleFile(file){
+  if (!file) return;
+  if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv'){
+    notice('Valitse CSV-tiedosto. Tiedosto ' + file.name + ' ei ole CSV-muodossa.');
+    return;
+  }
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: res => loadRows(res.data, res.meta.fields || [], file.name),
+    error: () => notice('Tiedoston lukeminen epäonnistui. Kokeile viedä CSV uudelleen Garmin Connectista.')
+  });
+}
+
+/* ---------- Esimerkkidata ---------- */
+function demoRows(){
+  const rows = [], today = new Date();
+  const start = mondayOf(today); start.setDate(start.getDate() - 7*23);
+  const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' 07:15:00';
+  for (let w = 0; w < 24; w++){
+    const prog = w/23, f = (w % 4 === 3) ? 0.72 : 1;
+    const plan = [
+      { d:1, t:'Kevyt lenkki', km:7 + prog*3, pace:372, hr:142 },
+      { d:3, t:'Intervallit',  km:8 + prog*2, pace:328, hr:158 },
+      { d:4, t:'Kevyt lenkki', km:6 + prog*3, pace:375, hr:140 },
+      { d:6, t:'Pitkä lenkki', km:12 + prog*16, pace:385, hr:146 }
+    ];
+    for (const p of plan){
+      const date = new Date(start); date.setDate(start.getDate() + w*7 + p.d);
+      if (date > today) continue;
+      const km = p.km * f * (0.93 + Math.random()*0.14);
+      const pace = p.pace - prog*24 + (Math.random()*14 - 7);
+      rows.push({ 'Activity Type':'Running', 'Date':iso(date), 'Title':p.t,
+        'Distance':km.toFixed(2), 'Time':fmtDur(km*pace), 'Avg HR':String(Math.round(p.hr + Math.random()*6)) });
+    }
+    if (w % 3 === 0){
+      const date = new Date(start); date.setDate(start.getDate() + w*7 + 5);
+      if (date <= today) rows.push({ 'Activity Type':'Cycling', 'Date':iso(date), 'Title':'Pyörälenkki',
+        'Distance':(30 + Math.random()*15).toFixed(2), 'Time':'1:35:00', 'Avg HR':'128' });
+    }
+  }
+  return rows;
+}
+
+/* ---------- Tallennus selaimeen ---------- */
+function save(){
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      acts: state.acts.map(a => ({ ...a, date: a.date.toISOString() })),
+      cols: state.cols, source: state.source, period: state.period, sport: state.sport, live: !!state.live, savedAt: Date.now()
+    }));
+  } catch(e){}
+}
+function restore(){
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return 0;
+    const o = JSON.parse(raw);
+    if (!o || !Array.isArray(o.acts) || !o.acts.length) return 0;
+    state.acts = o.acts.map(a => ({ ...a, date: new Date(a.date), sec: a.sec ?? NaN, hr: a.hr ?? NaN }));
+    state.cols = o.cols || {}; state.source = o.source || '';
+    state.period = o.period || '12'; state.sport = o.sport || 'run'; state.live = !!o.live;
+    return o.savedAt || 0;
+  } catch(e){}
+  return 0;
+}
+function clearAll(){
+  try { localStorage.removeItem(STORE_KEY); } catch(e){}
+  state.acts = []; state.source = ''; state.live = false;
+  if (typeof updateGarminBtn === 'function') updateGarminBtn();
+  Object.values(charts).forEach(c => c.destroy());
+  for (const k in charts) delete charts[k];
+  render();
+}
+
+/* ---------- Laskenta ---------- */
+function compute(){
+  const acts = state.acts.filter(a => state.sport === 'all' || isRun(a));
+  const last = state.acts[state.acts.length-1].date;
+  const now = new Date();
+  const endMon = (now - last) / 864e5 < 60 ? mondayOf(now) : mondayOf(last);
+  let startMon;
+  if (state.period === 'all'){
+    startMon = acts.length ? mondayOf(acts[0].date) : endMon;
+  } else {
+    startMon = new Date(endMon); startMon.setDate(startMon.getDate() - 7*(+state.period - 1));
+  }
+  const endDate = new Date(endMon); endDate.setDate(endDate.getDate() + 7);
+  const inRange = acts.filter(a => a.date >= startMon && a.date < endDate);
+
+  const weeks = [];
+  for (let d = new Date(startMon); d <= endMon; d.setDate(d.getDate() + 7))
+    weeks.push({ mon: new Date(d), km:0, sec:0, kmTimed:0, n:0 });
+  for (const a of inRange){
+    const i = Math.round((mondayOf(a.date) - startMon) / (7*864e5));
+    const w = weeks[i]; if (!w) continue;
+    w.km += a.km; w.n++;
+    if (isFinite(a.sec) && a.sec > 0){ w.sec += a.sec; w.kmTimed += a.km; }
+  }
+  const tot = inRange.reduce((s,a) => s + a.km, 0);
+  const timed = inRange.filter(a => isFinite(a.sec) && a.sec > 0);
+  const tSec = timed.reduce((s,a) => s + a.sec, 0), tKm = timed.reduce((s,a) => s + a.km, 0);
+  const longest = inRange.reduce((b,a) => (!b || a.km > b.km) ? a : b, null);
+  return { inRange, weeks, tot, pace: tKm ? tSec/tKm : NaN, longest, endMon };
+}
+
+/* ---------- Piirto ---------- */
+function setSeg(id, v){
+  document.querySelectorAll('#' + id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+}
+function render(){
+  const has = state.acts.length > 0;
+  $('#empty').hidden = has;
+  $('#dash').hidden = !has;
+  if (!has) return;
+
+  setSeg('period', state.period);
+  setSeg('sport', state.sport);
+  $('#source').innerHTML = 'Näytetään ' + esc(state.source) + ', ' + state.acts.length + ' aktiviteettia <button type="button" id="clear">Tyhjennä</button>';
+  $('#clear').onclick = clearAll;
+
+  const r = compute();
+  const avgWeek = r.weeks.length ? r.tot / r.weeks.length : 0;
+  $('#stats').innerHTML = `
+    <div class="stat"><div class="v">${nf1.format(r.tot)}<small>km</small></div><div class="l">Kilometrit yhteensä</div><div class="s">${nf1.format(avgWeek)} km viikossa</div></div>
+    <div class="stat"><div class="v">${r.inRange.length}</div><div class="l">${state.sport === 'run' ? 'Juoksua' : 'Harjoitusta'}</div></div>
+    <div class="stat"><div class="v">${fmtPace(r.pace)}<small>/km</small></div><div class="l">Keskivauhti</div></div>
+    <div class="stat"><div class="v">${r.longest ? nf1.format(r.longest.km) : '–'}<small>km</small></div><div class="l">Pisin harjoitus</div><div class="s">${r.longest ? fmtDate(r.longest.date) : ''}</div></div>`;
+
+  drawCharts(r);
+
+  const recent = r.inRange.slice(-10).reverse();
+  $('#recent').innerHTML = recent.length ? recent.map(a => `
+    <tr><td>${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type || '–')}</td>
+    <td class="num">${nf1.format(a.km)} km</td><td class="num">${fmtDur(a.sec)}</td>
+    <td class="num">${isFinite(a.sec) ? fmtPace(a.sec/a.km) + ' /km' : '–'}</td>
+    <td class="num">${isFinite(a.hr) ? nf0.format(a.hr) : '–'}</td></tr>`).join('')
+    : '<tr><td colspan="6">Valitulla aikavälillä ei ole harjoituksia. Valitse pidempi aikaväli.</td></tr>';
+
+  $('#colinfo').innerHTML = '<summary>' + (state.live ? 'Garmin-kentät' : 'Tunnistetut sarakkeet') + '</summary><ul>' +
+    Object.keys(KEYS).map(k => `<li>${KEYS[k].name}: ${state.cols[k] ? esc(state.cols[k]) : '<span class="missing">ei löytynyt</span>'}</li>`).join('') + '</ul>';
+}
+
+function drawCharts(r){
+  const ink = cssVar('--ink'), muted = cssVar('--muted'), line = cssVar('--line');
+  const pine = cssVar('--pine'), accent = cssVar('--accent');
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.font.size = 13;
+  Chart.defaults.color = muted;
+  const thisMon = mondayOf(new Date()).getTime();
+  const labels = r.weeks.map(w => 'vk ' + isoWeek(w.mon));
+  const tipTitle = items => {
+    const w = r.weeks[items[0].dataIndex];
+    const sun = new Date(w.mon); sun.setDate(sun.getDate() + 6);
+    return 'Viikko ' + isoWeek(w.mon) + ' (' + fmtDay(w.mon) + '–' + fmtDate(sun) + ')';
+  };
+  const common = {
+    responsive:true, maintainAspectRatio:false, animation: reduceMotion ? false : { duration:400 },
+    plugins:{ legend:{ display:false }, tooltip:{ backgroundColor:ink, titleColor:cssVar('--bg'), bodyColor:cssVar('--bg'), padding:10, displayColors:false, callbacks:{ title: tipTitle } } },
+    scales:{ x:{ grid:{ display:false }, ticks:{ autoSkip:true, maxRotation:0 } } }
+  };
+
+  if (charts.week) charts.week.destroy();
+  charts.week = new Chart($('#weekChart'), {
+    type:'bar',
+    data:{ labels, datasets:[{ data: r.weeks.map(w => +w.km.toFixed(1)),
+      backgroundColor: r.weeks.map(w => w.mon.getTime() === thisMon ? accent : pine),
+      borderRadius:4, maxBarThickness:42 }] },
+    options:{ ...common,
+      plugins:{ ...common.plugins, tooltip:{ ...common.plugins.tooltip, callbacks:{ title: tipTitle,
+        label: c => { const w = r.weeks[c.dataIndex]; return nf1.format(w.km) + ' km, ' + w.n + (w.n === 1 ? ' harjoitus' : ' harjoitusta'); } } } },
+      scales:{ ...common.scales, y:{ beginAtZero:true, grid:{ color:line }, border:{ display:false }, ticks:{ callback: v => v + ' km' } } } }
+  });
+
+  const paces = r.weeks.map(w => w.kmTimed > 0 ? w.sec / w.kmTimed : null);
+  if (charts.pace) charts.pace.destroy();
+  charts.pace = new Chart($('#paceChart'), {
+    type:'line',
+    data:{ labels, datasets:[{ data: paces, borderColor: accent, backgroundColor: accent, pointRadius:3, pointHoverRadius:6, borderWidth:2.5, tension:.25, spanGaps:true }] },
+    options:{ ...common,
+      plugins:{ ...common.plugins, tooltip:{ ...common.plugins.tooltip, callbacks:{ title: tipTitle, label: c => fmtPace(c.parsed.y) + ' /km' } } },
+      scales:{ ...common.scales, y:{ reverse:true, grid:{ color:line }, border:{ display:false }, ticks:{ callback: v => fmtPace(v) } } } }
+  });
+}
+
+/* ---------- Tapahtumat ---------- */
+$('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.target.value = ''; });
+$('#demo').addEventListener('click', () => loadRows(demoRows(), ['Activity Type','Date','Title','Distance','Time','Avg HR'], 'esimerkkidata'));
+$('#period').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.period = b.dataset.v; save(); render(); });
+$('#sport').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.sport = b.dataset.v; save(); render(); });
+
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0){ dragDepth = 0; document.body.classList.remove('drag'); } });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag'); handleFile(e.dataTransfer.files[0]); });
+
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+if (mq.addEventListener) mq.addEventListener('change', () => { if (state.acts.length) render(); });
+
+if (typeof Chart === 'undefined' || typeof Papa === 'undefined'){
+  notice('Sovelluksen apukirjastot eivät latautuneet. Päivitä sivu.');
+}
+
+/* ---------- Garmin-data: data/activities.json (luo: uv run fetch_garmin.py) ---------- */
+const DATA_URL = 'data/activities.json';
+let GARMIN = null; // ladattu JSON, tai null jos tiedostoa ei saatu
+
+async function fetchGarmin(){
+  if (location.protocol === 'file:') {
+    throw new Error('Sivu on avattu suoraan tiedostona, joten selain ei anna lukea Garmin-dataa. Käynnistä paikallinen palvelin (ks. CLAUDE.md) tai lataa CSV-tiedosto.');
+  }
+  // cache: 'no-store' varmistaa, että selain hakee aina uusimman version eikä käytä välimuistia.
+  const res = await fetch(DATA_URL, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error('Tiedostoa ' + DATA_URL + ' ei löytynyt. Hae data komennolla uv run fetch_garmin.py tai lataa CSV-tiedosto.');
+  }
+  const o = await res.json();
+  if (!o || !Array.isArray(o.activities) || !o.activities.length) {
+    throw new Error('Tiedostossa ' + DATA_URL + ' ei ole harjoituksia.');
+  }
+  return o;
+}
+function updateGarminBtn(){
+  $('#garmin').hidden = !GARMIN || state.live;
+  $('#liveHint').hidden = !GARMIN;
+}
+function applyGarmin(){
+  if (!GARMIN) return;
+  state.acts = GARMIN.activities.map(a => ({
+    date: parseDate(a.start_time), type: String(a.type || ''), title: String(a.name || ''),
+    km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr
+  })).filter(a => a.date && a.km > 0).sort((a,b) => a.date - b.date);
+  state.cols = { type:'type', date:'start_time', title:'name', dist:'distance_m', time:'duration_s', hr:'avg_hr' };
+  const d = parseDate(GARMIN.fetchedAt);
+  state.source = 'Garmin Connect (haettu ' + (d ? fmtDate(d) : GARMIN.fetchedAt) + ')';
+  state.live = true;
+  notice('');
+  save();
+  render();
+  updateGarminBtn();
+}
+
+// Käynnistys: näytä heti selaimeen tallennettu data, ja hae sitten Garmin-data taustalla.
+const storedAt = restore();
+render();
+updateGarminBtn();
+$('#garmin').addEventListener('click', applyGarmin);
+
+fetchGarmin().then(o => {
+  GARMIN = o;
+  // Garmin-data korvaa tallennetun datan, paitsi jos käyttäjä on ladannut CSV:n tämän haun jälkeen.
+  if (!state.acts.length || state.live || storedAt < Date.parse(o.fetchedAt)) applyGarmin();
+  else updateGarminBtn();
+}).catch(err => {
+  // Ei Garmin-dataa: CSV-lataus ja esimerkkidata toimivat edelleen varavaihtoehtona.
+  if (!state.acts.length) notice(err.message);
+});
+})();
+</script>
+</body>
+</html>
