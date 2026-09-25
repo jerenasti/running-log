@@ -1,0 +1,34 @@
+# --- Garmin-tunnisteet: EI KOSKAAN versionhallintaan ---
+garminconnect/
+.garminconnect/
+garmin_tokens.json
+*tokens*.json
+oauth*.json
+.env
+.env.*
+
+# --- Henkilökohtainen harjoitusdata ---
+data/
+*.csv
+*.fit
+*.gpx
+*.tcx
+
+# --- Python-virtuaaliympäristöt ja välimuistit ---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# --- Editorit ja käyttöjärjestelmä ---
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# --- Clauden paikalliset asetukset ---
+.claude/settings.local.json
