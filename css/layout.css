@@ -1,0 +1,73 @@
+/* Page structure: header, sticky tab bar, content width and responsive grids. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 15px/1.5 var(--font-sans);
+}
+
+/* Centered content column with a 16px gutter on phones.
+   Sets only left/right padding, so elements can still set their own top/bottom padding. */
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+@media (min-width: 720px) { .wrap { padding-left: 24px; padding-right: 24px; } }
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 24px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: 8px;
+}
+.brand { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
+
+/* Tab bar sticks to the top while scrolling; scrolls sideways on narrow screens */
+.tabbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-top: 10px;     /* only top/bottom: the side gutter comes from .wrap */
+  padding-bottom: 10px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+/* Space after the last tab, so it can scroll fully into view (end padding is not scrollable) */
+.tabs::after { content: ''; flex: 0 0 12px; }
+
+main { padding-top: 20px; padding-bottom: max(48px, env(safe-area-inset-bottom)); }
+[role="tabpanel"][hidden] { display: none; }
+
+/* Card grid: one column on phones, two on wide screens */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
+@media (min-width: 900px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .span-2 { grid-column: 1 / -1; }
+}
+
+/* Key figures: two per row on phones, four on wider screens */
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: var(--gap); }
+@media (min-width: 720px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: var(--gap);
+}
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.sources { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
+.sources-title { margin: 0 0 2px; font-size: .95rem; font-weight: 600; }

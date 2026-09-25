@@ -1,0 +1,73 @@
+/* Design tokens: every color, font and size used by the app is defined here.
+   Change a value here and it changes everywhere. Dark mode only redefines colors. */
+
+:root {
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --gap: 16px;
+
+  /* Light theme */
+  --bg: #F4F5F6;
+  --surface: #FFFFFF;
+  --surface-2: #ECEEF0;
+  --border: #DDE0E4;
+  --border-strong: #C5CAD0;
+  --text: #16181B;
+  --text-2: #5B636C;
+  --text-3: #7A828B;
+
+  /* The single accent color */
+  --accent: #C2621B;
+  --accent-soft: rgba(194, 98, 27, .12);
+  --on-accent: #FFFFFF;
+
+  /* Charts */
+  --chart-bar: #CDD2D8;
+  --chart-line: #5B636C;
+  --chart-grid: #E6E8EB;
+
+  color-scheme: light;
+}
+
+/* Dark theme: follows the operating system setting */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16181B;
+    --surface: #1F2226;
+    --surface-2: #2A2E33;
+    --border: #2E3237;
+    --border-strong: #3F444A;
+    --text: #E7E9EC;
+    --text-2: #A3AAB2;
+    --text-3: #858D96;
+    --accent: #E8833A;
+    --accent-soft: rgba(232, 131, 58, .16);
+    --on-accent: #16181B;
+    --chart-bar: #3A3F45;
+    --chart-line: #A3AAB2;
+    --chart-grid: #2A2E33;
+    color-scheme: dark;
+  }
+}
+
+/* Same dark values when forced with <html data-theme="dark"> */
+:root[data-theme="dark"] {
+  --bg: #16181B;
+  --surface: #1F2226;
+  --surface-2: #2A2E33;
+  --border: #2E3237;
+  --border-strong: #3F444A;
+  --text: #E7E9EC;
+  --text-2: #A3AAB2;
+  --text-3: #858D96;
+  --accent: #E8833A;
+  --accent-soft: rgba(232, 131, 58, .16);
+  --on-accent: #16181B;
+  --chart-bar: #3A3F45;
+  --chart-line: #A3AAB2;
+  --chart-grid: #2A2E33;
+  color-scheme: dark;
+}

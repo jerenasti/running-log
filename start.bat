@@ -25,6 +25,6 @@ start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8000"
 echo.
 echo === 3/3 Server running. Keep this window open. To stop: Ctrl+C or close the window. ===
 echo.
-uv run --no-project python -m http.server 8000 --bind 127.0.0.1
+uv run --no-project python serve.py
 
 pause

@@ -31,14 +31,15 @@ The user is learning to program through this project: briefly explain what you a
 
 ## Running locally
 
-Browsers do not allow `fetch()` from a `file://` address, so the page is served through a local server.
+Browsers do not allow `fetch()` or ES modules from a `file://` address, so the page is served through a local server.
 
 ```
-uv run fetch_garmin.py                                                  # 1. fetch fresh data
-uv run --no-project python -m http.server 8000 --bind 127.0.0.1         # 2. start the server
+uv run fetch_garmin.py                    # 1. fetch fresh data
+uv run --no-project python serve.py       # 2. start the server (--port N to change)
 ```
 
 Then open http://localhost:8000. Stop the server with Ctrl+C. The same server is defined in `.claude/launch.json`.
+`serve.py` is used instead of `python -m http.server` because it forces correct JS/CSS MIME types and sends `Cache-Control: no-store` (edits show up on reload). On this machine port 8001 is taken by another service; use another port (e.g. 8123) for a second server.
 
 `start.bat` does the same with a double-click (fetch + server + browser).
 
@@ -49,6 +50,17 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
 ## Structure
 
 - `fetch_garmin.py`: fetches activities → `data/activities.json` (`{fetchedAt, activities: [{id, start_time, type, name, distance_m, duration_s, avg_hr}]}`).
-- `index.html`: a single file (HTML + CSS + JS). Reads the JSON with `fetch()`; CSV upload and sample data as fallbacks. CSV column detection supports both English and Finnish Garmin exports.
+- `index.html`: page structure only (header, tab bar, one `<section role="tabpanel">` per tab). No inline CSS or JS.
+- `css/tokens.css`: all colors, fonts and sizes as CSS variables; dark mode redefines colors only. `css/layout.css`: page structure and responsive grids. `css/components.css`: tabs, cards, KPIs, buttons, tables.
+- `js/app.js`: entry point (data loading, data source controls, tabs). `js/state.js`: shared state + localStorage. `js/data.js`: Garmin JSON, CSV parsing (English and Finnish column names), sample data. `js/format.js`: **all** displayed numbers and dates go through it. `js/parse.js`, `js/dates.js`: input parsing and ISO week helpers. `js/charts.js`: shared Chart.js theme/options. `js/nav.js`: tabs (hash in URL, arrow-key navigation).
+- `js/tabs/training.js`: the Training tab. Other tabs (Overview, Fitness and load, Recovery, Nutrition) are placeholders in `index.html`; a new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
+- Chart.js and PapaParse are loaded as globals from cdnjs in `index.html`.
 - `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task.
+
+## Design (direction "Graphite")
+
+- Calm, data-dense dashboard. IBM Plex Sans for text, IBM Plex Mono for all numbers.
+- One accent color (`--accent`, amber) used only for highlights: current week, goal bar, primary button, focus ring, "Coming soon" badge. Everything else is neutral.
+- Every section is a `.card`; key figures are `.kpi`. Number formats: km with one decimal (`fmtKm`), pace `m:ss /km` (`fmtPace`), HR whole numbers.
+- Must work at phone width (16px side gutter, no horizontal page scroll) and in both light and dark mode.
 - `.bat` files must keep CRLF line endings (enforced by `.gitattributes`).
