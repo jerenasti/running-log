@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Juoksupäiväkirja</title>
+<title>Running Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -126,8 +126,8 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
 <main>
   <header class="top">
     <div>
-      <h1>Juoksupäiväkirja</h1>
-      <p class="lede">Näe, miten harjoittelusi kehittyy viikko viikolta.</p>
+      <h1>Running Log</h1>
+      <p class="lede">See how your training develops week by week.</p>
     </div>
     <p class="updated" id="updated" hidden></p>
   </header>
@@ -136,31 +136,31 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
   <p class="status" id="status" role="status" aria-live="polite" hidden></p>
 
   <section class="empty" id="empty">
-    <p class="live" id="liveHint" hidden>Garmin-data on haettu tiedostoon data/activities.json. Valitse Näytä Garmin-data. Voit myös ladata oman CSV-tiedoston alla olevien ohjeiden mukaan.</p>
-    <h2>Varavaihtoehto: lataa CSV Garminilta</h2>
+    <p class="live" id="liveHint" hidden>Garmin data has been fetched to data/activities.json. Choose Show Garmin data. You can also upload your own CSV file by following the steps below.</p>
+    <h2>Fallback: upload a CSV from Garmin</h2>
     <ol>
-      <li>Avaa Garmin Connect selaimessa ja kirjaudu sisään.</li>
-      <li>Valitse Aktiviteetit ja sitten Kaikki aktiviteetit.</li>
-      <li>Vieritä listaa alaspäin, kunnes kaikki haluamasi harjoitukset näkyvät. Vienti sisältää vain listaan latautuneet rivit.</li>
-      <li>Valitse sivun yläreunasta Vie CSV.</li>
-      <li>Pudota tiedosto tähän tai valitse se alta Lataa CSV-tiedosto -painikkeella.</li>
+      <li>Open Garmin Connect in your browser and sign in.</li>
+      <li>Choose Activities, then All Activities.</li>
+      <li>Scroll down until all the activities you want are visible. The export only includes rows loaded in the list.</li>
+      <li>Choose Export CSV at the top of the page.</li>
+      <li>Drop the file here, or choose it with the Upload CSV file button below.</li>
     </ol>
-    <p class="hint">Tiedosto käsitellään vain omassa selaimessasi. Sitä ei lähetetä minnekään.</p>
+    <p class="hint">The file is processed only in your own browser. It is not sent anywhere.</p>
   </section>
 
   <div id="dash" hidden>
     <div class="toolbar">
       <div class="source" id="source"></div>
       <div class="filters">
-        <div class="seg" role="group" aria-label="Aikaväli" id="period">
-          <button type="button" data-v="12">12 vk</button>
-          <button type="button" data-v="26">26 vk</button>
-          <button type="button" data-v="52">Vuosi</button>
-          <button type="button" data-v="all">Kaikki</button>
+        <div class="seg" role="group" aria-label="Time range" id="period">
+          <button type="button" data-v="12">12 wk</button>
+          <button type="button" data-v="26">26 wk</button>
+          <button type="button" data-v="52">Year</button>
+          <button type="button" data-v="all">All</button>
         </div>
-        <div class="seg" role="group" aria-label="Lajit" id="sport">
-          <button type="button" data-v="run">Juoksut</button>
-          <button type="button" data-v="all">Kaikki lajit</button>
+        <div class="seg" role="group" aria-label="Sports" id="sport">
+          <button type="button" data-v="run">Runs</button>
+          <button type="button" data-v="all">All sports</button>
         </div>
       </div>
     </div>
@@ -169,39 +169,39 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
 
     <section class="panel goal">
       <div class="goal-head">
-        <h2>Viikkotavoite</h2>
-        <label class="goal-input">Tavoite
-          <input type="number" id="goalInput" min="0" max="500" step="1" inputmode="numeric" placeholder="–"> km / vk
+        <h2>Weekly goal</h2>
+        <label class="goal-input">Goal
+          <input type="number" id="goalInput" min="0" max="500" step="1" inputmode="numeric" placeholder="–"> km / wk
         </label>
       </div>
-      <div class="bar" id="goalBar" role="progressbar" aria-label="Kuluvan viikon edistyminen" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+      <div class="bar" id="goalBar" role="progressbar" aria-label="Progress this week" aria-valuemin="0" aria-valuemax="100"><span></span></div>
       <p class="sub" id="goalText"></p>
     </section>
 
     <section class="panel">
-      <h2>Viikkokilometrit</h2>
-      <p class="sub">Kuluva viikko on korostettu. Vie osoitin pylvään päälle nähdäksesi viikon tiedot.</p>
-      <div class="chart-box"><canvas id="weekChart" aria-label="Viikkokilometrit pylväskaaviona" role="img"></canvas></div>
+      <h2>Weekly distance</h2>
+      <p class="sub">The current week is highlighted. Hover over a bar to see details for that week.</p>
+      <div class="chart-box"><canvas id="weekChart" aria-label="Weekly distance as a bar chart" role="img"></canvas></div>
     </section>
 
     <section class="panel">
-      <h2>Keskivauhdin kehitys</h2>
-      <p class="sub">Viikon keskivauhti. Mitä ylempänä viiva on, sitä nopeammin olet juossut.</p>
-      <div class="chart-box short"><canvas id="paceChart" aria-label="Keskivauhti viikoittain viivakaaviona" role="img"></canvas></div>
+      <h2>Average pace</h2>
+      <p class="sub">Average pace per week. The higher the line, the faster you ran.</p>
+      <div class="chart-box short"><canvas id="paceChart" aria-label="Weekly average pace as a line chart" role="img"></canvas></div>
     </section>
 
     <section class="panel">
-      <h2>Keskisykkeen kehitys</h2>
-      <p class="sub">Viikon keskisyke harjoitusten kestolla painotettuna. Jos syke laskee, kun vauhti pysyy samana, kunto on kehittynyt.</p>
-      <div class="chart-box short"><canvas id="hrChart" aria-label="Keskisyke viikoittain viivakaaviona" role="img"></canvas></div>
+      <h2>Average heart rate</h2>
+      <p class="sub">Weekly average heart rate, weighted by activity duration. If your heart rate drops while your pace stays the same, your fitness has improved.</p>
+      <div class="chart-box short"><canvas id="hrChart" aria-label="Weekly average heart rate as a line chart" role="img"></canvas></div>
     </section>
 
     <section class="panel">
-      <h2>Harjoitukset</h2>
+      <h2>Activities</h2>
       <p class="sub" id="recentSub"></p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Päivä</th><th>Harjoitus</th><th class="num">Matka</th><th class="num">Aika</th><th class="num">Vauhti</th><th class="num">Keskisyke</th></tr></thead>
+          <thead><tr><th>Date</th><th>Activity</th><th class="num">Distance</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th></tr></thead>
           <tbody id="recent"></tbody>
         </table>
       </div>
@@ -212,13 +212,13 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
   </div>
 
   <section class="alt" aria-labelledby="altTitle">
-    <h2 id="altTitle">Muut tietolähteet</h2>
-    <p class="sub">Garmin-data haetaan automaattisesti joka aamu. Voit myös ladata oman CSV-tiedoston tai kokeilla sovellusta esimerkkidatalla.</p>
+    <h2 id="altTitle">Other data sources</h2>
+    <p class="sub">Garmin data is fetched automatically every morning. You can also upload your own CSV file or try the app with sample data.</p>
     <div class="actions">
-      <button class="btn garmin" id="garmin" type="button" hidden>Näytä Garmin-data</button>
+      <button class="btn garmin" id="garmin" type="button" hidden>Show Garmin data</button>
       <input type="file" id="file" class="sr-only" accept=".csv,text/csv">
-      <label for="file" class="btn ghost">Lataa CSV-tiedosto</label>
-      <button class="btn ghost" id="demo" type="button">Kokeile esimerkkidatalla</button>
+      <label for="file" class="btn ghost">Upload CSV file</label>
+      <button class="btn ghost" id="demo" type="button">Try with sample data</button>
     </div>
   </section>
 </main>
@@ -233,13 +233,13 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 
 /* ---------- Sarakkeiden tunnistus (englanti ja suomi) ---------- */
 const KEYS = {
-  type:  { name:'Laji',      exact:['activity type','aktiviteetin tyyppi','aktiviteettityyppi','tyyppi','laji'], incl:['activity type','tyyppi','laji'] },
-  date:  { name:'Päivämäärä',exact:['date','päivämäärä','pvm'], incl:['date','päivämäärä','pvm'] },
-  title: { name:'Otsikko',   exact:['title','otsikko','nimi'], incl:['title','otsikko'] },
-  dist:  { name:'Matka',     exact:['distance','matka','etäisyys'], incl:['distance','matka','etäisyys'] },
-  time:  { name:'Aika',      exact:['time','aika','kesto'], incl:['time','aika','kesto'],
+  type:  { name:'Sport',      exact:['activity type','aktiviteetin tyyppi','aktiviteettityyppi','tyyppi','laji'], incl:['activity type','tyyppi','laji'] },
+  date:  { name:'Date',exact:['date','päivämäärä','pvm'], incl:['date','päivämäärä','pvm'] },
+  title: { name:'Title',   exact:['title','otsikko','nimi'], incl:['title','otsikko'] },
+  dist:  { name:'Distance',     exact:['distance','matka','etäisyys'], incl:['distance','matka','etäisyys'] },
+  time:  { name:'Time',      exact:['time','aika','kesto'], incl:['time','aika','kesto'],
            excl:['lap','kierros','best','paras','moving','liike','elapsed','kulunut','pace','vauhti','date','päivä'] },
-  hr:    { name:'Keskisyke', exact:['avg hr','keskisyke','average heart rate'], incl:['avg hr','keskisyke','keskim. syke','average heart','keskimääräinen syke'] }
+  hr:    { name:'Avg HR', exact:['avg hr','keskisyke','average heart rate'], incl:['avg hr','keskisyke','keskim. syke','average heart','keskimääräinen syke'] }
 };
 function findCol(headers, spec){
   const norm = headers.map(h => String(h || '').toLowerCase().trim());
@@ -291,8 +291,8 @@ function parseDate(s){
 }
 
 /* ---------- Muotoilu ---------- */
-const nf1 = new Intl.NumberFormat('fi-FI', { maximumFractionDigits:1, minimumFractionDigits:1 });
-const nf0 = new Intl.NumberFormat('fi-FI', { maximumFractionDigits:0 });
+const nf1 = new Intl.NumberFormat('en-GB', { maximumFractionDigits:1, minimumFractionDigits:1 });
+const nf0 = new Intl.NumberFormat('en-GB', { maximumFractionDigits:0 });
 function fmtPace(spk){
   if (!isFinite(spk) || spk <= 0) return '–';
   let m = Math.floor(spk/60), s = Math.round(spk - m*60);
@@ -305,8 +305,9 @@ function fmtDur(sec){
   const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60;
   return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(s).padStart(2,'0');
 }
-const fmtDay = d => d.getDate() + '.' + (d.getMonth()+1) + '.';
-const fmtDate = d => fmtDay(d) + d.getFullYear();
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDay = d => d.getDate() + ' ' + MONTHS[d.getMonth()];
+const fmtDate = d => fmtDay(d) + ' ' + d.getFullYear();
 function mondayOf(d){
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
@@ -331,7 +332,7 @@ function loadRows(rows, headers, source){
   const cols = {};
   for (const k in KEYS) cols[k] = findCol(headers, KEYS[k]);
   if (!cols.date || !cols.dist){
-    notice('Tiedostosta ei löytynyt päivämäärä- tai matkasaraketta. Tarkista, että viet listan Garmin Connectin Aktiviteetit-sivulta Vie CSV -toiminnolla. Löydetyt sarakkeet: ' + headers.join(', '));
+    notice('No date or distance column found in the file. Make sure you export the list from the Garmin Connect Activities page with Export CSV. Columns found: ' + headers.join(', '));
     return;
   }
   let acts = rows.map(r => ({
@@ -344,7 +345,7 @@ function loadRows(rows, headers, source){
   })).filter(a => a.date && isFinite(a.km) && a.km > 0);
 
   if (!acts.length){
-    notice('Tiedostosta ei löytynyt yhtään harjoitusta, jolla olisi sekä päivämäärä että matka.');
+    notice('The file contains no activities with both a date and a distance.');
     return;
   }
   const kms = acts.map(a => a.km).sort((a,b) => a-b);
@@ -360,13 +361,13 @@ function loadRows(rows, headers, source){
 function handleFile(file){
   if (!file) return;
   if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv'){
-    notice('Valitse CSV-tiedosto. Tiedosto ' + file.name + ' ei ole CSV-muodossa.');
+    notice('Choose a CSV file. The file ' + file.name + ' is not in CSV format.');
     return;
   }
   Papa.parse(file, {
     header: true, skipEmptyLines: true,
     complete: res => loadRows(res.data, res.meta.fields || [], file.name),
-    error: () => notice('Tiedoston lukeminen epäonnistui. Kokeile viedä CSV uudelleen Garmin Connectista.')
+    error: () => notice('Could not read the file. Try exporting the CSV from Garmin Connect again.')
   });
 }
 
@@ -378,10 +379,10 @@ function demoRows(){
   for (let w = 0; w < 24; w++){
     const prog = w/23, f = (w % 4 === 3) ? 0.72 : 1;
     const plan = [
-      { d:1, t:'Kevyt lenkki', km:7 + prog*3, pace:372, hr:142 },
-      { d:3, t:'Intervallit',  km:8 + prog*2, pace:328, hr:158 },
-      { d:4, t:'Kevyt lenkki', km:6 + prog*3, pace:375, hr:140 },
-      { d:6, t:'Pitkä lenkki', km:12 + prog*16, pace:385, hr:146 }
+      { d:1, t:'Easy run', km:7 + prog*3, pace:372, hr:142 },
+      { d:3, t:'Intervals',   km:8 + prog*2, pace:328, hr:158 },
+      { d:4, t:'Easy run', km:6 + prog*3, pace:375, hr:140 },
+      { d:6, t:'Long run', km:12 + prog*16, pace:385, hr:146 }
     ];
     for (const p of plan){
       const date = new Date(start); date.setDate(start.getDate() + w*7 + p.d);
@@ -393,7 +394,7 @@ function demoRows(){
     }
     if (w % 3 === 0){
       const date = new Date(start); date.setDate(start.getDate() + w*7 + 5);
-      if (date <= today) rows.push({ 'Activity Type':'Cycling', 'Date':iso(date), 'Title':'Pyörälenkki',
+      if (date <= today) rows.push({ 'Activity Type':'Cycling', 'Date':iso(date), 'Title':'Bike ride',
         'Distance':(30 + Math.random()*15).toFixed(2), 'Time':'1:35:00', 'Avg HR':'128' });
     }
   }
@@ -471,7 +472,7 @@ function setSeg(id, v){
 function renderGoal(){
   const input = $('#goalInput'), bar = $('#goalBar'), text = $('#goalText');
   if (document.activeElement !== input) input.value = state.goal || '';
-  const what = state.sport === 'run' ? 'juoksua' : 'harjoittelua';
+  const what = state.sport === 'run' ? 'running' : 'training';
   const thisMon = mondayOf(new Date()).getTime();
   const km = state.acts
     .filter(a => (state.sport === 'all' || isRun(a)) && mondayOf(a.date).getTime() === thisMon)
@@ -479,7 +480,7 @@ function renderGoal(){
 
   if (!state.goal){
     bar.hidden = true;
-    text.textContent = 'Tällä viikolla ' + nf1.format(km) + ' km ' + what + '. Aseta viikon kilometritavoite, niin näet edistymisesi.';
+    text.textContent = 'This week: ' + nf1.format(km) + ' km of ' + what + '. Set a weekly distance goal to track your progress.';
     return;
   }
   const pct = Math.round(km / state.goal * 100);
@@ -487,8 +488,8 @@ function renderGoal(){
   bar.classList.toggle('done', km >= state.goal);
   bar.setAttribute('aria-valuenow', String(Math.min(pct, 100)));
   bar.firstElementChild.style.width = Math.min(pct, 100) + '%';
-  text.textContent = 'Tällä viikolla ' + nf1.format(km) + ' / ' + nf0.format(state.goal) + ' km ' + what + ' (' + pct + ' %). ' +
-    (km >= state.goal ? 'Tavoite saavutettu!' : 'Jäljellä ' + nf1.format(state.goal - km) + ' km.');
+  text.textContent = 'This week: ' + nf1.format(km) + ' / ' + nf0.format(state.goal) + ' km of ' + what + ' (' + pct + '%). ' +
+    (km >= state.goal ? 'Goal reached!' : nf1.format(state.goal - km) + ' km to go.');
 }
 
 function render(){
@@ -499,16 +500,16 @@ function render(){
 
   setSeg('period', state.period);
   setSeg('sport', state.sport);
-  $('#source').innerHTML = 'Näytetään ' + esc(state.source) + ', ' + state.acts.length + ' aktiviteettia <button type="button" id="clear">Tyhjennä</button>';
+  $('#source').innerHTML = 'Showing ' + esc(state.source) + ', ' + state.acts.length + ' activities <button type="button" id="clear">Clear</button>';
   $('#clear').onclick = clearAll;
 
   const r = compute();
   const avgWeek = r.weeks.length ? r.tot / r.weeks.length : 0;
   $('#stats').innerHTML = `
-    <div class="stat"><div class="v">${nf1.format(r.tot)}<small>km</small></div><div class="l">Kilometrit yhteensä</div><div class="s">${nf1.format(avgWeek)} km viikossa</div></div>
-    <div class="stat"><div class="v">${r.inRange.length}</div><div class="l">${state.sport === 'run' ? 'Juoksua' : 'Harjoitusta'}</div></div>
-    <div class="stat"><div class="v">${fmtPace(r.pace)}<small>/km</small></div><div class="l">Keskivauhti</div></div>
-    <div class="stat"><div class="v">${r.longest ? nf1.format(r.longest.km) : '–'}<small>km</small></div><div class="l">Pisin harjoitus</div><div class="s">${r.longest ? fmtDate(r.longest.date) : ''}</div></div>`;
+    <div class="stat"><div class="v">${nf1.format(r.tot)}<small>km</small></div><div class="l">Total distance</div><div class="s">${nf1.format(avgWeek)} km per week</div></div>
+    <div class="stat"><div class="v">${r.inRange.length}</div><div class="l">${state.sport === 'run' ? 'Runs' : 'Activities'}</div></div>
+    <div class="stat"><div class="v">${fmtPace(r.pace)}<small>/km</small></div><div class="l">Average pace</div></div>
+    <div class="stat"><div class="v">${r.longest ? nf1.format(r.longest.km) : '–'}<small>km</small></div><div class="l">Longest activity</div><div class="s">${r.longest ? fmtDate(r.longest.date) : ''}</div></div>`;
 
   renderGoal();
   drawCharts(r);
@@ -518,19 +519,19 @@ function render(){
   const recent = (state.showAll ? r.inRange.slice() : r.inRange.slice(-RECENT_N)).reverse();
   const hidden = r.inRange.length - RECENT_N;
   $('#recentSub').textContent = state.showAll || hidden <= 0
-    ? 'Kaikki valitun aikavälin harjoitukset, uusimmat ensin.'
-    : RECENT_N + ' uusinta harjoitusta.';
+    ? 'All activities in the selected range, newest first.'
+    : RECENT_N + ' most recent activities.';
   $('#showAll').hidden = hidden <= 0;
-  $('#showAll').textContent = state.showAll ? 'Näytä vain ' + RECENT_N + ' uusinta' : 'Näytä kaikki ' + r.inRange.length + ' harjoitusta';
+  $('#showAll').textContent = state.showAll ? 'Show only the ' + RECENT_N + ' most recent' : 'Show all ' + r.inRange.length + ' activities';
   $('#recent').innerHTML = recent.length ? recent.map(a => `
     <tr><td>${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type || '–')}</td>
     <td class="num">${nf1.format(a.km)} km</td><td class="num">${fmtDur(a.sec)}</td>
     <td class="num">${isFinite(a.sec) ? fmtPace(a.sec/a.km) + ' /km' : '–'}</td>
     <td class="num">${isFinite(a.hr) ? nf0.format(a.hr) : '–'}</td></tr>`).join('')
-    : '<tr><td colspan="6">Valitulla aikavälillä ei ole harjoituksia. Valitse pidempi aikaväli.</td></tr>';
+    : '<tr><td colspan="6">No activities in the selected range. Choose a longer range.</td></tr>';
 
-  $('#colinfo').innerHTML = '<summary>' + (state.live ? 'Garmin-kentät' : 'Tunnistetut sarakkeet') + '</summary><ul>' +
-    Object.keys(KEYS).map(k => `<li>${KEYS[k].name}: ${state.cols[k] ? esc(state.cols[k]) : '<span class="missing">ei löytynyt</span>'}</li>`).join('') + '</ul>';
+  $('#colinfo').innerHTML = '<summary>' + (state.live ? 'Garmin fields' : 'Detected columns') + '</summary><ul>' +
+    Object.keys(KEYS).map(k => `<li>${KEYS[k].name}: ${state.cols[k] ? esc(state.cols[k]) : '<span class="missing">not found</span>'}</li>`).join('') + '</ul>';
 }
 
 function drawCharts(r){
@@ -540,11 +541,11 @@ function drawCharts(r){
   Chart.defaults.font.size = 13;
   Chart.defaults.color = muted;
   const thisMon = mondayOf(new Date()).getTime();
-  const labels = r.weeks.map(w => 'vk ' + isoWeek(w.mon));
+  const labels = r.weeks.map(w => 'wk ' + isoWeek(w.mon));
   const tipTitle = items => {
     const w = r.weeks[items[0].dataIndex];
     const sun = new Date(w.mon); sun.setDate(sun.getDate() + 6);
-    return 'Viikko ' + isoWeek(w.mon) + ' (' + fmtDay(w.mon) + '–' + fmtDate(sun) + ')';
+    return 'Week ' + isoWeek(w.mon) + ' (' + fmtDay(w.mon) + ' – ' + fmtDate(sun) + ')';
   };
   const common = {
     responsive:true, maintainAspectRatio:false, animation: reduceMotion ? false : { duration:400 },
@@ -563,7 +564,7 @@ function drawCharts(r){
         borderWidth:1.5, pointRadius:0, pointHoverRadius:0 }] : [])] },
     options:{ ...common,
       plugins:{ ...common.plugins, tooltip:{ ...common.plugins.tooltip, filter: c => c.datasetIndex === 0, callbacks:{ title: tipTitle,
-        label: c => { const w = r.weeks[c.dataIndex]; return nf1.format(w.km) + ' km, ' + w.n + (w.n === 1 ? ' harjoitus' : ' harjoitusta'); } } } },
+        label: c => { const w = r.weeks[c.dataIndex]; return nf1.format(w.km) + ' km, ' + w.n + (w.n === 1 ? ' activity' : ' activities'); } } } },
       scales:{ ...common.scales, y:{ beginAtZero:true, grid:{ color:line }, border:{ display:false }, ticks:{ callback: v => v + ' km' } } } }
   });
 
@@ -590,7 +591,7 @@ function drawCharts(r){
 
 /* ---------- Tapahtumat ---------- */
 $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.target.value = ''; });
-$('#demo').addEventListener('click', () => loadRows(demoRows(), ['Activity Type','Date','Title','Distance','Time','Avg HR'], 'esimerkkidata'));
+$('#demo').addEventListener('click', () => loadRows(demoRows(), ['Activity Type','Date','Title','Distance','Time','Avg HR'], 'sample data'));
 $('#period').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.period = b.dataset.v; save(); render(); });
 $('#sport').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.sport = b.dataset.v; save(); render(); });
 $('#showAll').addEventListener('click', () => { state.showAll = !state.showAll; render(); });
@@ -608,7 +609,7 @@ const mq = window.matchMedia('(prefers-color-scheme: dark)');
 if (mq.addEventListener) mq.addEventListener('change', () => { if (state.acts.length) render(); });
 
 if (typeof Chart === 'undefined' || typeof Papa === 'undefined'){
-  notice('Sovelluksen apukirjastot eivät latautuneet. Päivitä sivu.');
+  notice('The app libraries failed to load. Reload the page.');
 }
 
 /* ---------- Garmin-data: data/activities.json (luo: uv run fetch_garmin.py) ---------- */
@@ -617,16 +618,16 @@ let GARMIN = null; // ladattu JSON, tai null jos tiedostoa ei saatu
 
 async function fetchGarmin(){
   if (location.protocol === 'file:') {
-    throw new Error('Sivu on avattu suoraan tiedostona, joten selain ei anna lukea Garmin-dataa. Käynnistä paikallinen palvelin (ks. CLAUDE.md) tai lataa CSV-tiedosto.');
+    throw new Error('The page was opened directly as a file, so the browser will not let it read the Garmin data. Start the local server (see CLAUDE.md) or upload a CSV file.');
   }
   // cache: 'no-store' varmistaa, että selain hakee aina uusimman version eikä käytä välimuistia.
   const res = await fetch(DATA_URL, { cache: 'no-store' });
   if (!res.ok) {
-    throw new Error('Tiedostoa ' + DATA_URL + ' ei löytynyt. Hae data komennolla uv run fetch_garmin.py tai lataa CSV-tiedosto.');
+    throw new Error('File ' + DATA_URL + ' not found. Fetch the data with uv run fetch_garmin.py or upload a CSV file.');
   }
   const o = await res.json();
   if (!o || !Array.isArray(o.activities) || !o.activities.length) {
-    throw new Error('Tiedostossa ' + DATA_URL + ' ei ole harjoituksia.');
+    throw new Error('File ' + DATA_URL + ' contains no activities.');
   }
   return o;
 }
@@ -636,7 +637,7 @@ function updateGarminBtn(){
   // Yläosan "päivitetty"-tieto
   const d = GARMIN && parseDate(GARMIN.fetchedAt);
   $('#updated').hidden = !d;
-  if (d) $('#updated').textContent = 'Garmin-data päivitetty ' + fmtDate(d) + ' klo ' + d.getHours() + '.' + String(d.getMinutes()).padStart(2, '0');
+  if (d) $('#updated').textContent = 'Garmin data updated ' + fmtDate(d) + ' at ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 function applyGarmin(){
   if (!GARMIN) return;
@@ -645,7 +646,7 @@ function applyGarmin(){
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr
   })).filter(a => a.date && a.km > 0).sort((a,b) => a.date - b.date);
   state.cols = { type:'type', date:'start_time', title:'name', dist:'distance_m', time:'duration_s', hr:'avg_hr' };
-  state.source = 'Garmin Connect -data'; // hakuaika näkyy yläosassa (#updated)
+  state.source = 'Garmin Connect data'; // hakuaika näkyy yläosassa (#updated)
   state.live = true;
   notice('');
   save();
