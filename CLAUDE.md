@@ -17,6 +17,11 @@ The user is learning to program through this project: briefly explain what you a
 - Garmin library: `python-garminconnect` (the `garminconnect` package, pinned to 0.3.2).
 - Saved tokens: `%LOCALAPPDATA%\garminconnect` (created with the `garmin-mcp-auth` tool from Taxuspt/garmin_mcp).
 
+## Conventions
+
+- Write commit messages in English (imperative mood, e.g. "Add weekly goal"). Older commits are in Finnish; leave them as they are.
+- Code, comments and UI text are in English.
+
 ## Constraints (absolute)
 
 - **NEVER log in to Garmin with a password.** Garmin blocks repeated logins (HTTP 429). Use only the saved tokens. If the tokens are expired or missing, the script must stop with a clear error message and must not try to log in again. The user renews the tokens themselves with the `garmin-mcp-auth` tool.
