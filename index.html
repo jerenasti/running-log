@@ -102,6 +102,13 @@ details{color:var(--muted);font-size:.95rem}
 details summary{cursor:pointer}
 details ul{margin:.5rem 0 0;padding-left:1.2rem}
 .missing{color:var(--accent)}
+
+.updated{margin:0;color:var(--muted);font-size:.95rem;display:flex;align-items:center;gap:.5rem}
+.updated::before{content:'';width:.6rem;height:.6rem;border-radius:50%;background:var(--pine);flex:none}
+.updated[hidden]{display:none}
+.alt{margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
+.alt h2{font-size:1.35rem}
+.alt .sub{color:var(--muted);margin:0 0 14px;font-size:.95rem;max-width:62ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -110,14 +117,9 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
   <header class="top">
     <div>
       <h1>Juoksupäiväkirja</h1>
-      <p class="lede">Näe, miten harjoittelusi kehittyy viikko viikolta. Data haetaan Garmin Connectista automaattisesti, ja CSV-lataus toimii varavaihtoehtona.</p>
+      <p class="lede">Näe, miten harjoittelusi kehittyy viikko viikolta.</p>
     </div>
-    <div class="actions">
-      <button class="btn garmin" id="garmin" type="button" hidden>Näytä Garmin-data</button>
-      <input type="file" id="file" class="sr-only" accept=".csv,text/csv">
-      <label for="file" class="btn">Lataa CSV-tiedosto</label>
-      <button class="btn ghost" id="demo" type="button">Kokeile esimerkkidatalla</button>
-    </div>
+    <p class="updated" id="updated" hidden></p>
   </header>
 
   <p class="notice" id="notice" role="alert" hidden></p>
@@ -131,7 +133,7 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
       <li>Valitse Aktiviteetit ja sitten Kaikki aktiviteetit.</li>
       <li>Vieritä listaa alaspäin, kunnes kaikki haluamasi harjoitukset näkyvät. Vienti sisältää vain listaan latautuneet rivit.</li>
       <li>Valitse sivun yläreunasta Vie CSV.</li>
-      <li>Pudota tiedosto tähän tai valitse se Lataa CSV-tiedosto -painikkeella.</li>
+      <li>Pudota tiedosto tähän tai valitse se alta Lataa CSV-tiedosto -painikkeella.</li>
     </ol>
     <p class="hint">Tiedosto käsitellään vain omassa selaimessasi. Sitä ei lähetetä minnekään.</p>
   </section>
@@ -179,6 +181,17 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
 
     <details id="colinfo"></details>
   </div>
+
+  <section class="alt" aria-labelledby="altTitle">
+    <h2 id="altTitle">Muut tietolähteet</h2>
+    <p class="sub">Garmin-data haetaan automaattisesti joka aamu. Voit myös ladata oman CSV-tiedoston tai kokeilla sovellusta esimerkkidatalla.</p>
+    <div class="actions">
+      <button class="btn garmin" id="garmin" type="button" hidden>Näytä Garmin-data</button>
+      <input type="file" id="file" class="sr-only" accept=".csv,text/csv">
+      <label for="file" class="btn ghost">Lataa CSV-tiedosto</label>
+      <button class="btn ghost" id="demo" type="button">Kokeile esimerkkidatalla</button>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -540,6 +553,10 @@ async function fetchGarmin(){
 function updateGarminBtn(){
   $('#garmin').hidden = !GARMIN || state.live;
   $('#liveHint').hidden = !GARMIN;
+  // Yläosan "päivitetty"-tieto
+  const d = GARMIN && parseDate(GARMIN.fetchedAt);
+  $('#updated').hidden = !d;
+  if (d) $('#updated').textContent = 'Garmin-data päivitetty ' + fmtDate(d) + ' klo ' + d.getHours() + '.' + String(d.getMinutes()).padStart(2, '0');
 }
 function applyGarmin(){
   if (!GARMIN) return;
@@ -548,8 +565,7 @@ function applyGarmin(){
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr
   })).filter(a => a.date && a.km > 0).sort((a,b) => a.date - b.date);
   state.cols = { type:'type', date:'start_time', title:'name', dist:'distance_m', time:'duration_s', hr:'avg_hr' };
-  const d = parseDate(GARMIN.fetchedAt);
-  state.source = 'Garmin Connect (haettu ' + (d ? fmtDate(d) : GARMIN.fetchedAt) + ')';
+  state.source = 'Garmin Connect -data'; // hakuaika näkyy yläosassa (#updated)
   state.live = true;
   notice('');
   save();
