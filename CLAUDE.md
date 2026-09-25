@@ -35,6 +35,12 @@ uv run --no-project python -m http.server 8000 --bind 127.0.0.1         # 2. kä
 
 Avaa sitten http://localhost:8000. Palvelin pysäytetään painamalla Ctrl+C. Sama palvelin on määritelty tiedostossa `.claude/launch.json`.
 
+`kaynnista.bat` tekee saman tuplaklikkauksella (haku + palvelin + selain).
+
+## Ajastus
+
+Windowsin Tehtävien ajoitus -tehtävä **"Juoksupaivakirja - Garmin-haku"** ajaa `hae_data.bat`:n päivittäin klo 6.00 (tai heti koneen käynnistyttyä, jos aika meni ohi). Loki: `data/hae_data.log`. Kerran päivässä riittää: älä lisää tiheämpää ajastusta (Garminin rajoitukset).
+
 ## Rakenne
 
 - `fetch_garmin.py`: hakee harjoitukset → `data/activities.json` (`{fetchedAt, activities: [{id, start_time, type, name, distance_m, duration_s, avg_hr}]}`).
