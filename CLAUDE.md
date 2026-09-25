@@ -40,15 +40,15 @@ uv run --no-project python -m http.server 8000 --bind 127.0.0.1         # 2. sta
 
 Then open http://localhost:8000. Stop the server with Ctrl+C. The same server is defined in `.claude/launch.json`.
 
-`kaynnista.bat` does the same with a double-click (fetch + server + browser).
+`start.bat` does the same with a double-click (fetch + server + browser).
 
 ## Scheduling
 
-The Windows Task Scheduler task **"Juoksupaivakirja - Garmin-haku"** runs `hae_data.bat` daily at 06:00 (or as soon as the computer is on, if that time was missed). Log: `data/hae_data.log`. Once a day is enough: do not add more frequent scheduling (Garmin rate limits).
+The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_data.bat` daily at 06:00 (or as soon as the computer is on, if that time was missed). Log: `data/fetch_data.log`. Once a day is enough: do not add more frequent scheduling (Garmin rate limits).
 
 ## Structure
 
 - `fetch_garmin.py`: fetches activities → `data/activities.json` (`{fetchedAt, activities: [{id, start_time, type, name, distance_m, duration_s, avg_hr}]}`).
 - `index.html`: a single file (HTML + CSS + JS). Reads the JSON with `fetch()`; CSV upload and sample data as fallbacks. CSV column detection supports both English and Finnish Garmin exports.
-- `kaynnista.bat`: fetch + server + browser. `hae_data.bat`: fetch only, used by the scheduled task.
+- `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task.
 - `.bat` files must keep CRLF line endings (enforced by `.gitattributes`).
