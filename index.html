@@ -170,6 +170,12 @@ details ul{margin:.5rem 0 0;padding-left:1.2rem}
     </section>
 
     <section class="panel">
+      <h2>Keskisykkeen kehitys</h2>
+      <p class="sub">Viikon keskisyke harjoitusten kestolla painotettuna. Jos syke laskee, kun vauhti pysyy samana, kunto on kehittynyt.</p>
+      <div class="chart-box short"><canvas id="hrChart" aria-label="Keskisyke viikoittain viivakaaviona" role="img"></canvas></div>
+    </section>
+
+    <section class="panel">
       <h2>Viimeisimmät harjoitukset</h2>
       <div class="table-wrap">
         <table>
@@ -419,12 +425,14 @@ function compute(){
 
   const weeks = [];
   for (let d = new Date(startMon); d <= endMon; d.setDate(d.getDate() + 7))
-    weeks.push({ mon: new Date(d), km:0, sec:0, kmTimed:0, n:0 });
+    weeks.push({ mon: new Date(d), km:0, sec:0, kmTimed:0, n:0, hrSum:0, hrSec:0 });
   for (const a of inRange){
     const i = Math.round((mondayOf(a.date) - startMon) / (7*864e5));
     const w = weeks[i]; if (!w) continue;
     w.km += a.km; w.n++;
     if (isFinite(a.sec) && a.sec > 0){ w.sec += a.sec; w.kmTimed += a.km; }
+    // Keskisyke painotetaan kestolla: syke × sekunnit, jaetaan lopuksi kokonaissekunneilla
+    if (isFinite(a.hr) && a.hr > 0 && isFinite(a.sec) && a.sec > 0){ w.hrSum += a.hr * a.sec; w.hrSec += a.sec; }
   }
   const tot = inRange.reduce((s,a) => s + a.km, 0);
   const timed = inRange.filter(a => isFinite(a.sec) && a.sec > 0);
@@ -509,6 +517,16 @@ function drawCharts(r){
     options:{ ...common,
       plugins:{ ...common.plugins, tooltip:{ ...common.plugins.tooltip, callbacks:{ title: tipTitle, label: c => fmtPace(c.parsed.y) + ' /km' } } },
       scales:{ ...common.scales, y:{ reverse:true, grid:{ color:line }, border:{ display:false }, ticks:{ callback: v => fmtPace(v) } } } }
+  });
+
+  const hrs = r.weeks.map(w => w.hrSec > 0 ? Math.round(w.hrSum / w.hrSec) : null);
+  if (charts.hr) charts.hr.destroy();
+  charts.hr = new Chart($('#hrChart'), {
+    type:'line',
+    data:{ labels, datasets:[{ data: hrs, borderColor: pine, backgroundColor: pine, pointRadius:3, pointHoverRadius:6, borderWidth:2.5, tension:.25, spanGaps:true }] },
+    options:{ ...common,
+      plugins:{ ...common.plugins, tooltip:{ ...common.plugins.tooltip, callbacks:{ title: tipTitle, label: c => c.parsed.y + ' bpm' } } },
+      scales:{ ...common.scales, y:{ grid:{ color:line }, border:{ display:false }, ticks:{ callback: v => v + ' bpm' } } } }
   });
 }
 
