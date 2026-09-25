@@ -231,7 +231,7 @@ const state = { acts: [], cols: {}, source: '', period: '12', sport: 'run', live
 const charts = {};
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---------- Sarakkeiden tunnistus (englanti ja suomi) ---------- */
+/* ---------- Column detection (English and Finnish) ---------- */
 const KEYS = {
   type:  { name:'Sport',      exact:['activity type','aktiviteetin tyyppi','aktiviteettityyppi','tyyppi','laji'], incl:['activity type','tyyppi','laji'] },
   date:  { name:'Date',exact:['date','päivämäärä','pvm'], incl:['date','päivämäärä','pvm'] },
@@ -252,7 +252,7 @@ function findCol(headers, spec){
   return null;
 }
 
-/* ---------- Arvojen jäsennys ---------- */
+/* ---------- Value parsing ---------- */
 function parseNum(s){
   if (s == null) return NaN;
   s = String(s).trim().replace(/\s/g, '');
@@ -290,7 +290,7 @@ function parseDate(s){
   return isNaN(d) ? null : d;
 }
 
-/* ---------- Muotoilu ---------- */
+/* ---------- Formatting ---------- */
 const nf1 = new Intl.NumberFormat('en-GB', { maximumFractionDigits:1, minimumFractionDigits:1 });
 const nf0 = new Intl.NumberFormat('en-GB', { maximumFractionDigits:0 });
 function fmtPace(spk){
@@ -324,10 +324,10 @@ const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isRun = a => !a.type || /run|juoks|treadmill|trail|polku/i.test(a.type);
 
-/* ---------- Ilmoitukset ---------- */
+/* ---------- Notices ---------- */
 function notice(msg){ const n = $('#notice'); n.textContent = msg || ''; n.hidden = !msg; }
 
-/* ---------- Datan lataus ---------- */
+/* ---------- Data loading ---------- */
 function loadRows(rows, headers, source){
   const cols = {};
   for (const k in KEYS) cols[k] = findCol(headers, KEYS[k]);
@@ -349,7 +349,7 @@ function loadRows(rows, headers, source){
     return;
   }
   const kms = acts.map(a => a.km).sort((a,b) => a-b);
-  if (kms[Math.floor(kms.length/2)] > 300) acts.forEach(a => a.km /= 1000); // matka metreinä
+  if (kms[Math.floor(kms.length/2)] > 300) acts.forEach(a => a.km /= 1000); // distance in metres
   acts.sort((a,b) => a.date - b.date);
 
   state.acts = acts; state.cols = cols; state.source = source; state.live = false;
@@ -371,7 +371,7 @@ function handleFile(file){
   });
 }
 
-/* ---------- Esimerkkidata ---------- */
+/* ---------- Sample data ---------- */
 function demoRows(){
   const rows = [], today = new Date();
   const start = mondayOf(today); start.setDate(start.getDate() - 7*23);
@@ -401,7 +401,7 @@ function demoRows(){
   return rows;
 }
 
-/* ---------- Tallennus selaimeen ---------- */
+/* ---------- Browser storage ---------- */
 function save(){
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({
@@ -432,7 +432,7 @@ function clearAll(){
   render();
 }
 
-/* ---------- Laskenta ---------- */
+/* ---------- Calculations ---------- */
 function compute(){
   const acts = state.acts.filter(a => state.sport === 'all' || isRun(a));
   const last = state.acts[state.acts.length-1].date;
@@ -455,7 +455,7 @@ function compute(){
     const w = weeks[i]; if (!w) continue;
     w.km += a.km; w.n++;
     if (isFinite(a.sec) && a.sec > 0){ w.sec += a.sec; w.kmTimed += a.km; }
-    // Keskisyke painotetaan kestolla: syke × sekunnit, jaetaan lopuksi kokonaissekunneilla
+    // Average HR is weighted by duration: HR × seconds, divided by total seconds at the end
     if (isFinite(a.hr) && a.hr > 0 && isFinite(a.sec) && a.sec > 0){ w.hrSum += a.hr * a.sec; w.hrSec += a.sec; }
   }
   const tot = inRange.reduce((s,a) => s + a.km, 0);
@@ -465,7 +465,7 @@ function compute(){
   return { inRange, weeks, tot, pace: tKm ? tSec/tKm : NaN, longest, endMon };
 }
 
-/* ---------- Piirto ---------- */
+/* ---------- Rendering ---------- */
 function setSeg(id, v){
   document.querySelectorAll('#' + id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
 }
@@ -514,7 +514,7 @@ function render(){
   renderGoal();
   drawCharts(r);
 
-  // Oletuksena 10 uusinta; "Näytä kaikki" näyttää koko valitun aikavälin
+  // 10 most recent by default; "Show all" shows the whole selected range
   const RECENT_N = 10;
   const recent = (state.showAll ? r.inRange.slice() : r.inRange.slice(-RECENT_N)).reverse();
   const hidden = r.inRange.length - RECENT_N;
@@ -559,7 +559,7 @@ function drawCharts(r){
     data:{ labels, datasets:[{ data: r.weeks.map(w => +w.km.toFixed(1)),
       backgroundColor: r.weeks.map(w => w.mon.getTime() === thisMon ? accent : pine),
       borderRadius:4, maxBarThickness:42 },
-      // Viikkotavoite katkoviivana (vain jos tavoite on asetettu)
+      // Weekly goal as a dashed line (only if a goal is set)
       ...(state.goal ? [{ type:'line', data: r.weeks.map(() => state.goal), borderColor: muted, borderDash:[6,4],
         borderWidth:1.5, pointRadius:0, pointHoverRadius:0 }] : [])] },
     options:{ ...common,
@@ -589,13 +589,13 @@ function drawCharts(r){
   });
 }
 
-/* ---------- Tapahtumat ---------- */
+/* ---------- Events ---------- */
 $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.target.value = ''; });
 $('#demo').addEventListener('click', () => loadRows(demoRows(), ['Activity Type','Date','Title','Distance','Time','Avg HR'], 'sample data'));
 $('#period').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.period = b.dataset.v; save(); render(); });
 $('#sport').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.sport = b.dataset.v; save(); render(); });
 $('#showAll').addEventListener('click', () => { state.showAll = !state.showAll; render(); });
-// Palkki päivittyy kirjoittaessa; kaavio piirretään uudelleen vasta, kun kenttä menettää fokuksen (change)
+// The bar updates while typing; the chart is redrawn only when the field loses focus (change)
 $('#goalInput').addEventListener('input', e => { state.goal = Math.max(0, Math.round(parseNum(e.target.value))) || 0; save(); renderGoal(); });
 $('#goalInput').addEventListener('change', () => render());
 
@@ -612,15 +612,15 @@ if (typeof Chart === 'undefined' || typeof Papa === 'undefined'){
   notice('The app libraries failed to load. Reload the page.');
 }
 
-/* ---------- Garmin-data: data/activities.json (luo: uv run fetch_garmin.py) ---------- */
+/* ---------- Garmin data: data/activities.json (create with: uv run fetch_garmin.py) ---------- */
 const DATA_URL = 'data/activities.json';
-let GARMIN = null; // ladattu JSON, tai null jos tiedostoa ei saatu
+let GARMIN = null; // loaded JSON, or null if the file could not be loaded
 
 async function fetchGarmin(){
   if (location.protocol === 'file:') {
     throw new Error('The page was opened directly as a file, so the browser will not let it read the Garmin data. Start the local server (see CLAUDE.md) or upload a CSV file.');
   }
-  // cache: 'no-store' varmistaa, että selain hakee aina uusimman version eikä käytä välimuistia.
+  // cache: 'no-store' makes the browser always fetch the latest version instead of using its cache.
   const res = await fetch(DATA_URL, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error('File ' + DATA_URL + ' not found. Fetch the data with uv run fetch_garmin.py or upload a CSV file.');
@@ -634,7 +634,7 @@ async function fetchGarmin(){
 function updateGarminBtn(){
   $('#garmin').hidden = !GARMIN || state.live;
   $('#liveHint').hidden = !GARMIN;
-  // Yläosan "päivitetty"-tieto
+  // "Updated" info in the header
   const d = GARMIN && parseDate(GARMIN.fetchedAt);
   $('#updated').hidden = !d;
   if (d) $('#updated').textContent = 'Garmin data updated ' + fmtDate(d) + ' at ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -646,7 +646,7 @@ function applyGarmin(){
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr
   })).filter(a => a.date && a.km > 0).sort((a,b) => a.date - b.date);
   state.cols = { type:'type', date:'start_time', title:'name', dist:'distance_m', time:'duration_s', hr:'avg_hr' };
-  state.source = 'Garmin Connect data'; // hakuaika näkyy yläosassa (#updated)
+  state.source = 'Garmin Connect data'; // fetch time is shown in the header (#updated)
   state.live = true;
   notice('');
   save();
@@ -654,7 +654,7 @@ function applyGarmin(){
   updateGarminBtn();
 }
 
-// Käynnistys: näytä heti selaimeen tallennettu data, ja hae sitten Garmin-data taustalla.
+// Startup: show data saved in the browser right away, then fetch Garmin data in the background.
 const storedAt = restore();
 render();
 updateGarminBtn();
@@ -662,11 +662,11 @@ $('#garmin').addEventListener('click', applyGarmin);
 
 fetchGarmin().then(o => {
   GARMIN = o;
-  // Garmin-data korvaa tallennetun datan, paitsi jos käyttäjä on ladannut CSV:n tämän haun jälkeen.
+  // Garmin data replaces saved data, unless the user uploaded a CSV after this fetch.
   if (!state.acts.length || state.live || storedAt < Date.parse(o.fetchedAt)) applyGarmin();
   else updateGarminBtn();
 }).catch(err => {
-  // Ei Garmin-dataa: CSV-lataus ja esimerkkidata toimivat edelleen varavaihtoehtona.
+  // No Garmin data: CSV upload and sample data still work as fallbacks.
   if (!state.acts.length) notice(err.message);
 });
 })();

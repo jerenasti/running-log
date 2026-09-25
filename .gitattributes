@@ -1,2 +1,2 @@
-# Windowsin .bat-tiedostot tarvitsevat Windows-rivinvaihdot (CRLF)
+# Windows .bat files need Windows line endings (CRLF)
 *.bat text eol=crlf

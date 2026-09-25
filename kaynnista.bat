@@ -1,11 +1,11 @@
 @echo off
-rem Juoksupäiväkirja: hakee tuoreen Garmin-datan, käynnistää palvelimen ja avaa selaimen.
-rem Käynnistä tuplaklikkaamalla. Sammuta sulkemalla ikkuna tai painamalla Ctrl+C.
+rem Running Log: fetches fresh Garmin data, starts the server and opens the browser.
+rem Start by double-clicking. Stop by closing the window or pressing Ctrl+C.
 
-rem UTF-8, jotta ääkköset näkyvät oikein
+rem UTF-8 so that non-ASCII characters display correctly
 chcp 65001 >nul
 
-rem Siirry kansioon, jossa tämä tiedosto on (toimii mistä tahansa käynnistettynä)
+rem Go to the folder containing this file (works wherever it is started from)
 cd /d "%~dp0"
 
 echo.
@@ -19,7 +19,7 @@ if errorlevel 1 (
 
 echo.
 echo === 2/3 Opening browser: http://localhost:8000 ===
-rem Pieni viive, jotta palvelin ehtii käynnistyä ennen kuin selain avaa sivun
+rem Short delay so the server is up before the browser opens the page
 start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8000"
 
 echo.

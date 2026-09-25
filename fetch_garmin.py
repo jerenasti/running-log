@@ -29,21 +29,21 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
-# Tunnisteiden oletussijainti. Voi korvata ympäristömuuttujalla GARMINTOKENS.
+# Default token location. Can be overridden with the GARMINTOKENS environment variable.
 DEFAULT_TOKENSTORE = Path.home() / "AppData" / "Local" / "garminconnect"
 OUTPUT = Path(__file__).parent / "data" / "activities.json"
 
 
 def connect(tokenstore: Path) -> Garmin:
-    """Avaa yhteyden tallennetuilla tunnisteilla. Ei koskaan käytä salasanaa."""
+    """Connect using the saved tokens. Never uses a password."""
     if not (tokenstore / "garmin_tokens.json").is_file():
         sys.exit(
             f"No saved tokens found in {tokenstore}.\n"
             "Create them with the garmin-mcp-auth tool. This script never logs in with a password."
         )
 
-    # Garmin() ilman sähköpostia ja salasanaa: jos tunnisteiden lataus epäonnistuu,
-    # kirjasto nostaa virheen sen sijaan, että yrittäisi kirjautua.
+    # Garmin() without email and password: if loading the tokens fails,
+    # the library raises an error instead of trying to log in.
     garmin = Garmin()
     try:
         garmin.login(str(tokenstore))
@@ -58,7 +58,7 @@ def connect(tokenstore: Path) -> Garmin:
 
 
 def simplify(activity: dict) -> dict:
-    """Poimii Garminin laajasta harjoitusdatasta vain sovelluksen tarvitsemat kentät."""
+    """Pick only the fields the app needs from Garmin's large activity data."""
     return {
         "id": activity.get("activityId"),
         "start_time": activity.get("startTimeLocal"),          # "2026-09-25 18:05:16"
@@ -91,8 +91,8 @@ def main() -> None:
         "activities": activities,
     }
 
-    # Kirjoitetaan ensin väliaikaistiedostoon ja vaihdetaan vasta lopuksi,
-    # jotta keskeytynyt ajo ei jätä rikkinäistä JSON-tiedostoa.
+    # Write to a temporary file first and swap it in only at the end,
+    # so an interrupted run never leaves a broken JSON file.
     OUTPUT.parent.mkdir(exist_ok=True)
     tmp = OUTPUT.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")

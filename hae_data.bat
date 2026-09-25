@@ -1,6 +1,6 @@
 @echo off
-rem Hakee Garmin-datan ilman palvelinta. Windowsin Tehtävien ajoitus ajaa tämän kerran päivässä.
-rem Tulos kirjataan tiedostoon data\hae_data.log (ei versionhallinnassa).
+rem Fetches Garmin data without starting the server. Windows Task Scheduler runs this once a day.
+rem Output is logged to data\hae_data.log (not in version control).
 
 chcp 65001 >nul
 cd /d "%~dp0"
