@@ -26,4 +26,16 @@ Käyttäjä opettelee ohjelmointia tämän projektin avulla: selitä lyhyesti, m
 
 ## Käynnistys paikallisesti
 
-Selain ei salli `fetch()`-kutsua `file://`-osoitteesta, joten sivu avataan paikallisen palvelimen kautta. Komennot täydennetään, kun skripti ja palvelin ovat valmiit.
+Selain ei salli `fetch()`-kutsua `file://`-osoitteesta, joten sivu avataan paikallisen palvelimen kautta.
+
+```
+uv run fetch_garmin.py                                                  # 1. hae tuore data
+uv run --no-project python -m http.server 8000 --bind 127.0.0.1         # 2. käynnistä palvelin
+```
+
+Avaa sitten http://localhost:8000. Palvelin pysäytetään painamalla Ctrl+C. Sama palvelin on määritelty tiedostossa `.claude/launch.json`.
+
+## Rakenne
+
+- `fetch_garmin.py`: hakee harjoitukset → `data/activities.json` (`{fetchedAt, activities: [{id, start_time, type, name, distance_m, duration_s, avg_hr}]}`).
+- `index.html`: yksi tiedosto (HTML + CSS + JS). Lukee JSONin `fetch()`-kutsulla; CSV-lataus ja esimerkkidata varavaihtoehtoina.
