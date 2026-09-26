@@ -3,8 +3,11 @@
 
 import { state } from '../state.js';
 import { loadModel, acwr, efficiencySeries, ACWR_ZONES, MIN_RELIABLE_DAYS, CTL_DAYS, ATL_DAYS, EF_WINDOW } from '../metrics.js';
-import { fmtInt, fmtRatio, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc } from '../format.js';
+import { fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc } from '../format.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
+import { danielsPaces, runnaPaces, runnaVdot, PACE_SHARES } from '../paces.js';
+import { calibration, timeTrials, raceResults, vdot, parseTime, timeForVdot } from '../forecast.js';
+import { parseDate } from '../parse.js';
 
 const $ = s => document.querySelector(s);
 const CHART_DAYS = 180;  // load chart shows at most the last ~6 months
@@ -129,6 +132,48 @@ function renderEasyList(runs) {
 }
 
 /* ---------- Tab ---------- */
+/* ---------- Training paces ---------- */
+function renderPaces() {
+  const meta = state.meta || {};
+  const vo2 = (meta.vo2max || []).at(-1);
+  const races = state.content?.races?.data?.races || [];
+  const goal = races.filter(r => r.goal && parseDate(r.date) >= new Date()).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const cal = calibration([...timeTrials(state.acts), ...raceResults(races)], meta.vo2max);
+  const runna = runnaPaces((meta.schedule || []).filter(w => parseDate(w.date) >= new Date(Date.now() - 14 * 864e5)));
+  const rv = runnaVdot(runna);
+  const runnaV = Object.values(rv).length ? Object.values(rv).reduce((a, b) => a + b, 0) / Object.values(rv).length : null;
+
+  // One column per VDOT source that is available
+  const cols = [
+    vo2 && { label: 'Garmin VO2max', vdot: vo2.vo2max, note: 'uncalibrated' },
+    vo2 && cal.results.length && { label: 'Time trials', vdot: vo2.vo2max * cal.factor, note: 'calibrated' },
+    runnaV && { label: 'Runna plan', vdot: runnaV, note: 'from its paces' },
+    goal && { label: `Goal ${esc(goal.goal)}`, vdot: vdot(goal.distance_km * 1000, parseTime(goal.goal)), note: 'needed' },
+  ].filter(Boolean).map(c => ({ ...c, paces: danielsPaces(c.vdot) }));
+
+  const range = ([fast, slow]) => Math.round(fast) === Math.round(slow) ? fmtPace(fast) : `${fmtPace(fast)}–${fmtPace(slow)}`;
+  // What Runna prescribes for each kind of pace: a limit ("no faster than") or the range of targets
+  const prescribed = kind => {
+    const list = runna.filter(p => p.kind === kind);
+    if (!list.length) return '–';
+    const limits = list.filter(p => p.limit), targets = list.filter(p => !p.limit).map(p => p.sec);
+    return [limits.length ? `not faster than ${fmtPace(Math.min(...limits.map(p => p.sec)))}` : '',
+            targets.length ? range([Math.min(...targets), Math.max(...targets)]) : ''].filter(Boolean).join(', ');
+  };
+
+  $('#pacesTable').innerHTML = cols.length ? `
+    <thead><tr><th>Pace</th>${cols.map(c => `<th class="num">${c.label}<br><span class="muted">VDOT ${fmtDec1(c.vdot)} · ${c.note}</span></th>`).join('')}<th>Runna prescribes</th></tr></thead>
+    <tbody>${Object.entries(PACE_SHARES).map(([k, p]) => `
+      <tr><td>${p.label}<br><span class="muted">${p.use}</span></td>${cols.map(c => `<td class="num">${range(c.paces[k])}</td>`).join('')}<td class="num">${prescribed(k)}</td></tr>`).join('')}</tbody>`
+    : '<tbody><tr><td class="hint">No VO2max, Runna paces or goal yet.</td></tr></tbody>';
+
+  $('#pacesNote').textContent = runnaV
+    ? `Your Runna paces correspond to VDOT ${fmtDec1(runnaV)}, a ${fmtDuration(timeForVdot(runnaV))} marathon by Daniels' formula` +
+      (goal ? `; the goal ${goal.goal} needs ${fmtDec1(vdot(goal.distance_km * 1000, parseTime(goal.goal)))}.` : '.') +
+      (vo2 && !cal.results.length ? ` Garmin's VO2max (${vo2.vo2max}) gives paces that are faster than what Runna asks for.` : '')
+    : 'No paces found in your Runna workout descriptions yet.';
+}
+
 export function renderFitness() {
   const hasZones = state.acts.some(a => a.zones);
   $('#fitNoData').hidden = hasZones;
@@ -161,6 +206,7 @@ export function renderFitness() {
   drawLoadChart(days);
   drawEfficiencyChart(runs);
   renderEasyList(runs);
+  renderPaces();
 
   const rhr = state.meta?.restingHr || [];
   const lastRhr = rhr[rhr.length - 1];

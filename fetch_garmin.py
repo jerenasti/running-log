@@ -187,6 +187,23 @@ def merge_plan(previous: list[dict], fetched: list[dict] | None, today: date) ->
     return sorted(merged.values(), key=lambda w: w["date"])
 
 
+def add_descriptions(garmin: Garmin, plan: list[dict], previous: list[dict], today: date) -> list[dict]:
+    """Runna writes its paces in the workout description ("no faster than 5:40/km"). Each description is
+    fetched once (one request per new workout) and reused from the saved plan after that."""
+    known = {w["workout_id"]: w["description"] for w in previous if w.get("workout_id") and w.get("description") is not None}
+    recent = (today - timedelta(days=7)).isoformat()
+    for w in plan:
+        wid = w.get("workout_id")
+        if not wid or w.get("description") is not None:
+            continue
+        if wid in known:
+            w["description"] = known[wid]
+        elif w["date"] >= recent:
+            w["description"] = optional(f"description of {w.get('title')}",
+                                        lambda i=wid: ((garmin.get_workout_by_id(i) or {}).get("description") or "")[:1000], None)
+    return plan
+
+
 def previous_plan() -> list[dict]:
     """The plan saved by an earlier run."""
     try:
@@ -276,6 +293,7 @@ def main() -> None:
 
     activities = sorted((simplify(a) for a in raw), key=lambda a: a["start_time"] or "", reverse=True)
     cached = previous_laps()
+    saved_plan = previous_plan()
     for a in activities:
         if "run" in (a["type"] or "") and TIME_TRIAL.search(a["name"] or ""):
             a["laps"] = cached.get(a["id"]) or optional(f"laps of {a['name']}", lambda i=a["id"]: fetch_laps(garmin, i), None)
@@ -295,7 +313,10 @@ def main() -> None:
         "resting_hr": resting_hr,
         "recovery": recovery,
         # Plan history: saved plan + Garmin's current calendar (if the calendar fails, keep the saved plan)
-        "schedule": merge_plan(previous_plan(), optional("scheduled workouts", lambda: fetch_schedule(garmin, date.today()), None), date.today()),
+        "schedule": add_descriptions(
+            garmin,
+            merge_plan(saved_plan, optional("scheduled workouts", lambda: fetch_schedule(garmin, date.today()), None), date.today()),
+            saved_plan, date.today()),
         "weight": optional("weight", lambda: fetch_weight(garmin, start, date.today()), None),
         # Garmin allows at most one year per request for race predictions
         "vo2max": optional("VO2max", lambda: fetch_vo2max(garmin, start, date.today()), []),

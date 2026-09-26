@@ -10,6 +10,9 @@ export const DASH = '–';
 /** Distance in km, always one decimal: 24.3 */
 export const fmtKm = km => Number.isFinite(km) ? nf1.format(km) : DASH;
 
+/** Any value with one decimal: VDOT 41.9 (same format as km, but named for what it is) */
+export const fmtDec1 = n => Number.isFinite(n) ? nf1.format(n) : DASH;
+
 /** Whole number: 22, 152 */
 export const fmtInt = n => Number.isFinite(n) ? nf0.format(n) : DASH;
 

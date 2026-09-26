@@ -155,6 +155,17 @@ def test_merge_plan_drops_entries_older_than_a_year_and_no_duplicates():
     assert fg.merge_plan(previous, fetched, TODAY) == [w("2026-09-20", 1)]
 
 
+def test_descriptions_are_fetched_once_and_reused():
+    g = FakeGarmin(get_workout_by_id={"description": "5km easy run (no faster than 5:40/km)"})
+    previous = [{**w("2026-09-20", 1), "description": "old text"}]
+    plan = [w("2026-09-20", 1), w("2026-09-29", 2), w("2026-08-01", 3), {"date": "2026-09-30", "title": "No id", "sport": "running"}]
+    out = fg.add_descriptions(g, plan, previous, TODAY)
+    assert out[0]["description"] == "old text", "reused, not fetched again"
+    assert out[1]["description"] == "5km easy run (no faster than 5:40/km)"
+    assert "description" not in out[2], "too old to fetch"
+    assert g.calls == ["get_workout_by_id"], "exactly one request"
+
+
 def test_merge_plan_keeps_saved_plan_when_the_calendar_request_failed():
     previous = [w("2026-09-20", 1), w("2026-09-28", 5)]
     assert fg.merge_plan(previous, None, TODAY) == previous

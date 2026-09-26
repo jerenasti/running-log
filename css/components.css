@@ -291,3 +291,10 @@ h3.mini { margin: 16px 0 6px; font-size: .85rem; font-weight: 600; }
 #reviewCard .attention { margin-bottom: 4px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---------- Training paces ---------- */
+.paces-table { min-width: 620px; }
+.paces-table th .muted, .paces-table td .muted { font-weight: 400; font-size: .75rem; }
+.paces-table td:first-child { white-space: normal; min-width: 14ch; }
+.paces-table td:last-child { white-space: normal; }
+.paces-note { margin: 10px 0 0; line-height: 1.55; }

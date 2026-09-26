@@ -7,11 +7,12 @@ import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
 import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
 import { vo2Forecast, marathonForecast, garminPredictions, calibration, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
-import { fmtKm, fmtInt, fmtRatio, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
+import { fmtKm, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
 import { mondayOf, dayKey, startOfDay, DAY_MS } from '../dates.js';
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { weekReview } from '../plan.js';
+import { runnaPaces, runnaVdot } from '../paces.js';
 
 const $ = s => document.querySelector(s);
 const STATUS = { hard: 'ok', easy: 'watch', rest: 'warn', unknown: 'none' };
@@ -250,6 +251,12 @@ function renderForecasts(ctx, attention) {
       <div class="kpi-sub">${lastG ? `= VDOT ${fmtKm(lastG.vdot)} · ${fmtDay(lastG.date)}` : 'No data'}</div></div>`;
   $('#mfCal').innerHTML = `${calText} ${!cal.results.length && lastG && raceTime.mid < lastG.sec - 20 * 60
     ? `The VDOT forecast is much faster than Garmin's prediction: Daniels' formula assumes marathon endurance to match your VO2max, while Garmin also looks at your current training volume. Your first time trial will show which is closer.` : ''}`;
+  // A third point of view: the fitness your Runna plan's paces assume
+  const rv = Object.values(runnaVdot(runnaPaces((meta.schedule || []).filter(w => parseDate(w.date) >= new Date(Date.now() - 14 * DAY_MS)))));
+  if (rv.length) {
+    const runnaV = rv.reduce((a, b) => a + b, 0) / rv.length;
+    $('#mfCal').innerHTML += ` Your Runna paces correspond to VDOT ${fmtDec1(runnaV)}, a ${fmtDuration(timeForVdot(runnaV))} marathon today (see Training paces on the Fitness and load tab).`;
+  }
 
   drawVo2(fc);
   drawMarathon(mf, garmin, goalSec, results);

@@ -227,6 +227,17 @@
           </details>
           <details class="easy-list" id="easyList"></details>
         </section>
+
+        <section class="card span-2">
+          <div class="card-head"><div><h2>Training paces</h2><p class="sub">Daniels' paces for your fitness from different sources, next to the paces in your Runna plan. Per km.</p></div></div>
+          <div class="table-wrap"><table class="rules paces-table" id="pacesTable"></table></div>
+          <p class="hint paces-note" id="pacesNote"></p>
+          <details class="info"><summary>How the paces are calculated</summary>
+            <p><b>VDOT</b> is Jack Daniels' running fitness number. Each training pace is the speed at a fixed share of it: easy 59–74%, threshold 88%, interval 98%, repetition 105%. Marathon pace is the pace of the marathon time that the VDOT predicts. The speed comes from Daniels' oxygen cost formula, −4.60 + 0.182258·v + 0.000104·v² (v in metres per minute), solved for v.</p>
+            <p><b>Columns</b>: Garmin VO2max treats Garmin's estimate as your VDOT (usually too fast, see the Overview forecast). Runna plan is the VDOT your Runna paces correspond to: the easy "no faster than" limit compared with the fast end of easy (74%), tempo paces with threshold (88%). Time trials (once you have one) use your calibrated VDOT. Goal is the VDOT a 3:30 marathon needs.</p>
+            <p><b>Runna prescribes</b>: the paces written in your plan's workout descriptions. The kind of pace comes from the words around it (easy, conversational, tempo, reps…) or from the workout name.</p>
+          </details>
+        </section>
       </div>
 
       <p class="hint hr-info" id="hrInfo"></p>
