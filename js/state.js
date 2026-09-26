@@ -11,13 +11,14 @@ export const state = {
   sport: 'run',    // Training: 'run' | 'all'
   goal: 0,         // weekly distance goal in km (0 = not set)
   showAll: false,  // Training: show every activity in the table
+  meta: null,      // Garmin extras: { hrSettings: { max_hr, zone_floors, method }, restingHr: [{ date, bpm }] }
 };
 
 export function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       acts: state.acts.map(a => ({ ...a, date: a.date.toISOString() })),
-      cols: state.cols, source: state.source, live: state.live,
+      cols: state.cols, source: state.source, live: state.live, meta: state.meta,
       period: state.period, sport: state.sport, goal: state.goal,
       savedAt: Date.now(),
     }));
@@ -37,6 +38,7 @@ export function restore() {
     state.cols = o.cols || {};
     state.source = o.source || '';
     state.live = !!o.live;
+    state.meta = o.meta || null;
     return o.savedAt || 0;
   } catch (e) { return 0; }
 }
@@ -48,5 +50,6 @@ export function clearData() {
   state.source = '';
   state.live = false;
   state.showAll = false;
+  state.meta = null;
   save();
 }

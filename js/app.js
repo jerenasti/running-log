@@ -6,6 +6,7 @@ import { parseDate } from './parse.js';
 import { fmtDate, fmtTime } from './format.js';
 import { initTabs } from './nav.js';
 import { initTraining, renderTraining } from './tabs/training.js';
+import { renderFitness } from './tabs/fitness.js';
 
 const $ = s => document.querySelector(s);
 let garmin = null;          // loaded data/activities.json, or null
@@ -22,10 +23,11 @@ function render() {
   $('#liveHint').hidden = !garmin;
   // Charts are drawn only for the visible tab (a hidden canvas has no size)
   if (currentTab === 'training') renderTraining();
+  if (currentTab === 'fitness') renderFitness();
 }
 
-function setData({ acts, cols }, source, live) {
-  Object.assign(state, { acts, cols, source, live, showAll: false });
+function setData({ acts, cols, meta = null }, source, live) {
+  Object.assign(state, { acts, cols, meta, source, live, showAll: false });
   notice('');
   save();
   render();

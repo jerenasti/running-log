@@ -29,6 +29,12 @@
   --chart-line: #5B636C;
   --chart-grid: #E6E8EB;
 
+  /* Status colors: used only for risk gauges (e.g. ACWR), never as decoration */
+  --status-under: #6A86B0;
+  --status-ok: #3E8E5E;
+  --status-watch: #C9A227;
+  --status-warn: #C2453A;
+
   color-scheme: light;
 }
 
@@ -49,6 +55,10 @@
     --chart-bar: #3A3F45;
     --chart-line: #A3AAB2;
     --chart-grid: #2A2E33;
+    --status-under: #86A3CF;
+    --status-ok: #5DB27F;
+    --status-watch: #DDBB4E;
+    --status-warn: #E26D61;
     color-scheme: dark;
   }
 }
@@ -69,5 +79,9 @@
   --chart-bar: #3A3F45;
   --chart-line: #A3AAB2;
   --chart-grid: #2A2E33;
+  --status-under: #86A3CF;
+  --status-ok: #5DB27F;
+  --status-watch: #DDBB4E;
+  --status-warn: #E26D61;
   color-scheme: dark;
 }

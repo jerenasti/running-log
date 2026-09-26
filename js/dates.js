@@ -2,6 +2,12 @@
 
 export const DAY_MS = 864e5;
 
+/** Local calendar day as "YYYY-MM-DD" (used as a key for daily values) */
+export const dayKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+/** Midnight of d */
+export const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
 /** Monday 00:00 of the week that contains d */
 export function mondayOf(d) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());

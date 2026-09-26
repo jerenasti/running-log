@@ -9,12 +9,14 @@ import { theme, baseOptions, drawChart } from '../charts.js';
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
 const isRun = a => !a.type || /run|juoks|treadmill|trail|polku/i.test(a.type);
-const sportFilter = a => state.sport === 'all' || isRun(a);
+// Training shows only activities with a distance (mobility etc. count only toward training load)
+const hasDistance = a => a.km > 0;
+const sportFilter = a => hasDistance(a) && (state.sport === 'all' || isRun(a));
 
 /* ---------- Calculations ---------- */
 function compute() {
   const acts = state.acts.filter(sportFilter);
-  const last = state.acts[state.acts.length - 1].date;
+  const last = state.acts.filter(hasDistance).pop().date;
   const now = new Date();
   // Show up to the current week, unless the data is old (then end at the last activity)
   const endMon = (now - last) / DAY_MS < 60 ? mondayOf(now) : mondayOf(last);
@@ -140,14 +142,14 @@ function renderTable(r) {
 }
 
 export function renderTraining() {
-  const has = state.acts.length > 0;
-  $('#empty').hidden = has;
-  $('#dash').hidden = !has;
-  if (!has) return;
+  const count = state.acts.filter(hasDistance).length;
+  $('#empty').hidden = count > 0;
+  $('#dash').hidden = count === 0;
+  if (!count) return;
 
   setSeg('period', state.period);
   setSeg('sport', state.sport);
-  $('#source').textContent = 'Showing ' + state.source + ' · ' + state.acts.length + ' activities';
+  $('#source').textContent = 'Showing ' + state.source + ' · ' + count + ' activities';
 
   const r = compute();
   const weeks = r.weeks.length || 1;

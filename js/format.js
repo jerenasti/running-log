@@ -13,6 +13,13 @@ export const fmtKm = km => Number.isFinite(km) ? nf1.format(km) : DASH;
 /** Whole number: 22, 152 */
 export const fmtInt = n => Number.isFinite(n) ? nf0.format(n) : DASH;
 
+/** Ratio with two decimals: 1.12 (ACWR, aerobic efficiency) */
+const nf2 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const fmtRatio = n => Number.isFinite(n) ? nf2.format(n) : DASH;
+
+/** Signed whole number: +5, −12, 0 (training form) */
+export const fmtSigned = n => !Number.isFinite(n) ? DASH : (Math.round(n) > 0 ? '+' : Math.round(n) < 0 ? '−' : '') + nf0.format(Math.abs(n));
+
 /** Pace in min:ss per km: 6:09 */
 export function fmtPace(secPerKm) {
   if (!Number.isFinite(secPerKm) || secPerKm <= 0) return DASH;

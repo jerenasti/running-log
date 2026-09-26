@@ -130,15 +130,50 @@
 
   <!-- ===================== Fitness and load ===================== -->
   <section id="panel-fitness" role="tabpanel" aria-labelledby="tab-fitness" hidden>
-    <div class="card placeholder">
-      <span class="badge">Coming soon</span>
-      <h2>Fitness and load</h2>
-      <p>How your fitness develops and whether your training load is balanced.</p>
-      <ul>
-        <li>VO2 max and race prediction trends</li>
-        <li>Acute and chronic training load</li>
-        <li>Training status and load balance</li>
-      </ul>
+
+    <div class="card empty" id="fitNoData" hidden>
+      <h2>Garmin heart rate data needed</h2>
+      <p class="hint">Training load and aerobic efficiency are calculated from the time you spend in each heart rate zone, which comes from Garmin. Start the app with start.bat to fetch it. CSV exports and sample data don't include it.</p>
+    </div>
+
+    <div id="fitDash" hidden>
+      <p class="notice" id="fitShort" role="status" hidden></p>
+
+      <div class="kpis" id="fitStats"></div>
+
+      <div class="grid">
+        <section class="card span-2">
+          <div class="card-head"><div><h2>Training load</h2><p class="sub">Fitness, fatigue and form from your daily heart rate load.</p></div></div>
+          <div class="chart"><canvas id="loadChart" aria-label="Fitness, fatigue and form over time" role="img"></canvas></div>
+          <details class="info"><summary>How it's calculated</summary>
+            <p><b>Daily load</b> (Edwards TRIMP): minutes in heart rate zone 1 × 1 + zone 2 × 2 + … + zone 5 × 5, summed over the day's activities. An hour in zone 2 gives 120; an hour in zone 4 gives 240.</p>
+            <p><b>Fitness (CTL)</b>: 42-day weighted average of daily load. Each day moves it 1/42 of the way toward that day's load, so it changes slowly and shows what your body is used to.</p>
+            <p><b>Fatigue (ATL)</b>: the same with 7 days. It reacts quickly to recent hard days.</p>
+            <p><b>Form (TSB)</b>: yesterday's fitness − yesterday's fatigue. Negative means you are carrying fatigue from training (normal during a build); positive means you are fresh, e.g. before a race.</p>
+          </details>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><h2>Acute:chronic workload ratio</h2><p class="sub">Last 7 days compared with the last 28.</p></div><span class="badge neutral">Indicative</span></div>
+          <div id="acwr"></div>
+          <details class="info"><summary>How it's calculated</summary>
+            <p><b>ACWR</b> = average daily load of the last 7 days ÷ average daily load of the last 28 days. Around 1.0 means you are training about as much as you are used to. A quick rise above 1.3–1.5 has been linked to a higher injury risk, but the research is mixed, so use it as a rough guide, not a rule.</p>
+          </details>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><h2>Aerobic efficiency</h2><p class="sub">Easy runs only. Higher is better.</p></div></div>
+          <div class="chart short" id="efWrap"><canvas id="efChart" aria-label="Aerobic efficiency of easy runs over time" role="img"></canvas></div>
+          <p class="hint" id="efEmpty" hidden>No easy runs found yet.</p>
+          <details class="info"><summary>How it's calculated</summary>
+            <p><b>Efficiency</b> = average speed in metres per minute ÷ average heart rate. Running 6:00 /km (167 m/min) at 140 bpm gives 1.19. If it rises over time, you run faster at the same heart rate: your aerobic fitness is improving. The line is the average of the last 5 easy runs, which smooths out day-to-day noise such as heat or hills.</p>
+            <p><b>Easy run</b>: a run of at least 30 minutes with heart rate data, no interval, tempo, repeats, threshold, rolling, progressive, fartlek or race in the name, named easy or recovery or classified by Garmin as Recovery or Aerobic base, and an average heart rate below zone 4.</p>
+          </details>
+          <details class="easy-list" id="easyList"></details>
+        </section>
+      </div>
+
+      <p class="hint hr-info" id="hrInfo"></p>
     </div>
   </section>
 

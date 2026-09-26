@@ -151,4 +151,52 @@ body.drag .empty { border-color: var(--accent); }
   margin-bottom: 10px;
 }
 
+.badge.neutral { color: var(--text-2); background: var(--surface-2); margin: 0; }
+
+/* ---------- "How it's calculated" info ---------- */
+details.info { margin-top: 12px; font-size: .82rem; color: var(--text-2); }
+details.info summary { cursor: pointer; color: var(--text-3); display: inline-flex; align-items: center; gap: .4rem; list-style: none; }
+details.info summary::-webkit-details-marker { display: none; }
+details.info summary::before {
+  content: 'i';
+  display: inline-grid; place-items: center;
+  width: 1.15em; height: 1.15em;
+  border: 1px solid currentColor; border-radius: 50%;
+  font: 600 .7rem var(--font-sans);
+}
+details.info[open] summary { color: var(--text-2); }
+details.info p { margin: .5rem 0 0; max-width: 72ch; line-height: 1.55; }
+details.info b { font-weight: 600; color: var(--text); }
+
+details.easy-list { margin-top: 8px; }
+details.easy-list table { min-width: 520px; }
+
+/* ---------- Status colors (risk gauges only) ---------- */
+.st-under { background: var(--status-under); }
+.st-ok    { background: var(--status-ok); }
+.st-watch { background: var(--status-watch); }
+.st-warn  { background: var(--status-warn); }
+.dot { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; flex: none; }
+
+/* ---------- ACWR gauge ---------- */
+.acwr-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.acwr-value { font: 500 1.9rem/1 var(--font-mono); letter-spacing: -.02em; }
+.status { display: inline-flex; align-items: center; gap: .4rem; font-size: .88rem; font-weight: 500; }
+.gauge { position: relative; margin: 20px 0 4px; }
+.gauge-track { display: flex; height: 10px; border-radius: 5px; overflow: hidden; }
+.gauge-track span { height: 100%; }
+.gauge-marker {
+  position: absolute; top: -5px; width: 3px; height: 20px;
+  background: var(--text); border: 1px solid var(--surface); border-radius: 2px;
+  transform: translateX(-50%);
+}
+.gauge-scale { position: relative; height: 16px; font-size: .72rem; color: var(--text-3); }
+.gauge-scale span { position: absolute; transform: translateX(-50%); }
+.gauge-scale span:first-child { transform: none; }
+.gauge-scale span:last-child { transform: translateX(-100%); }
+.gauge-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; padding: 0; list-style: none; font-size: .75rem; color: var(--text-2); }
+.gauge-legend li { display: inline-flex; align-items: center; gap: .35rem; }
+.acwr-detail { margin: 10px 0 0; font-size: .8rem; color: var(--text-3); }
+.hr-info { margin-top: var(--gap); }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

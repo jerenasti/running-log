@@ -81,12 +81,17 @@ export async function fetchGarmin() {
 }
 
 export function garminToActivities(json) {
+  // Activities without distance (e.g. strength, mobility) are kept: they still add training load.
+  // The Training tab only shows activities with a distance.
   const acts = json.activities.map(a => ({
     date: parseDate(a.start_time), type: String(a.type || ''), title: String(a.name || ''),
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr,
-  })).filter(a => a.date && a.km > 0).sort((a, b) => a.date - b.date);
+    maxHr: a.max_hr ?? null, teLabel: a.te_label ?? null, zones: a.hr_zones_s ?? null,
+  })).filter(a => a.date).sort((a, b) => a.date - b.date);
   const cols = { type: 'type', date: 'start_time', title: 'name', dist: 'distance_m', time: 'duration_s', hr: 'avg_hr' };
-  return { acts, cols };
+  // Garmin-only extras for the Fitness and load tab
+  const meta = { hrSettings: json.hr_settings ?? null, restingHr: json.resting_hr ?? [] };
+  return { acts, cols, meta };
 }
 
 /* ---------- Sample data ---------- */

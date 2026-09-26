@@ -59,6 +59,7 @@ def connect(tokenstore: Path) -> Garmin:
 
 def simplify(activity: dict) -> dict:
     """Pick only the fields the app needs from Garmin's large activity data."""
+    zones = [activity.get(f"hrTimeInZone_{i}") for i in range(1, 6)]
     return {
         "id": activity.get("activityId"),
         "start_time": activity.get("startTimeLocal"),          # "2026-09-25 18:05:16"
@@ -67,7 +68,47 @@ def simplify(activity: dict) -> dict:
         "distance_m": round(activity.get("distance") or 0),
         "duration_s": round(activity.get("duration") or 0),
         "avg_hr": round(activity["averageHR"]) if activity.get("averageHR") else None,
+        "max_hr": round(activity["maxHR"]) if activity.get("maxHR") else None,
+        "avg_speed_mps": round(activity["averageSpeed"], 3) if activity.get("averageSpeed") else None,
+        "te_label": activity.get("trainingEffectLabel"),       # Garmin's classification, e.g. "AEROBIC_BASE"
+        # Seconds in heart rate zones 1–5 (null if the activity has no heart rate)
+        "hr_zones_s": [round(z or 0) for z in zones] if any(z is not None for z in zones) else None,
     }
+
+
+def fetch_hr_settings(garmin: Garmin) -> dict | None:
+    """Max HR and zone boundaries from the user's Garmin heart rate zone settings."""
+    zones = garmin.connectapi("/biometric-service/heartRateZones") or []
+    z = next((z for z in zones if z.get("sport") == "DEFAULT"), zones[0] if zones else None)
+    if not z:
+        return None
+    return {
+        "max_hr": z.get("maxHeartRateUsed"),
+        "zone_floors": [z.get(f"zone{i}Floor") for i in range(1, 6)],  # lower limit of zones 1–5 (bpm)
+        "method": z.get("trainingMethod"),
+    }
+
+
+def fetch_resting_hr(garmin: Garmin, start: date, end: date) -> list[dict]:
+    """Daily resting heart rate for the whole period in a single request."""
+    data = garmin.connectapi(
+        f"/userstats-service/wellness/daily/{garmin.display_name}",
+        params={"fromDate": start.isoformat(), "untilDate": end.isoformat(), "metricId": 60},
+    )
+    values = ((data or {}).get("allMetrics") or {}).get("metricsMap", {}).get("WELLNESS_RESTING_HEART_RATE") or []
+    return [{"date": v["calendarDate"], "bpm": round(v["value"])} for v in values if v.get("value")]
+
+
+def optional(label: str, fetch, default):
+    """Run an extra request. A failure only prints a warning, so the activities are still saved.
+    429 (too many requests) still stops the script, as everywhere else."""
+    try:
+        return fetch()
+    except GarminConnectTooManyRequestsError:
+        sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
+    except Exception as e:
+        print(f"Warning: could not fetch {label} ({e}). Continuing without it.")
+        return default
 
 
 def main() -> None:
@@ -86,9 +127,14 @@ def main() -> None:
         sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
 
     activities = sorted((simplify(a) for a in raw), key=lambda a: a["start_time"] or "", reverse=True)
+    hr_settings = optional("heart rate zones", lambda: fetch_hr_settings(garmin), None)
+    resting_hr = optional("resting heart rate", lambda: fetch_resting_hr(garmin, start, date.today()), [])
+
     payload = {
         "fetchedAt": datetime.now().isoformat(timespec="seconds"),
         "activities": activities,
+        "hr_settings": hr_settings,
+        "resting_hr": resting_hr,
     }
 
     # Write to a temporary file first and swap it in only at the end,
@@ -98,7 +144,8 @@ def main() -> None:
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(OUTPUT)
 
-    print(f"Saved {len(activities)} activities to {OUTPUT}")
+    print(f"Saved {len(activities)} activities, {len(resting_hr)} resting HR days"
+          f"{', HR zones' if hr_settings else ''} to {OUTPUT}")
 
 
 if __name__ == "__main__":
