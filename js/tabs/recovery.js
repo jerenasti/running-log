@@ -2,10 +2,11 @@
 // with the personal normal range, and last night's sleep stages. The rules live in ../recovery.js.
 
 import { state } from '../state.js';
-import { assess, restingHrTrend, RULES } from '../recovery.js';
+import { assess, restingHrTrend, recoveryTrends, RULES } from '../recovery.js';
 import { fmtInt, fmtRatio, fmtHm, fmtHClock, fmtDay, fmtDate, esc, DASH } from '../format.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { parseDate } from '../parse.js';
+import { dayKey } from '../dates.js';
 
 const $ = s => document.querySelector(s);
 const STATUS = { hard: 'ok', easy: 'watch', rest: 'warn', unknown: 'none' };
@@ -97,7 +98,7 @@ function drawHrv(list) {
             ? `Normal range: ${fmtInt(list[c.dataIndex].baseline_low)}–${fmtInt(list[c.dataIndex].baseline_high)} ms`
             : `${c.dataset.label}: ${fmtInt(c.parsed.y)} ms`,
         } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: 7 } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 7 } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
   });
 }
@@ -122,7 +123,7 @@ function drawRhr(trend) {
               ? `Normal range: ${fmtInt(d.normal.low)}–${fmtInt(d.normal.high)} bpm`
               : `Resting HR: ${fmtInt(c.parsed.y)} bpm`; },
         } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: 7 } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 7 } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
   });
 }
@@ -141,6 +142,66 @@ function renderSleep(s, day) {
     <ul class="gauge-legend">${stages.map(([k, name, v]) => `<li><i class="dot stage-${k}"></i>${name} <span class="num">${fmtHm(v)}</span> <span class="muted">(${Math.round(v / total * 100)}%)</span></li>`).join('')}</ul>`;
 }
 
+/* ---------- Sleep and Body Battery trends ---------- */
+function renderTrends(t) {
+  const h = v => v == null ? DASH : fmtHClock(v * 3600) + ' h';
+  const pct = v => v == null ? DASH : Math.round(v * 100) + '%';
+  const s = t.sleep, b = t.bb;
+  $('#sleepTrend').innerHTML = `
+    <span>Last 7 nights <b class="num">${h(s.hours.week)}</b> · score <b class="num">${fmtInt(s.score.week)}</b> · deep <b class="num">${pct(s.deepShare.week)}</b></span>
+    <span class="muted">4 weeks ${h(s.hours.month)} · score ${fmtInt(s.score.month)} · deep ${pct(s.deepShare.month)}</span>`;
+  $('#bbTrend').innerHTML = `
+    <span>Daily high, last 7 days <b class="num">${fmtInt(b.high.week)}</b> <span class="muted">(4 weeks ${fmtInt(b.high.month)})</span></span>
+    <span>Daily low, last 7 days <b class="num">${fmtInt(b.low.week)}</b> <span class="muted">(4 weeks ${fmtInt(b.low.month)})</span></span>`;
+}
+
+function drawSleep(list) {
+  const t = theme();
+  const hours = key => list.map(s => (s[key] || 0) / 3600);
+  const base = baseOptions(t, items => fmtDate(parseDate(list[items[0].dataIndex].date)));
+  const stage = (label, key, color) => ({ type: 'bar', label, data: hours(key), backgroundColor: color, stack: 'sleep', maxBarThickness: 22, order: 2 });
+  drawChart('sleepChart', {
+    type: 'bar',
+    data: { labels: list.map(s => fmtDay(parseDate(s.date))), datasets: [
+      stage('Deep', 'deep_s', t.text), stage('Light', 'light_s', t.bar), stage('REM', 'rem_s', t.line), stage('Awake', 'awake_s', t.watch),
+      { type: 'line', label: 'Sleep score', data: list.map(s => s.score ?? null), yAxisID: 'y1', borderColor: t.text3, backgroundColor: t.text3,
+        borderWidth: 1.5, borderDash: [4, 3], pointRadius: 2, pointHoverRadius: 4, pointStyle: 'line', tension: .2, spanGaps: true, order: 1 },
+    ] },
+    options: { ...base,
+      plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip, callbacks: {
+        title: base.plugins.tooltip.callbacks.title,
+        label: c => c.dataset.yAxisID === 'y1' ? `Score: ${fmtInt(c.parsed.y)}` : `${c.dataset.label}: ${fmtHm(c.parsed.y * 3600)}`,
+        footer: items => 'Asleep: ' + fmtHm(list[items[0].dataIndex].duration_s),
+      }, footerFont: { family: t.mono, weight: '400' } } },
+      scales: {
+        x: { ...base.scales.x, stacked: true, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 10 } },
+        y: { ...base.scales.y, stacked: true, beginAtZero: true, ticks: { ...base.scales.y.ticks, callback: v => v + ' h' } },
+        y1: { position: 'right', min: 0, max: 100, grid: { display: false }, border: { display: false },
+              ticks: { color: t.text3, font: { family: t.mono, size: 11 }, stepSize: 25 } },
+      } },
+  });
+}
+
+function drawBodyBattery(list) {
+  const t = theme();
+  const todayKey = dayKey(new Date());
+  const base = baseOptions(t, items => fmtDate(parseDate(list[items[0].dataIndex].date)) + (list[items[0].dataIndex].date === todayKey ? ' (so far)' : ''));
+  drawChart('bbChart', {
+    type: 'bar',
+    data: { labels: list.map(b => fmtDay(parseDate(b.date))), datasets: [{
+      label: 'Body Battery', data: list.map(b => b.low != null && b.high != null ? [b.low, b.high] : null),
+      backgroundColor: list.map(b => b.date === todayKey ? t.bar : t.line), borderRadius: 3, maxBarThickness: 18,
+    }] },
+    options: { ...base,
+      plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: {
+        title: base.plugins.tooltip.callbacks.title,
+        label: c => { const b = list[c.dataIndex]; return [`High ${fmtInt(b.high)} · low ${fmtInt(b.low)}`, `Charged +${fmtInt(b.charged)} · drained −${fmtInt(b.drained)}`]; },
+      } } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 10 } },
+        y: { ...base.scales.y, min: 0, max: 100, ticks: { ...base.scales.y.ticks, stepSize: 25 } } } },
+  });
+}
+
 /* ---------- Tab ---------- */
 export function renderRecovery() {
   const rec = state.meta?.recovery;
@@ -155,4 +216,7 @@ export function renderRecovery() {
   drawHrv(rec.hrv || []);
   drawRhr(restingHrTrend(state.meta.restingHr, RULES.normalDays));
   renderSleep(a.sleep, a.day);
+  renderTrends(recoveryTrends(rec));
+  drawSleep(rec.sleep || []);
+  drawBodyBattery(rec.body_battery || []);
 }

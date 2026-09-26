@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { assess, meanSd, restingHrTrend, RULES } from '../js/recovery.js';
+import { assess, meanSd, restingHrTrend, recoveryTrends, RULES } from '../js/recovery.js';
 import { TODAY, run, iso, zonesForLoad } from './helpers.js';
 
 test('mean and standard deviation, with a minimum count', () => {
@@ -74,6 +74,27 @@ test('regression: a missing sleep score is not "poor sleep" (null < 60 is true i
 test('no HRV and no resting HR → not enough data', () => {
   const a = assess([], { restingHr: [], recovery: { hrv: [], sleep: [{ date: iso(-1), duration_s: 8 * 3600, score: 80 }], body_battery: [] } }, TODAY);
   assert.equal(a.recommendation.key, 'unknown');
+});
+
+test('trends: last 7 days vs last 28 for sleep and Body Battery', () => {
+  // 28 nights: the last 7 slept 8 h (score 80), the 21 before 6 h (score 60); deep sleep always 25% of the stages
+  const sleep = Array.from({ length: 28 }, (_, i) => {
+    const n = -27 + i, h = n > -7 ? 8 : 6;
+    return { date: iso(n), duration_s: h * 3600, score: n > -7 ? 80 : 60, deep_s: h * 900, light_s: h * 2250, rem_s: h * 450, awake_s: 600 };
+  });
+  const bb = Array.from({ length: 28 }, (_, i) => ({ date: iso(-27 + i), high: i === 27 ? 40 : 90, low: 20 }));
+  const t = recoveryTrends({ sleep, body_battery: bb }, TODAY);
+  assert.equal(t.sleep.hours.week, 8);
+  assert.equal(t.sleep.hours.month, (7 * 8 + 21 * 6) / 28);
+  assert.equal(t.sleep.score.week, 80);
+  assert.equal(t.sleep.deepShare.week, 0.25);
+  assert.equal(t.bb.high.week, 90, "today's unfinished Body Battery (40) is left out");
+});
+
+test('trends with no data', () => {
+  const t = recoveryTrends({}, TODAY);
+  assert.equal(t.sleep.hours.week, null);
+  assert.equal(t.bb.high.month, null);
 });
 
 test('resting HR normal range uses only the 28 days before each date', () => {

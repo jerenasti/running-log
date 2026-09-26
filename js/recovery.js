@@ -43,6 +43,31 @@ export function restingHrTrend(restingHr, days = 28) {
 }
 
 /**
+ * Last 7 days compared with the last 28 for sleep and Body Battery. Days of today are left out
+ * of Body Battery, because today's high and low are not final yet.
+ * Returns { sleep: { hours, score, deepShare }, bb: { high, low } }, each as { week, month } averages.
+ */
+export function recoveryTrends(rec, today = new Date()) {
+  const todayKey = dayKey(today);
+  const lastN = (list, n) => {
+    const from = dayKey(addDays(today, -n));
+    return (list || []).filter(x => x.date > from && x.date <= todayKey);
+  };
+  const avg = (list, f) => { const v = list.map(f).filter(Number.isFinite); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+  const both = (list, f) => ({ week: avg(lastN(list, 7), f), month: avg(lastN(list, 28), f) });
+  const bbDone = (rec?.body_battery || []).filter(b => b.date < todayKey);
+  const stagesTotal = s => (s.deep_s || 0) + (s.light_s || 0) + (s.rem_s || 0);
+  return {
+    sleep: {
+      hours: both(rec?.sleep, s => s.duration_s / 3600),
+      score: both(rec?.sleep, s => s.score ?? NaN),
+      deepShare: both(rec?.sleep, s => stagesTotal(s) ? s.deep_s / stagesTotal(s) : NaN),
+    },
+    bb: { high: both(bbDone, b => b.high ?? NaN), low: both(bbDone, b => b.low ?? NaN) },
+  };
+}
+
+/**
  * Everything the Recovery tab needs: the latest synced night, each check, and the recommendation.
  * A check is { id, label, value, rule, met } where met is true / false / null (no data).
  */

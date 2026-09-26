@@ -11,7 +11,7 @@ export function theme() {
   return {
     text: cssVar('--text'), text3: cssVar('--text-3'), bg: cssVar('--bg'),
     accent: cssVar('--accent'), bar: cssVar('--chart-bar'), line: cssVar('--chart-line'), grid: cssVar('--chart-grid'),
-    warn: cssVar('--status-warn'),
+    warn: cssVar('--status-warn'), watch: cssVar('--status-watch'),
     sans: cssVar('--font-sans'), mono: cssVar('--font-mono'),
   };
 }

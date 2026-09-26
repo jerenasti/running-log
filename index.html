@@ -296,10 +296,23 @@
         </section>
 
         <section class="card span-2">
-          <div class="card-head"><div><h2>Last night's sleep</h2></div></div>
+          <div class="card-head"><div><h2>Sleep, last 4 weeks</h2><p class="sub">Last night's stages, and every night's stages and score.</p></div></div>
           <div id="sleepStages"></div>
+          <p class="stats-line" id="sleepTrend"></p>
+          <div class="chart"><canvas id="sleepChart" aria-label="Sleep stages and sleep score for each night of the last 4 weeks" role="img"></canvas></div>
           <details class="info"><summary>What is this?</summary>
-            <p>Sleep stages as measured by your watch. <b>Deep sleep</b> matters most for physical recovery, <b>REM</b> for mental recovery. The sleep score (0–100) is Garmin's overall rating of duration, stages and restlessness.</p>
+            <p>Sleep stages as measured by your watch. <b>Deep sleep</b> matters most for physical recovery, <b>REM</b> for mental recovery. Adults usually get about 13–23% deep sleep. The <b>sleep score</b> (0–100, right axis) is Garmin's overall rating of duration, stages and restlessness.</p>
+            <p>The numbers above the chart compare the <b>last 7 nights</b> with the <b>last 28</b>, so you can see whether this week is better or worse than your usual.</p>
+          </details>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-head"><div><h2>Body Battery, last 4 weeks</h2><p class="sub">Each day's range, from its lowest to its highest value.</p></div></div>
+          <p class="stats-line" id="bbTrend"></p>
+          <div class="chart short"><canvas id="bbChart" aria-label="Daily Body Battery range for the last 4 weeks" role="img"></canvas></div>
+          <details class="info"><summary>What is this?</summary>
+            <p><b>Body Battery</b> (0–100) is Garmin's estimate of your energy reserve from heart rate variability, stress, sleep and activity. Each bar runs from the day's lowest to its highest value. The top is usually right after waking, so it shows how well the night recharged you; the bottom shows how far the day drained you.</p>
+            <p>A top that stays low for several days means you are not recharging fully. Today's bar is lighter because the day is not over yet.</p>
           </details>
         </section>
       </div>
