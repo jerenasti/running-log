@@ -5,7 +5,7 @@
 import { state } from '../state.js';
 import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
-import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
+import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, recoveryNeed, hoursToNextSession, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
 import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, goalStatus, forecastSources, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
 import { fmtKm, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
 import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js';
@@ -104,7 +104,7 @@ function renderFood(ctx) {
   if (doneToday) {
     const type = classify({ type: doneToday.type, title: doneToday.title, minutes: doneToday.sec / 60, teLabel: doneToday.teLabel });
     head = `After today's run: ${esc(doneToday.title || 'run')}`;
-    text = recoveryAdvice(type, kg, fmtGrams);
+    text = recoveryAdvice(recoveryNeed({ type, minutes: doneToday.sec / 60, hoursToNext: hoursToNextSession(doneToday, acts, planned) }), kg, fmtGrams);
     list = pickMeals(meals, type, 'recovery', 2, todayKey).map(m => ({ m, slot: 'After the run' }));
   } else {
     const date = new Date(); date.setDate(date.getDate() + 1);

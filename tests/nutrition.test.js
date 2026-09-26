@@ -3,10 +3,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  classify, plannedWorkouts, raceDetails, activeRace, raceDayType, dayType, grams, pickMeals, kcalPerKm, recoveryAdvice,
+  classify, plannedWorkouts, raceDetails, activeRace, raceDayType, dayType, grams, pickMeals, kcalPerKm, recoveryAdvice, recoveryNeed, hoursToNextSession,
 } from '../js/nutrition.js';
 import { fmtGrams } from '../js/format.js';
 import { TODAY, day, iso, run } from './helpers.js';
+
+const near = (actual, expected, tol, what) => assert.ok(Math.abs(actual - expected) <= tol, `${what}: ${actual} vs ${expected}`);
 
 test('classification: long run > tempo/intervals > easy', () => {
   const c = (title, minutes, teLabel = null, type = 'running') => classify({ type, title, minutes, teLabel });
@@ -71,7 +73,36 @@ test('grams = body weight × g/kg', () => {
   const [lo, hi] = grams(89.4, [3, 5]);
   assert.ok(Math.abs(lo - 268.2) < 1e-9 && Math.abs(hi - 447) < 1e-9);
   assert.equal(grams(null, [3, 5]), null);
-  assert.equal(recoveryAdvice('quality', 89.4, fmtGrams), 'Carbs 89 g (1 g/kg) and protein 27 g (0.3 g/kg). Within an hour after the session.');
+});
+
+test('recovery carbs scale with length and intensity, capped at 1.2 g/kg', () => {
+  assert.equal(recoveryNeed({ type: 'easy', minutes: 36 }).carbs, 0.3);
+  assert.equal(recoveryNeed({ type: 'quality', minutes: 36 }).carbs, 0.6);
+  assert.equal(recoveryNeed({ type: 'quality', minutes: 60 }).carbs, 1.0);
+  assert.equal(recoveryNeed({ type: 'long', minutes: 150 }).carbs, 1.2, 'capped');
+  assert.equal(recoveryNeed({ type: 'easy', minutes: 30 }).protein, 0.3);
+});
+
+test('quick refuelling only after long or hard sessions, or when the next one is under 24 h away', () => {
+  assert.equal(recoveryNeed({ type: 'easy', minutes: 40, hoursToNext: 47 }).quick, false);
+  assert.equal(recoveryNeed({ type: 'easy', minutes: 40, hoursToNext: null }).quick, false);
+  assert.equal(recoveryNeed({ type: 'easy', minutes: 40, hoursToNext: 23 }).why, 'next session soon');
+  assert.equal(recoveryNeed({ type: 'quality', minutes: 50, hoursToNext: 72 }).why, 'hard session');
+  assert.equal(recoveryNeed({ type: 'long', minutes: 100 }).why, 'long run');
+  assert.equal(recoveryAdvice(recoveryNeed({ type: 'quality', minutes: 60 }), 89.4, fmtGrams),
+    'Carbs 89 g (1 g/kg) and protein 27 g (0.3 g/kg). Eat within an hour, because it was a hard session.');
+  assert.equal(recoveryAdvice(recoveryNeed({ type: 'easy', minutes: 36, hoursToNext: 48 }), null, fmtGrams),
+    'Carbs 0.3 g/kg and protein 0.3 g/kg. No rush: have it with your next normal meal.');
+  assert.match(recoveryAdvice(recoveryNeed({ type: 'easy', minutes: 36, hoursToNext: 22.6 }), null, fmtGrams), /next session is in about 23 h\.$/);
+});
+
+test('hours to the next session: the next activity done, else the next planned day at the same time', () => {
+  const a = run({ n: -3, km: 6, min: 30 });                      // helpers: runs start at a fixed time of day
+  const later = run({ n: -2, km: 8, min: 45 });
+  near(hoursToNextSession(a, [later, a], []), 24 - 0.5, 1e-9, 'next activity, measured from the end of the run');
+  const planned = [{ date: day(-1, 0), key: iso(-1) }, { date: day(-3, 0), key: iso(-3) }];
+  near(hoursToNextSession(a, [a], planned), 48 - 0.5, 1e-9, 'planned two days later, same day ignored');
+  assert.equal(hoursToNextSession(a, [a], []), null);
 });
 
 test('Garmin calories per km of running (background information)', () => {

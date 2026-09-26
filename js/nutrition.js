@@ -19,11 +19,16 @@ export const DAY_TARGETS = {
   race:        { label: 'Race day',          carbs: [6, 8] },
 };
 
-/** Recovery meal after a workout, g/kg */
+/**
+ * Recovery meal after a workout. Carbs scale with the session: hours × rate (g/kg per hour of
+ * training, by intensity), at most maxCarbs. Quick refuelling (within an hour) only after a long or
+ * hard session, or when the next session is less than quickHours away; otherwise the next normal meal.
+ */
 export const RECOVERY = {
-  easy:    { carbs: null,       protein: 0.3, when: 'Your next normal meal is enough.' },
-  quality: { carbs: [1.0, 1.0], protein: 0.3, when: 'Within an hour after the session.' },
-  long:    { carbs: [1.0, 1.2], protein: 0.3, when: 'Within an hour. Drink too, and add some salt after a sweaty run.' },
+  rate: { easy: 0.5, quality: 1.0, long: 0.8 },   // g/kg of carbs per hour of training
+  maxCarbs: 1.2,                                  // g/kg, the usual upper limit for one recovery meal
+  protein: 0.3,                                   // g/kg
+  quickHours: 24,                                 // next session sooner than this → refuel quickly
 };
 
 /** Tip for the day before a workout of each type (Nutrition and Overview tabs) */
@@ -37,12 +42,43 @@ export const TOMORROW_TIPS = {
   race: 'Race day: see the race-week plan on the Nutrition tab.',
 };
 
-/** Recovery advice after a workout as text; kg may be null (then only g/kg is shown) */
-export function recoveryAdvice(type, kg, fmtGrams) {
-  const r = RECOVERY[type];
-  const g = perKg => kg ? fmtGrams(perKg.map(x => x * kg)) + ' (' + (perKg[0] === perKg[1] ? perKg[0] : perKg.join('–')) + ' g/kg)' : (perKg[0] === perKg[1] ? perKg[0] : perKg.join('–')) + ' g/kg';
-  const protein = g([r.protein, r.protein]);
-  return r.carbs ? `Carbs ${g(r.carbs)} and protein ${protein}. ${r.when}` : `${r.when} Include about ${protein} of protein.`;
+/**
+ * What a workout needs afterwards: { carbs (g/kg), protein (g/kg), quick, why }.
+ * type = classify() result, minutes = session length, hoursToNext = null if nothing is coming up.
+ */
+export function recoveryNeed({ type, minutes, hoursToNext = null }) {
+  const rate = RECOVERY.rate[type] ?? RECOVERY.rate.easy;
+  const carbs = Math.round(Math.min(RECOVERY.maxCarbs, (minutes || 0) / 60 * rate) * 10) / 10;
+  const soon = hoursToNext != null && hoursToNext < RECOVERY.quickHours;
+  const why = type === 'long' ? 'long run' : type === 'quality' ? 'hard session' : soon ? 'next session soon' : null;
+  return { carbs, protein: RECOVERY.protein, quick: why !== null, why, hoursToNext };
+}
+
+/** Recovery advice as text; kg may be null (then only g/kg is shown) */
+export function recoveryAdvice(need, kg, fmtGrams) {
+  const g = perKg => kg ? `${fmtGrams([perKg * kg, perKg * kg])} (${perKg} g/kg)` : `${perKg} g/kg`;
+  const amounts = `Carbs ${g(need.carbs)} and protein ${g(need.protein)}.`;
+  if (!need.quick) return `${amounts} No rush: have it with your next normal meal.`;
+  const reason = need.why === 'next session soon'
+    ? `your next session is in about ${Math.round(need.hoursToNext)} h`
+    : `it was a ${need.why}`;
+  return `${amounts} Eat within an hour, because ${reason}.` +
+    (need.why === 'long run' ? ' Drink too, and add some salt after a sweaty run.' : '');
+}
+
+/**
+ * Hours from the end of `act` to the next session: the next activity if one was done, otherwise the
+ * next planned workout on a later day (the calendar has no time, so the same time of day is assumed).
+ */
+export function hoursToNextSession(act, acts, planned) {
+  const end = act.date.getTime() + (act.sec || 0) * 1000;
+  const next = acts.filter(a => a.date > act.date && (a.km > 0 || a.sec >= 20 * 60)).sort((a, b) => a.date - b.date)[0];
+  if (next) return (next.date - end) / 36e5;
+  const plan = (planned || []).filter(p => p.date && p.date > startOfDay(act.date) && dayKey(p.date) !== dayKey(act.date))
+    .sort((a, b) => a.date - b.date)[0];
+  if (!plan) return null;
+  const sameTime = new Date(plan.date); sameTime.setHours(act.date.getHours(), act.date.getMinutes());
+  return (sameTime - end) / 36e5;
 }
 
 /** Carbs during long runs and races, g per hour */

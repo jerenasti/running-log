@@ -3,7 +3,7 @@
 
 import { state } from '../state.js';
 import {
-  DAY_TARGETS, FUELING, PROTEIN_PER_DAY, LONG_MINUTES, TOMORROW_TIPS, recoveryAdvice,
+  DAY_TARGETS, FUELING, PROTEIN_PER_DAY, LONG_MINUTES, TOMORROW_TIPS, recoveryAdvice, recoveryNeed, hoursToNextSession,
   classify, plannedWorkouts, activeRace, dayType, grams, pickMeals, kcalPerKm,
 } from '../nutrition.js';
 import { fmtInt, fmtKm, fmtGrams, fmtHm, fmtDuration, fmtDate, fmtWeekday, esc } from '../format.js';
@@ -92,13 +92,13 @@ function renderBasis(kg, weight) {
 
 /* ---------- After recent runs ---------- */
 function renderRecent(ctx) {
-  const { kg, meals, acts } = ctx;
+  const { kg, meals, acts, planned } = ctx;
   const since = addDays(new Date(), -6);
   const runs = acts.filter(a => isRun(a) && a.date >= since && a.km > 0).slice(-5).reverse();
   if (!runs.length) { $('#recentMeals').innerHTML = '<p class="hint">No runs in the last 7 days.</p>'; return; }
   $('#recentMeals').innerHTML = runs.map(a => {
     const type = classify({ type: a.type, title: a.title, minutes: a.sec / 60, teLabel: a.teLabel });
-    const advice = recoveryAdvice(type, kg, fmtGrams);
+    const advice = recoveryAdvice(recoveryNeed({ type, minutes: a.sec / 60, hoursToNext: hoursToNextSession(a, acts, planned) }), kg, fmtGrams);
     return `<div class="meal-block">
       <div class="menu-head"><span class="num">${fmtWeekday(a.date)}</span>${badge(type)}<span class="meal-title">${esc(a.title || a.type)}</span>
         <span class="muted num">${fmtKm(a.km)} km · ${fmtDuration(a.sec)}${a.kcal ? ` · Garmin estimate ${fmtInt(a.kcal)} kcal` : ''}</span></div>
