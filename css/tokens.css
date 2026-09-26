@@ -1,90 +1,204 @@
-/* Design tokens: every color, font and size used by the app is defined here.
-   Change a value here and it changes everywhere. Dark mode only redefines colors. */
+/* ==========================================================================
+   Running Log design system ("Graphite")
+   Every color, font, size, spacing, radius, shadow and motion value lives here.
+   Components use these variables only; change a value here and it changes everywhere.
+   Dark mode redefines colors and shadows only.
+
+   Contents
+     1. Typography        4. Shadows and focus     7. Colors, light theme
+     2. Spacing           5. Motion                8. Colors, dark theme
+     3. Radii             6. Layers
+
+   Color rules
+     - Neutrals carry the interface. One accent (amber) marks highlights only:
+       the current week, the goal bar, the header status, the focus ring.
+     - Status colors (ok / watch / warn, plus "under" for too-low load) are only for
+       risk, recovery and fetch status. Never decoration.
+     - Every status and the accent come in two versions:
+         --status-x        fill: dots, bars, gauge segments, borders (at least 3:1)
+         --status-x-text   text in that color (at least 4.5:1, WCAG AA)
+     - All text tokens (--text, --text-2, --text-3) reach 4.5:1 on --bg, --surface
+       and --surface-2 in both themes.
+   ========================================================================== */
 
 :root {
+  /* ---------- 1. Typography ----------
+     One family for everything. Numbers use the same font with tabular (equal-width)
+     figures, so columns line up without a monospace font. */
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --font-num: var(--font-sans);              /* numbers: same family ... */
+  --num-variant: tabular-nums;               /* ... with equal-width figures */
+  --font-code: ui-monospace, 'Cascadia Mono', Consolas, monospace;   /* file names and code only */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;   /* old: replaced by --font-num in step 2 */
 
-  --radius: 12px;
-  --radius-sm: 8px;
-  --gap: 16px;
+  /* Size scale (rem, 1rem = 16px) */
+  --fs-xs: .75rem;      /* 12px  axis labels, badges, small print */
+  --fs-sm: .8125rem;    /* 13px  card sub-texts, hints, table headers, captions */
+  --fs-md: .875rem;     /* 14px  body text, tables, buttons */
+  --fs-lg: 1rem;        /* 16px  card titles */
+  --fs-xl: 1.25rem;     /* 20px  page title */
+  --fs-kpi: 1.625rem;   /* 26px  key figures */
+  --fs-hero: 2.25rem;   /* 36px  the single main number of a view (marathon forecast) */
 
-  /* Light theme */
-  --bg: #F4F5F6;
-  --surface: #FFFFFF;
-  --surface-2: #ECEEF0;
-  --border: #DDE0E4;
-  --border-strong: #C5CAD0;
-  --text: #16181B;
-  --text-2: #5B636C;
-  --text-3: #7A828B;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
 
-  /* The single accent color */
-  --accent: #C2621B;
-  --accent-soft: rgba(194, 98, 27, .12);
-  --on-accent: #FFFFFF;
+  --lh-tight: 1.2;      /* headings and big numbers */
+  --lh-base: 1.5;       /* running text */
 
-  /* Charts */
-  --chart-bar: #CDD2D8;
-  --chart-line: #5B636C;
-  --chart-grid: #E6E8EB;
+  /* Roles: use these with `font: var(--type-…)` */
+  --type-page-title: var(--fw-semibold) var(--fs-xl) / var(--lh-tight) var(--font-sans);
+  --type-card-title: var(--fw-semibold) var(--fs-lg) / var(--lh-tight) var(--font-sans);
+  --type-kpi:        var(--fw-medium) var(--fs-kpi) / var(--lh-tight) var(--font-num);
+  --type-hero:       var(--fw-semibold) var(--fs-hero) / 1.1 var(--font-num);
+  --type-body:       var(--fw-regular) var(--fs-md) / var(--lh-base) var(--font-sans);
+  --type-caption:    var(--fw-regular) var(--fs-sm) / var(--lh-base) var(--font-sans);
+  --type-label:      var(--fw-medium) var(--fs-xs) / var(--lh-tight) var(--font-sans);
 
-  /* Status colors: used only for risk gauges (e.g. ACWR), never as decoration */
-  --status-under: #6A86B0;
-  --status-ok: #3E8E5E;
-  --status-watch: #C9A227;
-  --status-warn: #C2453A;
+  /* ---------- 2. Spacing (4 px steps) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --gap: var(--space-4);          /* between cards */
+  --card-pad: var(--space-4);     /* inside cards (phones) */
+  --card-pad-wide: var(--space-5);/* inside cards (wider screens) */
+  --gutter: var(--space-4);       /* page side margin on phones (16px) */
 
-  /* Form errors (Settings): same red as the warning status, named for what it means */
-  --error: var(--status-warn);
+  /* ---------- 3. Radii ---------- */
+  --radius-xs: 4px;     /* chart bars, code, progress bars */
+  --radius-sm: 8px;     /* buttons, inputs, tooltips */
+  --radius: 12px;       /* cards */
+  --radius-pill: 999px; /* segmented controls, badges, tabs */
+
+  /* ---------- 4. Shadows and focus ----------
+     The design is flat: cards have a border, not a shadow. Shadows are for things that float. */
+  --shadow-sm: 0 1px 2px rgba(22, 24, 27, .06);                 /* sticky bars */
+  --shadow-md: 0 6px 20px rgba(22, 24, 27, .14);                /* tooltips, popovers */
+  --focus-width: 2px;
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);   /* keyboard focus, everywhere */
+
+  /* ---------- 5. Motion ---------- */
+  --dur-fast: 120ms;    /* hover, press */
+  --dur-base: 200ms;    /* progress bars, panels */
+  --ease: cubic-bezier(.2, 0, 0, 1);
+
+  /* ---------- 6. Layers ---------- */
+  --z-sticky: 10;       /* tab bar, form action bar */
+  --z-overlay: 20;      /* tooltips, popovers */
+
+  /* ---------- 7. Colors, light theme ---------- */
+  /* Surfaces */
+  --bg: #F4F5F6;             /* page background */
+  --surface: #FFFFFF;        /* cards */
+  --surface-2: #ECEEF0;      /* selected tab, hover, table stripes, skeletons */
+
+  /* Text (all at least 4.5:1 on every surface) */
+  --text: #16181B;           /* main text, numbers */
+  --text-2: #4F565E;         /* secondary text, labels */
+  --text-3: #636A72;         /* sub-texts, hints, axis labels */
+
+  /* Lines */
+  --border: #DDE0E4;         /* card and table dividers (decorative) */
+  --border-strong: #C5CAD0;  /* stronger dividers */
+  --border-control: #7B8591; /* input and button outlines (3:1, WCAG non-text contrast) */
+
+  /* The single accent */
+  --accent: #C2621B;         /* fill: current week bar, goal bar, status dot, focus ring */
+  --accent-text: #A85517;    /* accent as text or links */
+  --accent-soft: rgba(194, 98, 27, .12);   /* highlighted card background */
+  --on-accent: #FFFFFF;      /* text on an accent fill */
+
+  /* Status: risk, recovery and fetch status only */
+  --status-under: #5F7DA8;      --status-under-text: #4E6B96;   /* load too low */
+  --status-ok: #3E8E5E;         --status-ok-text: #34774F;      /* fine */
+  --status-watch: #9C7C1B;      --status-watch-text: #806518;   /* keep an eye on it */
+  --status-warn: #C2453A;       --status-warn-text: #B23F35;    /* act on it */
+  --error: var(--status-warn-text);                             /* form errors */
+
+  /* Charts (see js/charts.js: every chart takes its colors from here) */
+  --chart-bar: #CDD2D8;         /* bars in general */
+  --chart-line: #5B636C;        /* the main line */
+  --chart-grid: #E6E8EB;        /* grid lines */
+  --chart-axis: var(--text-3);  /* axis labels */
+  --chart-band: rgba(91, 99, 108, .14);   /* ranges (forecast band, targets) */
+  --chart-tooltip-bg: #16181B;
+  --chart-tooltip-text: #FFFFFF;
+  --chart-tooltip-muted: #C9CED4;         /* tooltip footers (7.9:1 on the tooltip) */
 
   color-scheme: light;
 }
 
-/* Dark theme: follows the operating system setting */
+/* ---------- 8. Colors, dark theme ----------
+   The same values appear twice: once for "follow the system" and once for "always dark"
+   (Settings → Appearance). Keep the two blocks identical. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #16181B;
     --surface: #1F2226;
     --surface-2: #2A2E33;
+    --text: #E7E9EC;
+    --text-2: #A9B0B8;
+    --text-3: #9098A0;
     --border: #2E3237;
     --border-strong: #3F444A;
-    --text: #E7E9EC;
-    --text-2: #A3AAB2;
-    --text-3: #858D96;
+    --border-control: #737C86;
     --accent: #E8833A;
+    --accent-text: #EE9454;
     --accent-soft: rgba(232, 131, 58, .16);
     --on-accent: #16181B;
+    --status-under: #86A3CF;      --status-under-text: #93AED6;
+    --status-ok: #5DB27F;         --status-ok-text: #6BBD8B;
+    --status-watch: #DDBB4E;      --status-watch-text: #E2C466;
+    --status-warn: #E26D61;       --status-warn-text: #EA8278;
     --chart-bar: #3A3F45;
-    --chart-line: #A3AAB2;
+    --chart-line: #A9B0B8;
     --chart-grid: #2A2E33;
-    --status-under: #86A3CF;
-    --status-ok: #5DB27F;
-    --status-watch: #DDBB4E;
-    --status-warn: #E26D61;
+    --chart-band: rgba(169, 176, 184, .16);
+    --chart-tooltip-bg: #E7E9EC;
+    --chart-tooltip-text: #16181B;
+    --chart-tooltip-muted: #3F444A;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-md: 0 6px 20px rgba(0, 0, 0, .5);
     color-scheme: dark;
   }
 }
 
-/* Same dark values when forced with <html data-theme="dark"> */
 :root[data-theme="dark"] {
   --bg: #16181B;
   --surface: #1F2226;
   --surface-2: #2A2E33;
+  --text: #E7E9EC;
+  --text-2: #A9B0B8;
+  --text-3: #9098A0;
   --border: #2E3237;
   --border-strong: #3F444A;
-  --text: #E7E9EC;
-  --text-2: #A3AAB2;
-  --text-3: #858D96;
+  --border-control: #737C86;
   --accent: #E8833A;
+  --accent-text: #EE9454;
   --accent-soft: rgba(232, 131, 58, .16);
   --on-accent: #16181B;
+  --status-under: #86A3CF;      --status-under-text: #93AED6;
+  --status-ok: #5DB27F;         --status-ok-text: #6BBD8B;
+  --status-watch: #DDBB4E;      --status-watch-text: #E2C466;
+  --status-warn: #E26D61;       --status-warn-text: #EA8278;
   --chart-bar: #3A3F45;
-  --chart-line: #A3AAB2;
+  --chart-line: #A9B0B8;
   --chart-grid: #2A2E33;
-  --status-under: #86A3CF;
-  --status-ok: #5DB27F;
-  --status-watch: #DDBB4E;
-  --status-warn: #E26D61;
+  --chart-band: rgba(169, 176, 184, .16);
+  --chart-tooltip-bg: #E7E9EC;
+  --chart-tooltip-text: #16181B;
+  --chart-tooltip-muted: #3F444A;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, .5);
   color-scheme: dark;
+}
+
+/* Reduced motion: no transitions or animations anywhere */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; }
 }
