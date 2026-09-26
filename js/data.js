@@ -30,6 +30,7 @@ export function garminToActivities(json) {
   const meta = {
     hrSettings: json.hr_settings ?? null, restingHr: json.resting_hr ?? [], recovery: json.recovery ?? null,
     schedule: json.schedule ?? [], weight: json.weight ?? null,
+    vo2max: json.vo2max ?? [], racePredictions: json.race_predictions ?? [],
   };
   return { acts, meta };
 }

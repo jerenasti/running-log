@@ -67,6 +67,14 @@ export function acwr(days) {
   return { acute, chronic, ratio, zone: ACWR_ZONES.find(z => ratio < z.max) };
 }
 
+/** ACWR for each of the last n days (null where there are not yet 28 days of data) */
+export function acwrSeries(days, n = 28) {
+  return days.slice(-n).map((d, i, arr) => {
+    const end = days.length - arr.length + i + 1;
+    return { date: d.date, ratio: end >= 28 ? acwr(days.slice(0, end))?.ratio ?? null : null };
+  });
+}
+
 /* ---------- Easy runs and aerobic efficiency ---------- */
 
 const EASY_WORDS = /easy|recovery|kevyt|palauttava/i;

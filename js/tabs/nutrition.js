@@ -3,7 +3,7 @@
 
 import { state } from '../state.js';
 import {
-  DAY_TARGETS, RECOVERY, FUELING, PROTEIN_PER_DAY, LONG_MINUTES,
+  DAY_TARGETS, FUELING, PROTEIN_PER_DAY, LONG_MINUTES, TOMORROW_TIPS, recoveryAdvice,
   classify, plannedWorkouts, activeRace, dayType, grams, pickMeals, kcalPerKm,
 } from '../nutrition.js';
 import { fmtInt, fmtKm, fmtGrams, fmtHm, fmtDuration, fmtDate, fmtWeekday, esc } from '../format.js';
@@ -63,15 +63,6 @@ function renderTomorrow(ctx) {
   const date = addDays(new Date(), 1);
   const dt = dayType(date, { acts: [], planned, race });
   const plan = dt.plan;
-  const tips = {
-    rest: 'No workout scheduled. Eat normally. Rest days are when your body rebuilds, so keep protein up.',
-    easy: 'An easy run needs no special fuelling. Eat normally.',
-    quality: 'Have a carb-rich dinner tonight and a light, easily digested breakfast 2–3 hours before the session.',
-    long: 'Have a carb-rich dinner tonight and breakfast 2–3 hours before the run.',
-    'race-prep': 'Race tomorrow: see the race-week plan above.',
-    'carb-load': 'Carb loading: see the race-week plan above.',
-    race: 'Race day: see the race-week plan above.',
-  };
   let fuel = '';
   if (dt.type === 'long') {
     fuel = plan?.minutes >= LONG_MINUTES
@@ -81,7 +72,7 @@ function renderTomorrow(ctx) {
   $('#tomorrowCard').innerHTML = `
     <div class="card-head"><div><h2>Tomorrow, ${fmtWeekday(date)}</h2>
       <p class="sub">${plan ? esc(plan.title) + (plan.km ? ` · about ${fmtHm(plan.minutes * 60)} at your usual pace` : '') : schedule.length ? 'Nothing scheduled in your Garmin calendar.' : 'No scheduled workouts found in your Garmin calendar.'}</p></div>${badge(dt.type)}</div>
-    <p class="tip">${tips[dt.type]}</p>
+    <p class="tip">${TOMORROW_TIPS[dt.type]}</p>
     ${fuel}
     ${mealList([...ideas(meals, dt.type, 'dinner', 1, 'eve' + dayKey(date)), ...ideas(meals, dt.type, 'breakfast', 1, dayKey(date))].map((x, i) => ({ ...x, slot: i ? 'Breakfast' : 'Dinner tonight' })), true)}`;
 }
@@ -108,11 +99,7 @@ function renderRecent(ctx) {
   if (!runs.length) { $('#recentMeals').innerHTML = '<p class="hint">No runs in the last 7 days.</p>'; return; }
   $('#recentMeals').innerHTML = runs.map(a => {
     const type = classify({ type: a.type, title: a.title, minutes: a.sec / 60, teLabel: a.teLabel });
-    const r = RECOVERY[type];
-    const protein = grams(kg, [r.protein, r.protein]);
-    const advice = r.carbs
-      ? `Carbs ${fmtGrams(grams(kg, r.carbs))} (${perKg(r.carbs)}) and protein ${fmtGrams(protein)} (${perKg([r.protein, r.protein])}). ${r.when}`
-      : `${r.when} Include about ${fmtGrams(protein)} of protein (${perKg([r.protein, r.protein])}).`;
+    const advice = recoveryAdvice(type, kg, fmtGrams);
     return `<div class="meal-block">
       <div class="menu-head"><span class="num">${fmtWeekday(a.date)}</span>${badge(type)}<span class="meal-title">${esc(a.title || a.type)}</span>
         <span class="muted num">${fmtKm(a.km)} km · ${fmtDuration(a.sec)}${a.kcal ? ` · Garmin estimate ${fmtInt(a.kcal)} kcal` : ''}</span></div>

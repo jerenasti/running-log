@@ -26,6 +26,25 @@ export const RECOVERY = {
   long:    { carbs: [1.0, 1.2], protein: 0.3, when: 'Within an hour. Drink too, and add some salt after a sweaty run.' },
 };
 
+/** Tip for the day before a workout of each type (Nutrition and Overview tabs) */
+export const TOMORROW_TIPS = {
+  rest: 'No workout scheduled. Eat normally. Rest days are when your body rebuilds, so keep protein up.',
+  easy: 'An easy run needs no special fuelling. Eat normally.',
+  quality: 'Have a carb-rich dinner tonight and a light, easily digested breakfast 2–3 hours before the session.',
+  long: 'Have a carb-rich dinner tonight and breakfast 2–3 hours before the run.',
+  'race-prep': 'Race tomorrow: see the race-week plan on the Nutrition tab.',
+  'carb-load': 'Carb loading: see the race-week plan on the Nutrition tab.',
+  race: 'Race day: see the race-week plan on the Nutrition tab.',
+};
+
+/** Recovery advice after a workout as text; kg may be null (then only g/kg is shown) */
+export function recoveryAdvice(type, kg, fmtGrams) {
+  const r = RECOVERY[type];
+  const g = perKg => kg ? fmtGrams(perKg.map(x => x * kg)) + ' (' + (perKg[0] === perKg[1] ? perKg[0] : perKg.join('–')) + ' g/kg)' : (perKg[0] === perKg[1] ? perKg[0] : perKg.join('–')) + ' g/kg';
+  const protein = g([r.protein, r.protein]);
+  return r.carbs ? `Carbs ${g(r.carbs)} and protein ${protein}. ${r.when}` : `${r.when} Include about ${protein} of protein.`;
+}
+
 /** Carbs during long runs and races, g per hour */
 export const FUELING = { training: [30, 60], marathon: [60, 90], startAfterMin: 45 };
 

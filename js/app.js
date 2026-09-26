@@ -9,6 +9,7 @@ import { initTraining, renderTraining } from './tabs/training.js';
 import { renderFitness } from './tabs/fitness.js';
 import { renderRecovery } from './tabs/recovery.js';
 import { renderNutrition } from './tabs/nutrition.js';
+import { renderOverview } from './tabs/overview.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
@@ -25,6 +26,7 @@ function render() {
   if (currentTab === 'fitness') renderFitness();
   if (currentTab === 'recovery') renderRecovery();
   if (currentTab === 'nutrition') renderNutrition();
+  if (currentTab === 'overview') renderOverview();
 }
 
 // Redraw charts when the system switches between light and dark mode
@@ -46,6 +48,7 @@ Promise.all([fetchContent('meals.json'), fetchContent('races.json')]).then(([mea
 
 fetchGarmin().then(o => {
   fetchedAt = parseDate(o.fetchedAt);
+  state.fetchedAt = fetchedAt?.getTime() ?? null;
   Object.assign(state, garminToActivities(o));
   save();
   render();

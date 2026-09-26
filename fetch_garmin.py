@@ -179,6 +179,27 @@ def fetch_weight(garmin: Garmin, start: date, end: date) -> dict | None:
     return {"kg": round(grams / 1000, 1), "date": when}
 
 
+def fetch_vo2max(garmin: Garmin, start: date, end: date) -> list[dict]:
+    """Running VO2max history (Garmin's precise value, one decimal)."""
+    out = []
+    for d in garmin.connectapi(f"/metrics-service/metrics/maxmet/daily/{start.isoformat()}/{end.isoformat()}") or []:
+        g = d.get("generic") or {}
+        value = g.get("vo2MaxPreciseValue") or g.get("vo2MaxValue")
+        if value:
+            out.append({"date": g.get("calendarDate"), "vo2max": value})
+    return out
+
+
+def fetch_race_predictions(garmin: Garmin, start: date, end: date) -> list[dict]:
+    """Garmin's daily race time predictions in seconds (days without a prediction are left out)."""
+    out = []
+    for d in garmin.get_race_predictions(start.isoformat(), end.isoformat(), "daily") or []:
+        if d.get("timeMarathon"):
+            out.append({"date": d.get("calendarDate"), "marathon_s": d.get("timeMarathon"), "half_s": d.get("timeHalfMarathon"),
+                        "k10_s": d.get("time10K"), "k5_s": d.get("time5K")})
+    return out
+
+
 def optional(label: str, fetch, default):
     """Run an extra request. A failure only prints a warning, so the activities are still saved.
     429 (too many requests) still stops the script, as everywhere else."""
@@ -224,6 +245,10 @@ def main() -> None:
         "recovery": recovery,
         "schedule": optional("scheduled workouts", lambda: fetch_schedule(garmin, date.today()), []),
         "weight": optional("weight", lambda: fetch_weight(garmin, start, date.today()), None),
+        # Garmin allows at most one year per request for race predictions
+        "vo2max": optional("VO2max", lambda: fetch_vo2max(garmin, start, date.today()), []),
+        "race_predictions": optional("race predictions",
+                                     lambda: fetch_race_predictions(garmin, max(start, date.today() - timedelta(days=365)), date.today()), []),
     }
 
     # Write to a temporary file first and swap it in only at the end,
@@ -236,7 +261,8 @@ def main() -> None:
     print(f"Saved {len(activities)} activities, {len(resting_hr)} resting HR days"
           f"{', HR zones' if hr_settings else ''}, {len(recovery['hrv'])} HRV / {len(recovery['sleep'])} sleep /"
           f" {len(recovery['body_battery'])} Body Battery days, {len(payload['schedule'])} scheduled workouts,"
-          f" weight {payload['weight']['kg'] if payload['weight'] else 'n/a'} to {OUTPUT}")
+          f" weight {payload['weight']['kg'] if payload['weight'] else 'n/a'}, {len(payload['vo2max'])} VO2max /"
+          f" {len(payload['race_predictions'])} race prediction days to {OUTPUT}")
 
 
 if __name__ == "__main__":

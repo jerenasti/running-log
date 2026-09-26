@@ -1,7 +1,7 @@
 // Tab navigation. The open tab is kept in the address (#training), so a reload stays on it.
 // Follows the WAI-ARIA tabs pattern: arrow keys move between tabs.
 
-const DEFAULT_TAB = 'training';
+const DEFAULT_TAB = 'overview';  // the front page
 
 /** On a phone the tab row scrolls sideways: scroll it so the chosen tab is fully visible.
     Sets scrollLeft directly (scrollIntoView is ignored while the page is still loading). */
