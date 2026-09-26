@@ -238,23 +238,63 @@ def test_status_after_a_successful_run_lists_warnings(tmp_path, monkeypatch):
     assert s["ok"] is True and s["error"] is None and s["warnings"] == ["sleep"]
 
 
-def test_status_records_why_the_run_stopped(tmp_path, monkeypatch):
+def test_status_records_why_the_run_stopped_in_plain_words_and_in_detail(tmp_path, monkeypatch):
     def run():
-        sys.exit("The saved tokens are not valid (expired).")
+        raise fg.Stopped("invalid_tokens", "The saved tokens are not valid (expired).")
     status = run_main(tmp_path, monkeypatch, run)
     with pytest.raises(SystemExit):
         fg.main()
     s = json.loads(status.read_text(encoding="utf-8"))
-    assert s["ok"] is False and s["error"] == "The saved tokens are not valid (expired)."
+    assert s["ok"] is False and s["reason"] == "invalid_tokens"
+    assert s["message"] == fg.REASONS["invalid_tokens"], "plain words for the user"
+    assert s["error"] == "The saved tokens are not valid (expired).", "technical text for Show details"
 
 
-def test_status_records_unexpected_errors_too(tmp_path, monkeypatch):
+def test_status_records_unexpected_errors_and_recognises_network_errors(tmp_path, monkeypatch):
     def run():
         raise ConnectionError("no network")
     status = run_main(tmp_path, monkeypatch, run)
     with pytest.raises(ConnectionError):
         fg.main()
-    assert json.loads(status.read_text(encoding="utf-8"))["error"] == "ConnectionError: no network"
+    s = json.loads(status.read_text(encoding="utf-8"))
+    assert s["error"] == "ConnectionError: no network" and s["reason"] == "network"
+
+
+def test_status_keeps_the_time_of_the_last_success_when_a_run_fails(tmp_path, monkeypatch):
+    status = run_main(tmp_path, monkeypatch, lambda: None)
+    fg.main()
+    success_at = json.loads(status.read_text(encoding="utf-8"))["at"]
+
+    def failing():
+        raise fg.Stopped("rate_limited", "429")
+    monkeypatch.setattr(fg, "run", failing)
+    with pytest.raises(SystemExit):
+        fg.main()
+    s = json.loads(status.read_text(encoding="utf-8"))
+    assert s["ok"] is False and s["last_success"] == success_at
+
+
+# ---------- Token folder comes only from settings.json ----------
+
+def test_tokens_dir_comes_from_settings_and_ignores_environment_variables(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"garmin_tokens_dir": str(tmp_path / "tokens")}), encoding="utf-8")
+    monkeypatch.setattr(fg, "SETTINGS", settings)
+    monkeypatch.setenv("GARMINTOKENS", str(tmp_path / "somewhere-else"))
+    assert fg.tokens_dir() == tmp_path / "tokens"
+
+
+def test_tokens_dir_falls_back_to_the_default_without_settings(tmp_path, monkeypatch):
+    monkeypatch.setattr(fg, "SETTINGS", tmp_path / "missing.json")
+    assert fg.tokens_dir() == fg.DEFAULT_TOKENSTORE
+    broken = tmp_path / "broken.json"
+    broken.write_text("{ not json", encoding="utf-8")
+    monkeypatch.setattr(fg, "SETTINGS", broken)
+    assert fg.tokens_dir() == fg.DEFAULT_TOKENSTORE
+
+
+def test_project_settings_point_to_the_garmin_mcp_auth_folder():
+    assert fg.tokens_dir() == Path.home() / "AppData" / "Local" / "garminconnect"
 
 
 # ---------- Optional requests ----------

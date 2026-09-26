@@ -1,0 +1,4 @@
+{
+  "_help": "Settings for fetch_garmin.py. garmin_tokens_dir: the folder with garmin_tokens.json, created by the garmin-mcp-auth tool.",
+  "garmin_tokens_dir": "~/AppData/Local/garminconnect"
+}

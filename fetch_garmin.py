@@ -17,9 +17,7 @@ If the tokens have expired, renew them with the garmin-mcp-auth tool.
 
 import argparse
 import json
-import os
 import re
-import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -30,9 +28,38 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
-# Default token location. Can be overridden with the GARMINTOKENS environment variable.
-DEFAULT_TOKENSTORE = Path.home() / "AppData" / "Local" / "garminconnect"
+SETTINGS = Path(__file__).parent / "settings.json"
+DEFAULT_TOKENSTORE = Path.home() / "AppData" / "Local" / "garminconnect"   # used only if settings.json is missing
 OUTPUT = Path(__file__).parent / "data" / "activities.json"
+
+
+def tokens_dir() -> Path:
+    """The token folder always comes from settings.json (garmin_tokens_dir). Environment variables are
+    ignored on purpose, so nothing outside the settings can point the script at another folder."""
+    try:
+        value = json.loads(SETTINGS.read_text(encoding="utf-8")).get("garmin_tokens_dir")
+    except (OSError, ValueError):
+        value = None
+    return Path(value).expanduser() if value else DEFAULT_TOKENSTORE
+
+
+# Why a run stopped, in words for the user. The app and the Windows notification show these;
+# the technical message goes under "Show details".
+REASONS = {
+    "no_tokens": "Garmin sign-in is missing. Sign in once with the garmin-mcp-auth tool.",
+    "invalid_tokens": "Garmin sign-in has expired. Renew it with the garmin-mcp-auth tool.",
+    "rate_limited": "Garmin is limiting requests right now. Tomorrow morning's fetch usually works.",
+    "network": "Could not reach Garmin. Check the internet connection.",
+    "unknown": "The Garmin fetch failed unexpectedly.",
+}
+
+
+class Stopped(SystemExit):
+    """Stops the script like sys.exit(message), and remembers the reason for data/fetch_status.json."""
+
+    def __init__(self, reason: str, message: str):
+        super().__init__(message)
+        self.reason = reason
 
 # Time trials (e.g. from a Runna plan) are recognised by their name. Their laps are fetched
 # so the app can find the trial itself inside the warm-up and cool-down. Keep this in sync
@@ -43,10 +70,9 @@ TIME_TRIAL = re.compile(r"time\s*trial|\btt\b|\btest\b|testi|aika-ajo", re.IGNOR
 def connect(tokenstore: Path) -> Garmin:
     """Connect using the saved tokens. Never uses a password."""
     if not (tokenstore / "garmin_tokens.json").is_file():
-        sys.exit(
-            f"No saved tokens found in {tokenstore}.\n"
-            "Create them with the garmin-mcp-auth tool. This script never logs in with a password."
-        )
+        raise Stopped("no_tokens",
+                      f"No saved tokens found in {tokenstore}.\n"
+                      "Create them with the garmin-mcp-auth tool. This script never logs in with a password.")
 
     # Garmin() without email and password: if loading the tokens fails,
     # the library raises an error instead of trying to log in.
@@ -54,12 +80,11 @@ def connect(tokenstore: Path) -> Garmin:
     try:
         garmin.login(str(tokenstore))
     except GarminConnectTooManyRequestsError:
-        sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
+        raise Stopped("rate_limited", "Garmin returned 429 (too many requests). Wait and try again later.")
     except (GarminConnectAuthenticationError, GarminConnectConnectionError) as e:
-        sys.exit(
-            f"The saved tokens are not valid ({e}).\n"
-            "Renew them with the garmin-mcp-auth tool and run this script again."
-        )
+        raise Stopped("invalid_tokens",
+                      f"The saved tokens are not valid ({e}).\n"
+                      "Renew them with the garmin-mcp-auth tool and run this script again.")
     return garmin
 
 
@@ -274,18 +299,38 @@ def optional(label: str, fetch, default):
     try:
         return fetch()
     except GarminConnectTooManyRequestsError:
-        sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
+        raise Stopped("rate_limited", "Garmin returned 429 (too many requests). Wait and try again later.")
     except Exception as e:
         print(f"Warning: could not fetch {label} ({e}). Continuing without it.")
         WARNINGS.append(label)
         return default
 
 
-def write_status(ok: bool, error: str | None = None) -> None:
-    """data/fetch_status.json: how the last run went. The app and the failure notification read it."""
+def previous_success() -> str | None:
+    """Time of the last successful run, from the previous status file."""
+    try:
+        old = json.loads(STATUS.read_text(encoding="utf-8"))
+        return old.get("last_success") or (old.get("at") if old.get("ok") else None)
+    except (OSError, ValueError):
+        return None
+
+
+def write_status(ok: bool, reason: str | None = None, error: str | None = None) -> None:
+    """data/fetch_status.json: how the last run went. The app and the failure notification read it.
+    message = what to tell the user; error = the technical text, shown only under "Show details"."""
+    now = datetime.now().isoformat(timespec="seconds")
     STATUS.parent.mkdir(exist_ok=True)
-    STATUS.write_text(json.dumps({"at": datetime.now().isoformat(timespec="seconds"), "ok": ok,
-                                  "error": error, "warnings": WARNINGS}, ensure_ascii=False, indent=1), encoding="utf-8")
+    STATUS.write_text(json.dumps({
+        "at": now, "ok": ok, "reason": reason,
+        "message": REASONS.get(reason) if reason else None, "error": error,
+        "last_success": now if ok else previous_success(),
+        "warnings": WARNINGS,
+    }, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def looks_like_network_error(e: Exception) -> bool:
+    names = " ".join(c.__name__ for c in type(e).__mro__)
+    return any(w in names for w in ("ConnectionError", "Timeout", "SSLError"))
 
 
 def main() -> None:
@@ -294,10 +339,10 @@ def main() -> None:
         run()
     except SystemExit as e:
         if e.code not in (0, None):
-            write_status(False, str(e.code))
+            write_status(False, getattr(e, "reason", "unknown"), str(e.code))
         raise
     except Exception as e:  # e.g. no network: record it, then show the normal traceback
-        write_status(False, f"{type(e).__name__}: {e}")
+        write_status(False, "network" if looks_like_network_error(e) else "unknown", f"{type(e).__name__}: {e}")
         raise
     write_status(True)
 
@@ -307,15 +352,14 @@ def run() -> None:
     parser.add_argument("--days", type=int, default=365, help="how many days back to fetch (default 365)")
     args = parser.parse_args()
 
-    tokenstore = Path(os.getenv("GARMINTOKENS") or DEFAULT_TOKENSTORE).expanduser()
-    garmin = connect(tokenstore)
+    garmin = connect(tokens_dir())
 
     start = date.today() - timedelta(days=args.days)
     print(f"Fetching activities {start} - {date.today()} ...")
     try:
         raw = garmin.get_activities_by_date(start.isoformat(), date.today().isoformat())
     except GarminConnectTooManyRequestsError:
-        sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
+        raise Stopped("rate_limited", "Garmin returned 429 (too many requests). Wait and try again later.")
 
     activities = sorted((simplify(a) for a in raw), key=lambda a: a["start_time"] or "", reverse=True)
     cached = previous_laps()

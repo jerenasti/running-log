@@ -3,7 +3,7 @@
 import { state, save, restore } from './state.js';
 import { fetchGarmin, garminToActivities, fetchContent, fetchStatus } from './data.js';
 import { parseDate } from './parse.js';
-import { fmtDate, fmtTime } from './format.js';
+import { fmtDate, fmtTime, esc } from './format.js';
 import { initTabs } from './nav.js';
 import { initTraining, renderTraining } from './tabs/training.js';
 import { renderFitness } from './tabs/fitness.js';
@@ -18,9 +18,20 @@ let currentTab = null;
 function notice(msg) { $('#notice').textContent = msg || ''; $('#notice').hidden = !msg; }
 
 /** Render the header status and the open tab */
+/** Header: time of the last SUCCESSFUL fetch (from activities.json) and whether the latest run worked */
+function renderFetchStatus() {
+  const fs = state.fetchStatus;
+  const failed = fs?.ok === false;
+  const el = $('#updated');
+  el.hidden = !fetchedAt && !fs;
+  const last = fetchedAt ? `Last successful fetch ${fmtDate(fetchedAt)} at ${fmtTime(fetchedAt)}` : 'No successful fetch yet';
+  el.innerHTML = `<span>${last}</span>` + (failed
+    ? `<a class="fetch-badge failed" href="#overview" title="${esc(fs.message || 'The last fetch failed')}">Fetch failed</a>`
+    : `<span class="fetch-badge ok">OK</span>`);
+}
+
 function render() {
-  $('#updated').hidden = !fetchedAt;
-  if (fetchedAt) $('#updated').textContent = 'Garmin data updated ' + fmtDate(fetchedAt) + ' at ' + fmtTime(fetchedAt);
+  renderFetchStatus();
   // Charts are drawn only for the visible tab (a hidden canvas has no size)
   if (currentTab === 'training') renderTraining();
   if (currentTab === 'fitness') renderFitness();

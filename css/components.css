@@ -24,9 +24,17 @@
 .tab:focus-visible { outline-offset: -2px; }
 
 /* ---------- Header status ---------- */
-.updated { margin: 0; color: var(--text-2); font-size: .82rem; display: flex; align-items: center; gap: .5rem; }
-.updated::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; background: var(--accent); flex: none; }
+.updated { margin: 0; color: var(--text-2); font-size: .82rem; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
 .updated[hidden] { display: none; }
+/* Status of the latest fetch: OK or failed (a status colour, like other risk/recovery states) */
+.fetch-badge { display: inline-flex; align-items: center; gap: .35rem; font-weight: 500; color: var(--text); text-decoration: none; }
+.fetch-badge::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; flex: none; }
+.fetch-badge.ok::before { background: var(--status-ok); }
+.fetch-badge.failed::before { background: var(--status-warn); }
+.fetch-badge.failed { text-decoration: underline; text-underline-offset: 2px; }
+.attention details { margin: 4px 0 0; }
+.attention details summary { font-size: .78rem; }
+.attention details code { display: block; margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .75rem; }
 
 .notice {
   margin: 0 0 var(--gap);

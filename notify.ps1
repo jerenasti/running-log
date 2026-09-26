@@ -9,7 +9,8 @@ param(
 
 if (-not $Message -and $StatusFile -and (Test-Path $StatusFile)) {
     $status = Get-Content -Raw -Encoding UTF8 $StatusFile | ConvertFrom-Json
-    $Message = "$($status.error) See data\fetch_data.log."
+    # The plain-words message; the technical error stays in the log and the app's "Show details"
+    $Message = if ($status.message) { "$($status.message)" } else { "$($status.error)" }
 }
 if (-not $Message) { $Message = "See data\fetch_data.log." }
 
