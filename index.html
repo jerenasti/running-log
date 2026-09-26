@@ -236,11 +236,12 @@
         </section>
 
         <section class="card">
-          <div class="card-head"><div><h2>Aerobic efficiency</h2><p class="sub">Easy runs only. Higher is better.</p></div></div>
+          <div class="card-head"><div><h2>Aerobic efficiency</h2><p class="sub">Easy runs, as an index: your first 4 weeks = 100. Higher is better.</p></div></div>
           <div class="chart short" id="efWrap"><canvas id="efChart" aria-label="Aerobic efficiency of easy runs over time" role="img"></canvas></div>
           <p class="hint" id="efEmpty" hidden>No easy runs found yet.</p>
           <details class="info"><summary>How it's calculated</summary>
             <p><b>Efficiency</b> = average speed in metres per minute ÷ average heart rate. Running 6:00 /km (167 m/min) at 140 bpm gives 1.19. If it rises over time, you run faster at the same heart rate: your aerobic fitness is improving. The line is the average of the last 5 easy runs, which smooths out day-to-day noise such as heat or hills.</p>
+            <p><b>Index</b>: each run's efficiency ÷ the average of your easy runs in the first 4 weeks of data × 100. So 100 is where you started, and 105 means 5% more speed for the same heart rate. The raw efficiency is shown when you point at a run in the table.</p>
             <p><b>Easy run</b>: a run of at least 30 minutes with heart rate data, no interval, tempo, repeats, threshold, rolling, progressive, fartlek or race in the name, one of your easy run words in the name (Settings, default: easy, recovery, kevyt, palauttava) or classified by Garmin as Recovery or Aerobic base, and an average heart rate below your limit (Settings, default: zone 4).</p>
           </details>
           <details class="easy-list" id="easyList"></details>

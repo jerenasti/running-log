@@ -9,6 +9,7 @@ export const CTL_DAYS = 42;          // fitness: long-term average
 export const ATL_DAYS = 7;           // fatigue: short-term average
 export const MIN_RELIABLE_DAYS = 42; // CTL needs about 6 weeks of data before it means much
 export const EF_WINDOW = 5;          // aerobic efficiency: rolling average over the last 5 easy runs
+export const EF_BASELINE_DAYS = 28;  // aerobic efficiency index: the first 4 weeks of easy runs = 100
 
 /* ---------- Training load (Edwards TRIMP) ---------- */
 
@@ -102,13 +103,25 @@ export function isEasyRun(a, { hrLimit = null, words = DEFAULT_EASY_WORDS } = {}
 /** Speed in metres per minute ÷ average heart rate. Higher = faster at the same heart rate. */
 export const efficiency = a => (a.km * 1000 / (a.sec / 60)) / a.hr;
 
-/** Easy runs with their efficiency and the rolling average over the last EF_WINDOW runs */
+/**
+ * Easy runs with their efficiency, the rolling average over the last EF_WINDOW runs, and both as an
+ * index where the average of the first EF_BASELINE_DAYS (from the first easy run) = 100.
+ * runs.baseline = { ef, n, from, to }: what 100 means.
+ */
 export function efficiencySeries(acts, rule) {
   const runs = acts.filter(a => isEasyRun(a, rule)).map(a => ({ act: a, ef: efficiency(a) }));
   runs.forEach((r, i) => {
     const win = runs.slice(Math.max(0, i - EF_WINDOW + 1), i + 1);
     r.avg = win.reduce((s, x) => s + x.ef, 0) / win.length;
   });
+  runs.baseline = null;
+  if (runs.length) {
+    const from = startOfDay(runs[0].act.date), to = addDays(from, EF_BASELINE_DAYS);
+    const first = runs.filter(r => r.act.date < to);
+    const ef = first.reduce((s, r) => s + r.ef, 0) / first.length;
+    runs.baseline = { ef, n: first.length, from, to: addDays(to, -1) };
+    for (const r of runs) { r.index = r.ef / ef * 100; r.avgIndex = r.avg / ef * 100; }
+  }
   return runs;
 }
 

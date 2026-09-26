@@ -118,3 +118,14 @@ test('weekly average: only finished weeks from the start of the data, rest weeks
   assert.deepEqual(weeklyAverage([{ mon: mon(0), km: 10 }], new Date(2026, 8, 22), TODAY), { km: null, weeks: 0 });
   assert.deepEqual(weeklyAverage(weeks, null, TODAY), { km: null, weeks: 0 });
 });
+
+test('aerobic efficiency index: the first 4 weeks of easy runs = 100', () => {
+  // Easy runs 60 min / 10 km; HR 150 in the first weeks, then 125 (faster at the same effort = higher efficiency)
+  const runs = [-60, -55, -45, -40, -20, -10].map(n => run({ n, title: 'Easy run', km: 10, min: 60, hr: n > -30 ? 125 : 150 }));
+  const s = efficiencySeries(runs, { hrLimit: 161 });
+  assert.equal(s.baseline.n, 4, 'runs from day -60 up to day -33');
+  assert.ok(Math.abs(s[0].index - 100) < 1e-9);
+  assert.ok(Math.abs(s.at(-1).index - 120) < 1e-9, '150 / 125 = 1.2');
+  assert.ok(s.at(-1).avgIndex > 100 && s.at(-1).avgIndex < 120, 'the 5-run average is between');
+  assert.equal(efficiencySeries([], {}).baseline, null);
+});

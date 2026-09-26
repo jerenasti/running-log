@@ -100,8 +100,10 @@ function drawEfficiencyChart(runs) {
     data: {
       labels: runs.map(r => fmtDay(r.act.date)),
       datasets: [
-        { label: 'Easy run', data: runs.map(r => r.ef), ...points(t, { borderColor: t.line, backgroundColor: t.line }) },
-        { label: `${EF_WINDOW}-run average`, data: runs.map(r => r.avg), ...mainLine(t, { tension: .25 }) },
+        { label: 'Easy run', data: runs.map(r => r.index), ...points(t, { borderColor: t.line, backgroundColor: t.line }) },
+        { label: `${EF_WINDOW}-run average`, data: runs.map(r => r.avgIndex), ...mainLine(t, { tension: .25 }) },
+        // 100 = the first 4 weeks: a thin reference line, not in the tooltip
+        { label: '_first 4 weeks', data: runs.map(() => 100), ...secondaryLine(t, { borderColor: t.bar2, borderWidth: 1, pointHoverRadius: 0, tension: 0 }) },
       ],
     },
     options: { ...base,
@@ -109,21 +111,21 @@ function drawEfficiencyChart(runs) {
         legend: legend(t),
         tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
-          label: c => c.dataset.label + ': ' + fmtRatio(c.parsed.y),
+          label: c => c.dataset.label + ': ' + fmtInt(c.parsed.y),
           footer: items => { const a = runs[items[0].dataIndex].act; return fmtPace(a.sec / a.km) + ' ' + paceLabel() + ' · ' + fmtInt(a.hr) + ' bpm'; },
         } } },
-      scales: { ...base.scales, y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtRatio(v) } } } },
+      scales: { ...base.scales, y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
   });
 }
 
 function renderEasyList(runs) {
   $('#easyList').innerHTML = `<summary>Runs counted as easy (${runs.length})</summary>
     <div class="table-wrap"><table>
-      <thead><tr><th>Date</th><th>Run</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th><th class="num">Efficiency</th></tr></thead>
-      <tbody>${runs.slice().reverse().map(({ act: a, ef }) => `
+      <thead><tr><th>Date</th><th>Run</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th><th class="num">Index</th></tr></thead>
+      <tbody>${runs.slice().reverse().map(({ act: a, ef, index }) => `
         <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type)}</td>
         <td class="num">${fmtDuration(a.sec)}</td><td class="num">${fmtPace(a.sec / a.km)} ${paceLabel()}</td>
-        <td class="num">${fmtInt(a.hr)}</td><td class="num">${fmtRatio(ef)}</td></tr>`).join('')}</tbody>
+        <td class="num">${fmtInt(a.hr)}</td><td class="num" title="Efficiency ${fmtRatio(ef)} m/min per bpm">${fmtInt(index)}</td></tr>`).join('')}</tbody>
     </table></div>`;
 }
 
@@ -195,8 +197,8 @@ export function renderFitness() {
     kpi('Fitness (CTL)', fmtInt(today.ctl), `${CTL_DAYS}-day load average`) +
     kpi('Fatigue (ATL)', fmtInt(today.atl), `${ATL_DAYS}-day load average`) +
     kpi('Form (TSB)', fmtSigned(today.tsb), formLabel(today.tsb)) +
-    kpi('Aerobic efficiency', runs.length ? fmtRatio(runs[runs.length - 1].avg) : '–',
-      runs.length ? `Average of last ${Math.min(EF_WINDOW, runs.length)} easy runs` : 'No easy runs yet');
+    kpi('Aerobic efficiency', runs.length ? fmtInt(runs[runs.length - 1].avgIndex) : '–',
+      runs.length ? `Index, first 4 weeks = 100 · last ${Math.min(EF_WINDOW, runs.length)} easy runs` : 'No easy runs yet');
 
   renderAcwr(acwr(days), days.length);
   drawLoadChart(days);
