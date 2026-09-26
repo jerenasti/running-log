@@ -6,7 +6,7 @@
 //   so ordinary least squares gives the fit and a prediction interval. τ (the time constant) cannot
 //   be read from a few weeks of data, so the uncertainty band covers every τ in TAU_RANGE.
 
-import { DAY_MS, startOfDay } from './dates.js';
+import { addDays, daysBetween } from './dates.js';
 import { parseDate } from './parse.js';
 
 export const MODEL = {
@@ -17,7 +17,6 @@ export const MODEL = {
   backtestDays: 14,     // backtest: hide the last 2 weeks, forecast them, compare
 };
 
-const daysBetween = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / DAY_MS);
 
 /* ---------- VO2max model ---------- */
 
@@ -82,7 +81,7 @@ export function vo2Forecast(history, endDate) {
 
   const series = [];
   for (let t = 0; t <= daysBetween(t0, endDate); t++) {
-    series.push({ date: new Date(startOfDay(t0).getTime() + t * DAY_MS), t, ...model.at(t) });
+    series.push({ date: addDays(t0, t), t, ...model.at(t) });
   }
 
   // Backtest: fit on everything except the last 2 weeks, forecast those days, compare with what happened
@@ -203,6 +202,21 @@ export function calibration(efforts, vo2History) {
   }).filter(Boolean);
   if (!results.length) return { factor: 1, results: [] };
   return { factor: results.reduce((s, r) => s + r.ratio, 0) / results.length, results };
+}
+
+/**
+ * Which calibration to use: real efforts (time trials, race results) first; without them, the VDOT that
+ * the Runna plan's paces correspond to, divided by Garmin's latest VO2max; otherwise none.
+ * Returns { factor, results, source: 'efforts' | 'runna' | null }.
+ */
+export function chooseCalibration(efforts, runnaVdotValue, vo2History) {
+  const fromEfforts = calibration(efforts, vo2History);
+  if (fromEfforts.results.length) return { ...fromEfforts, source: 'efforts' };
+  const latest = (vo2History || []).at(-1);
+  if (runnaVdotValue > 0 && latest?.vo2max) {
+    return { factor: runnaVdotValue / latest.vo2max, results: [], source: 'runna', runnaVdot: runnaVdotValue, vo2max: latest.vo2max };
+  }
+  return { factor: 1, results: [], source: null };
 }
 
 /** Marathon time forecast from the VO2max forecast (a higher VDOT gives a faster time) */

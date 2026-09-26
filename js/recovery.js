@@ -3,7 +3,7 @@
 // so the recommendation is never a black box.
 
 import { acwr, loadModel } from './metrics.js';
-import { DAY_MS, dayKey, startOfDay } from './dates.js';
+import { dayKey, startOfDay, addDays } from './dates.js';
 import { parseDate } from './parse.js';
 
 export const RULES = {
@@ -26,7 +26,7 @@ export function meanSd(values, minCount = RULES.minNormalDays) {
 
 /** Normal range from the RULES.normalDays days before `date` (the day itself is not included) */
 function normalBefore(series, date) {
-  const end = startOfDay(date).getTime(), start = end - RULES.normalDays * DAY_MS;
+  const end = startOfDay(date).getTime(), start = addDays(date, -RULES.normalDays).getTime();
   return meanSd(series.filter(p => p.t >= start && p.t < end).map(p => p.v));
 }
 

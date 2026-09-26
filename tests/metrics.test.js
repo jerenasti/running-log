@@ -2,6 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { dayKey } from '../js/dates.js';
 import { edwardsTrimp, loadModel, acwr, acwrSeries, isEasyRun, efficiency, efficiencySeries, CTL_DAYS, ATL_DAYS } from '../js/metrics.js';
 import { TODAY, run, zonesForLoad } from './helpers.js';
 
@@ -28,6 +29,17 @@ test('form (TSB) is yesterday\'s CTL − ATL, so a hard day shows in tomorrow\'s
   const days = loadModel([run({ n: -1, zones: zonesForLoad(84) })], TODAY);
   assert.equal(days[0].tsb, 0);                          // nothing before the first day
   assert.equal(days[1].tsb, days[0].ctl - days[0].atl);  // 2 − 12 = −10
+});
+
+test('regression: the load model has one entry per calendar day across the end of daylight saving time', () => {
+  const acts = [{ ...run({ zones: zonesForLoad(60) }), date: new Date(2026, 9, 20, 7) },
+                { ...run({ zones: zonesForLoad(90) }), date: new Date(2026, 9, 28, 7) }];
+  const days = loadModel(acts, new Date(2026, 9, 30));
+  const keys = days.map(d => dayKey(d.date));
+  assert.equal(keys.length, 11);
+  assert.equal(new Set(keys).size, 11, 'no day twice');
+  assert.equal(keys[8], '2026-10-28');
+  assert.equal(days[8].load, 90, 'the load lands on the right day after the clocks change');
 });
 
 test('steady training: CTL approaches the daily load', () => {

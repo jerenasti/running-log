@@ -3,7 +3,7 @@
 import { state } from '../state.js';
 import { weekReview } from '../plan.js';
 import { fmtKm, fmtInt, fmtRatio, fmtSigned, fmtDuration, fmtHClock, fmtWeekday, fmtDay, fmtDate, esc, DASH } from '../format.js';
-import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
+import { mondayOf, isoWeek, addDays } from '../dates.js';
 
 const $ = s => document.querySelector(s);
 let offset = 0;   // 0 = this week, 1 = last week, …
@@ -39,7 +39,7 @@ function row(label, cur, prev, fmt, diffFmt = null) {
 const pct = (cur, prev) => prev > 0 ? fmtSigned((cur - prev) / prev * 100) + '%' : '';
 
 export function renderReview() {
-  const monday = new Date(mondayOf(new Date()).getTime() - offset * 7 * DAY_MS);
+  const monday = addDays(mondayOf(new Date()), -7 * offset);
   const r = weekReview(monday, { acts: state.acts, schedule: state.meta?.schedule || [], meta: state.meta || {} });
   const { cur, prev, load, forecast: f } = r;
 

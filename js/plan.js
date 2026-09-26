@@ -5,7 +5,7 @@
 // Garmin's calendar only keeps the days around today, so fetch_garmin.py saves the plan history;
 // before that history starts, Runna workouts are recognised from their name ("W3 Tue Easy Run").
 
-import { mondayOf, startOfDay, dayKey, DAY_MS } from './dates.js';
+import { mondayOf, startOfDay, dayKey, addDays, DAY_MS } from './dates.js';
 import { parseDate } from './parse.js';
 import { loadModel, acwr, edwardsTrimp } from './metrics.js';
 
@@ -15,7 +15,6 @@ const RUNNA_NAME = /\bW\d+\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/i;
 const MATCH_DAYS = 7;              // an activity counts for a planned workout if done within a week of it
 export const VOLUME_JUMP = 0.10;   // weekly distance up more than 10% → worth a note
 
-const addDays = (d, n) => new Date(startOfDay(d).getTime() + n * DAY_MS);
 const sameDay = (a, b) => dayKey(a) === dayKey(b);
 const avg = list => { const v = list.filter(Number.isFinite); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
 

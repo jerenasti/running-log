@@ -3,7 +3,7 @@
 // Activities come from state.acts: { date, type, title, km, sec, hr, speed, teLabel, zones }
 // where zones = seconds in heart rate zones 1–5 (Garmin data only, otherwise null).
 
-import { DAY_MS, dayKey, startOfDay } from './dates.js';
+import { dayKey, startOfDay, addDays } from './dates.js';
 
 export const CTL_DAYS = 42;          // fitness: long-term average
 export const ATL_DAYS = 7;           // fatigue: short-term average
@@ -36,11 +36,10 @@ export function loadModel(acts, today = new Date()) {
 
   const days = [];
   let ctl = 0, atl = 0;
-  const end = startOfDay(today).getTime();
+  const end = startOfDay(today);
   // Start from the earliest activity, whatever order the list is in
-  const first = Math.min(...withLoad.map(a => startOfDay(a.date).getTime()));
-  for (let t = first; t <= end; t += DAY_MS) {
-    const date = new Date(t);
+  const first = new Date(Math.min(...withLoad.map(a => startOfDay(a.date).getTime())));
+  for (let date = first; date <= end; date = addDays(date, 1)) {
     const load = loadByDay.get(dayKey(date)) || 0;
     const tsb = ctl - atl;            // yesterday's values
     ctl += (load - ctl) / CTL_DAYS;

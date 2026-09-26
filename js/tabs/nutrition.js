@@ -7,10 +7,9 @@ import {
   classify, plannedWorkouts, activeRace, dayType, grams, pickMeals, kcalPerKm,
 } from '../nutrition.js';
 import { fmtInt, fmtKm, fmtGrams, fmtHm, fmtDuration, fmtDate, fmtWeekday, esc } from '../format.js';
-import { DAY_MS, dayKey, startOfDay } from '../dates.js';
+import { dayKey, addDays } from '../dates.js';
 
 const $ = s => document.querySelector(s);
-const addDays = (d, n) => new Date(startOfDay(d).getTime() + n * DAY_MS);
 const isRun = a => /run|juoks|treadmill|trail/i.test(a.type || '');
 const badge = type => `<span class="type-badge">${DAY_TARGETS[type]?.label || type}</span>`;
 const perKg = r => r ? (r[0] === r[1] ? r[0] : r[0] + '–' + r[1]) + ' g/kg' : '';
