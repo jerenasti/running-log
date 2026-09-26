@@ -12,6 +12,7 @@ import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js'
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart, legend, band, mainLine, secondaryLine, points, xTickLimit } from '../charts.js';
 import { weekReview } from '../plan.js';
+import { organizeAttention } from '../attention.js';
 import { runnaPaces, runnaVdot } from '../paces.js';
 import { longRunOutlook, weeklyLongRuns, LONG_RUN } from '../longruns.js';
 
@@ -87,12 +88,22 @@ function renderKpis(ctx) {
       Number.isFinite(ctlWeekAgo) ? `${fmtSigned(ctlNow - ctlWeekAgo)} in 7 days` : 'Building up', sparkline(ctl.slice(-42)));
 }
 
+function attentionItem(i) {
+  const dot = `<i class="dot st-${i.level === 'info' ? 'none' : i.level}" aria-hidden="true"></i>`;
+  if (i.kind === 'data') {
+    return `<li class="data-quality">${dot}<details><summary>Data quality <span class="muted">· ${i.notes.length} ${i.notes.length === 1 ? 'note' : 'notes'}</span></summary>
+      <ul>${i.notes.map(n => `<li>${n}</li>`).join('')}</ul></details></li>`;
+  }
+  return `<li>${dot}<span>${i.text}</span>${i.tab ? `<a class="more-link" href="#${i.tab}">${i.tabLabel}</a>` : ''}</li>`;
+}
+
+/** The most important items (warn > watch > info), at most 3; the rest behind "Show all" */
 function renderAttention(items) {
-  const order = { warn: 0, watch: 1, info: 2 };
-  items.sort((a, b) => order[a.level] - order[b.level]);
-  $('#ovAttention').innerHTML = items.length
-    ? `<ul class="attention">${items.map(i => `<li><i class="dot st-${i.level === 'info' ? 'none' : i.level}"></i><span>${i.text}</span>
-        ${i.tab ? `<a class="more-link" href="#${i.tab}">${i.tabLabel}</a>` : ''}</li>`).join('')}</ul>`
+  const { visible, hidden } = organizeAttention(items);
+  $('#ovAttention').innerHTML = visible.length
+    ? `<ul class="attention">${visible.map(attentionItem).join('')}</ul>` + (hidden.length ? `
+      <details class="attention-more"><summary>Show all (${hidden.length} more)</summary>
+        <ul class="attention">${hidden.map(attentionItem).join('')}</ul></details>` : '')
     : '<p class="hint">Nothing needs your attention today.</p>';
 }
 
@@ -287,11 +298,11 @@ function renderForecasts(ctx, attention) {
   drawMarathon(mf, garmin, goalSec, results);
 
   // Attention items from the forecast
-  if (fc.preliminary) attention.push({ level: 'info', text: `Forecasts are preliminary: ${fc.spanDays} days of VO2max data, 8 weeks recommended.`, tab: 'overview', tabLabel: 'Forecast' });
+  if (fc.preliminary) attention.push({ kind: 'data', level: 'info', text: `Forecasts are preliminary: ${fc.spanDays} days of VO2max data, 8 weeks recommended.`, tab: 'overview', tabLabel: 'Forecast' });
   if (lastG && lastG.sec > goalSec) attention.push({ level: 'watch', text: `Garmin predicts ${fmtDuration(lastG.sec)} for the marathon today, ${fmtDuration(lastG.sec - goalSec)} slower than your goal ${esc(goalRace.goal)}.`, tab: 'overview', tabLabel: 'Forecast' });
-  if (cal.source === 'runna') attention.push({ level: 'info', text: 'Marathon forecast is calibrated with your Runna paces until your first time trial.', tab: 'overview', tabLabel: 'Forecast' });
-  if (!cal.source) attention.push({ level: 'info', text: 'Marathon forecast is not calibrated yet. It calibrates itself after your first Runna time trial.', tab: null });
-  cal.results.filter(r => r.source === 'whole activity').forEach(r => attention.push({ level: 'watch', text: `Time trial "${esc(r.name)}" had no workout laps, so the whole activity (incl. warm-up) was used. Its VDOT may be too low.`, tab: null }));
+  if (cal.source === 'runna') attention.push({ kind: 'data', level: 'info', text: 'Marathon forecast is calibrated with your Runna paces until your first time trial.', tab: 'overview', tabLabel: 'Forecast' });
+  if (!cal.source) attention.push({ kind: 'data', level: 'info', text: 'Marathon forecast is not calibrated yet. It calibrates itself after your first Runna time trial.', tab: null });
+  cal.results.filter(r => r.source === 'whole activity').forEach(r => attention.push({ kind: 'data', level: 'watch', text: `Time trial "${esc(r.name)}" had no workout laps, so the whole activity (incl. warm-up) was used. Its VDOT may be too low.`, tab: null }));
 }
 
 /* ---------- Tab ---------- */
@@ -328,9 +339,9 @@ export function renderOverview() {
   const ratio = acwr(days);
   if (ratio?.zone.key === 'warn' || ratio?.zone.key === 'watch') attention.push({ level: ratio.zone.key, text: `Workload ratio ${fmtRatio(ratio.ratio)}: ${ratio.zone.label.toLowerCase()}. Your last 7 days are well above what you are used to.`, tab: 'fitness', tabLabel: 'Fitness and load' });
   if (ratio?.zone.key === 'under') attention.push({ level: 'info', text: `Workload ratio ${fmtRatio(ratio.ratio)}: lighter than usual this week.`, tab: 'fitness', tabLabel: 'Fitness and load' });
-  if (days.length && days.length < MIN_RELIABLE_DAYS) attention.push({ level: 'info', text: `Fitness (CTL) is based on ${days.length} days of data and still reads low (6 weeks needed).`, tab: 'fitness', tabLabel: 'Fitness and load' });
+  if (days.length && days.length < MIN_RELIABLE_DAYS) attention.push({ kind: 'data', level: 'info', text: `Fitness (CTL) is based on ${days.length} days of data and still reads low (6 weeks needed).`, tab: 'fitness', tabLabel: 'Fitness and load' });
   const lastNight = a.day && daysUntil(parseDate(a.day));
-  if (lastNight < 0) attention.push({ level: 'info', text: `Last night isn't synced yet: recovery uses the night ending ${fmtDate(parseDate(a.day))}. Sync your watch.`, tab: 'recovery', tabLabel: 'Recovery' });
+  if (lastNight < 0) attention.push({ kind: 'data', level: 'info', text: `Last night isn't synced yet: recovery uses the night ending ${fmtDate(parseDate(a.day))}. Sync your watch.`, tab: 'recovery', tabLabel: 'Recovery' });
   if (ctx.race) attention.push({ level: 'info', text: `Race week: ${esc(ctx.race.name)} ${ctx.race.daysLeft ? `in ${ctx.race.daysLeft} days` : 'today'}. Follow the fuelling plan.`, tab: 'nutrition', tabLabel: 'Nutrition' });
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
   const tPlan = dayType(tomorrow, { acts: [], planned, race: ctx.race });
@@ -345,7 +356,7 @@ export function renderOverview() {
       text: `Garmin fetch failed on ${fmtDate(parseDate(fs.at))} at ${fs.at.slice(11, 16)}. ${esc(plain)}${last}` +
         (fs.error ? `<details><summary>Show details</summary><code>${esc(fs.error)}</code></details>` : '') });
   }
-  if (fs?.ok && fs.warnings?.length) attention.push({ level: 'info', text: `The last Garmin fetch could not get: ${fs.warnings.map(esc).join(', ')}. Those parts may be out of date.`, tab: null });
+  if (fs?.ok && fs.warnings?.length) attention.push({ kind: 'data', level: 'info', text: `The last Garmin fetch could not get: ${fs.warnings.map(esc).join(', ')}. Those parts may be out of date.`, tab: null });
   if (state.fetchedAt && (Date.now() - state.fetchedAt) > 36 * 3600 * 1000) attention.push({ level: 'watch', text: `Garmin data is ${Math.floor((Date.now() - state.fetchedAt) / 86400000)} days old. Fetch it again, or check data/fetch_data.log if the morning fetch keeps failing.`, tab: 'settings', tabLabel: 'Settings' });
 
   // Training plan: missed sessions this week, and last week's distance jump

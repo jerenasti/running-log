@@ -399,3 +399,12 @@ h3.mini { margin: 16px 0 6px; font-size: var(--fs-md); font-weight: 600; }
 .steps li[aria-current="step"] { color: var(--text); font-weight: 600; }
 .steps li[aria-current="step"] .num { background: var(--text); color: var(--bg); border-color: var(--text); }
 .steps li.done { color: var(--text-2); }
+
+/* ---------- Attention list: data quality and "Show all" ---------- */
+.attention .data-quality details { margin: 0; flex: 1; }
+.attention .data-quality summary { cursor: pointer; }
+.attention .data-quality ul { margin: var(--space-2) 0 0; padding-left: 1.1rem; color: var(--text-2); font: var(--type-caption); font-variant-numeric: var(--num-variant); }
+.attention .data-quality ul li { display: list-item; margin: var(--space-1) 0; padding: 0; border-top: 0; }
+.attention-more { margin-top: var(--space-2); }
+.attention-more > summary { cursor: pointer; color: var(--text-2); font: var(--type-caption); font-variant-numeric: var(--num-variant); padding: var(--space-1) 0; }
+.attention-more[open] > summary { margin-bottom: var(--space-1); }
