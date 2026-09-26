@@ -85,13 +85,8 @@
   cursor: pointer;
 }
 .btn:hover { background: var(--surface-2); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.btn.primary:hover { opacity: .9; }
 .btn[hidden] { display: none; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--text-2); text-decoration: underline; cursor: pointer; }
-.link-btn:hover { color: var(--text); }
 .source { margin: 0; color: var(--text-2); font-size: .85rem; }
 
 /* ---------- Weekly goal ---------- */
@@ -133,8 +128,6 @@ details ul { margin: .5rem 0 0; padding-left: 1.2rem; }
 .empty li { margin: .3rem 0; }
 code { font: .85em var(--font-mono); background: var(--surface-2); padding: .1em .35em; border-radius: 4px; }
 .hint { margin: 0; color: var(--text-3); font-size: .82rem; }
-.live-hint { margin: 0 0 12px; padding: 10px 14px; background: var(--accent-soft); border-radius: var(--radius-sm); font-size: .88rem; }
-.live-hint[hidden] { display: none; }
 
 .placeholder { border-style: dashed; max-width: 640px; }
 .placeholder p { margin: 6px 0 12px; color: var(--text-2); font-size: .9rem; }

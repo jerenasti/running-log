@@ -7,7 +7,7 @@ A personal running training tracker. `index.html` shows weekly distance, pace an
 The app fetches Garmin data by itself, with no manual work:
 
 1. A Python script fetches activities from Garmin Connect (at least the last year) and writes them to `data/activities.json`.
-2. `index.html` reads `data/activities.json`. Garmin data is the only data source (CSV upload was removed); sample data exists only for trying the app.
+2. `index.html` reads `data/activities.json`. Garmin data is the only data source (CSV upload and sample data were removed). A copy is kept in localStorage so the page shows data immediately and still works if the file is missing.
 
 The user is learning to program through this project: briefly explain what you are doing and why. Ask before moving from one major step to the next. Reply in the language the user writes in (usually Finnish).
 
@@ -55,7 +55,7 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
   Garmin does **not** provide a per-activity training load (`activityTrainingLoad`) for this account; load is computed in the app (Edwards TRIMP).
 - `index.html`: page structure only (header, tab bar, one `<section role="tabpanel">` per tab). No inline CSS or JS.
 - `css/tokens.css`: all colors, fonts and sizes as CSS variables; dark mode redefines colors only. `css/layout.css`: page structure and responsive grids. `css/components.css`: tabs, cards, KPIs, buttons, tables.
-- `js/app.js`: entry point (data loading, data source controls, tabs). `js/state.js`: shared state + localStorage. `js/data.js`: Garmin JSON and sample data. `js/format.js`: **all** displayed numbers and dates go through it. `js/parse.js`: date parsing. `js/dates.js`: day keys and ISO week helpers. `js/charts.js`: shared Chart.js theme/options. `js/nav.js`: tabs (hash in URL, arrow-key navigation).
+- `js/app.js`: entry point (Garmin data loading, header status, tabs). `js/state.js`: shared state + localStorage. `js/data.js`: loading and converting `data/activities.json`. `js/format.js`: **all** displayed numbers and dates go through it. `js/parse.js`: date parsing. `js/dates.js`: day keys and ISO week helpers. `js/charts.js`: shared Chart.js theme/options. `js/nav.js`: tabs (hash in URL, arrow-key navigation).
 - `js/tabs/training.js`: the Training tab (activities with a distance only). `js/tabs/fitness.js`: Fitness and load tab. `js/metrics.js`: pure formulas (Edwards TRIMP, CTL 42 d / ATL 7 d EWMA, TSB = yesterday's CTL − ATL, ACWR 7/28 rolling averages, easy-run rules, aerobic efficiency = m/min ÷ avg HR with a 5-run average).
 - Other tabs (Overview, Recovery, Nutrition) are placeholders in `index.html`; a new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
 - Chart.js is loaded as a global from cdnjs in `index.html`.
@@ -64,7 +64,7 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
 ## Design (direction "Graphite")
 
 - Calm, data-dense dashboard. IBM Plex Sans for text, IBM Plex Mono for all numbers.
-- One accent color (`--accent`, amber) used only for highlights: current week, goal bar, primary button, focus ring, "Coming soon" badge. Everything else is neutral.
+- One accent color (`--accent`, amber) used only for highlights: current week, goal bar, header status dot, focus ring, "Coming soon" badge. Everything else is neutral.
 - Status colors (`--status-under/ok/watch/warn`) only for risk gauges such as ACWR. Every metric card has a `details.info` "How it's calculated" text.
 - Decisions (user): load = Edwards TRIMP, max HR = Garmin setting, easy run = ≥30 min + HR + no hard-session words + (easy/recovery name or Garmin label RECOVERY/AEROBIC_BASE) + avg HR below zone 4.
 - Every section is a `.card`; key figures are `.kpi`. Number formats: km with one decimal (`fmtKm`), pace `m:ss /km` (`fmtPace`), HR whole numbers.

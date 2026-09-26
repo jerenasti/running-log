@@ -69,5 +69,3 @@ main { padding-top: 20px; padding-bottom: max(48px, env(safe-area-inset-bottom))
 }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.sources { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
-.sources-title { margin: 0 0 2px; font-size: .95rem; font-weight: 600; }

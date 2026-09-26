@@ -53,7 +53,6 @@
   <section id="panel-training" role="tabpanel" aria-labelledby="tab-training" hidden>
 
     <div class="card empty" id="empty">
-      <p class="live-hint" id="liveHint" hidden>Garmin data is available. Choose Show Garmin data below.</p>
       <h2>No activities loaded</h2>
       <p class="hint">Your activities are fetched from Garmin Connect with your saved sign-in:</p>
       <ol>
@@ -66,7 +65,7 @@
 
     <div id="dash" hidden>
       <div class="toolbar">
-        <p class="source"><span id="source"></span> · <button class="link-btn" id="clear" type="button">Clear</button></p>
+        <p class="source" id="source"></p>
         <div class="filters">
           <div class="seg" role="group" aria-label="Time range" id="period">
             <button type="button" data-v="12">12 wk</button>
@@ -129,7 +128,7 @@
 
     <div class="card empty" id="fitNoData" hidden>
       <h2>Garmin heart rate data needed</h2>
-      <p class="hint">Training load and aerobic efficiency are calculated from the time you spend in each heart rate zone, which comes from Garmin. Start the app with start.bat to fetch it. Sample data doesn't include it.</p>
+      <p class="hint">Training load and aerobic efficiency are calculated from the time you spend in each heart rate zone, which comes from Garmin. Fetch your data with start.bat. Activities recorded without a heart rate can't be used.</p>
     </div>
 
     <div id="fitDash" hidden>
@@ -202,15 +201,6 @@
     </div>
   </section>
 
-  <!-- ===================== Data sources (all tabs) ===================== -->
-  <footer class="sources">
-    <div class="card-head"><div><h2 class="sources-title">Data sources</h2>
-      <p class="hint">Garmin data is fetched automatically every morning. You can also try the app with sample data.</p></div></div>
-    <div class="actions">
-      <button class="btn primary" id="garmin" type="button" hidden>Show Garmin data</button>
-      <button class="btn" id="demo" type="button">Try with sample data</button>
-    </div>
-  </footer>
 </main>
 
 </body>

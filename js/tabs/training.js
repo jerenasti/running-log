@@ -145,7 +145,7 @@ export function renderTraining() {
 
   setSeg('period', state.period);
   setSeg('sport', state.sport);
-  $('#source').textContent = 'Showing ' + state.source + ' · ' + count + ' activities';
+  $('#source').textContent = 'Garmin Connect · ' + count + ' activities';
 
   const r = compute();
   const weeks = r.weeks.length || 1;
