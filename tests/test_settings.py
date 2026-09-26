@@ -67,6 +67,7 @@ def test_unknown_keys_are_dropped_and_wrong_sections_keep_defaults():
 @pytest.mark.parametrize("field, value, message", [
     ("date", "8.5.2027", "YYYY-MM-DD"),
     ("date", "2027-02-30", "doesn't exist"),
+    ("date", "", "Enter a date"),
     ("goal", "3:30", "h:mm:ss"),
     ("goal", "3:75:00", "h:mm:ss"),
     ("goal", "0:00:00", "zero"),

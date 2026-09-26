@@ -71,24 +71,34 @@ test('ACWR series is null before 28 days of data', () => {
   assert.equal(series[4].ratio, 1);      // day 30
 });
 
+test('easy run rules from the settings: own words and heart rate limit', () => {
+  const jog = run({ title: 'Morning jog (Z2)', min: 40, hr: 150 });
+  assert.equal(isEasyRun(jog), false, 'default words');
+  assert.equal(isEasyRun(jog, { words: ['jog'] }), true);
+  assert.equal(isEasyRun(jog, { words: ['(z2)'] }), true, 'special characters are plain text');
+  assert.equal(isEasyRun(jog, { words: ['jog'], hrLimit: 145 }), false, 'above the own limit');
+  assert.equal(isEasyRun(run({ title: 'Kevyt lenkki', min: 40 })), true, 'Finnish default word');
+  assert.equal(isEasyRun(jog, { words: [] }), false, 'no words: only Garmin labels count');
+});
+
 test('easy run rules', () => {
   const easy = run({ title: 'W3 Tue Easy Run', min: 40, hr: 135 });
-  assert.equal(isEasyRun(easy, 161), true);
-  assert.equal(isEasyRun({ ...easy, sec: 29 * 60 }, 161), false, 'under 30 minutes');
-  assert.equal(isEasyRun({ ...easy, hr: NaN }, 161), false, 'no heart rate');
-  assert.equal(isEasyRun({ ...easy, hr: 161 }, 161), false, 'average HR in zone 4');
-  assert.equal(isEasyRun({ ...easy, title: 'W3 Wed Tempo - Easy Run finish' }, 161), false, 'hard word wins');
-  assert.equal(isEasyRun({ ...easy, title: 'W6 Time Trial - 5km' }, 161), false, 'time trial is not easy');
-  assert.equal(isEasyRun({ ...easy, title: 'Helsinki Running' }, 161), false, 'no easy word or label');
-  assert.equal(isEasyRun({ ...easy, title: 'Helsinki Running', teLabel: 'AEROBIC_BASE' }, 161), true, 'Garmin label counts');
-  assert.equal(isEasyRun({ ...easy, type: 'cycling' }, 161), false, 'runs only');
+  assert.equal(isEasyRun(easy, { hrLimit: 161 }), true);
+  assert.equal(isEasyRun({ ...easy, sec: 29 * 60 }, { hrLimit: 161 }), false, 'under 30 minutes');
+  assert.equal(isEasyRun({ ...easy, hr: NaN }, { hrLimit: 161 }), false, 'no heart rate');
+  assert.equal(isEasyRun({ ...easy, hr: 161 }, { hrLimit: 161 }), false, 'average HR in zone 4');
+  assert.equal(isEasyRun({ ...easy, title: 'W3 Wed Tempo - Easy Run finish' }, { hrLimit: 161 }), false, 'hard word wins');
+  assert.equal(isEasyRun({ ...easy, title: 'W6 Time Trial - 5km' }, { hrLimit: 161 }), false, 'time trial is not easy');
+  assert.equal(isEasyRun({ ...easy, title: 'Helsinki Running' }, { hrLimit: 161 }), false, 'no easy word or label');
+  assert.equal(isEasyRun({ ...easy, title: 'Helsinki Running', teLabel: 'AEROBIC_BASE' }, { hrLimit: 161 }), true, 'Garmin label counts');
+  assert.equal(isEasyRun({ ...easy, type: 'cycling' }, { hrLimit: 161 }), false, 'runs only');
 });
 
 test('aerobic efficiency = metres per minute ÷ average HR, with a 5-run average', () => {
   // 6:00 /km = 166.7 m/min at 140 bpm
   assert.ok(Math.abs(efficiency(run({ km: 10, min: 60, hr: 140 })) - 166.67 / 140) < 0.001);
   const runs = [1, 2, 3, 4, 5, 6].map(i => run({ n: -i * 2, km: 8, min: 48, hr: 150 - i }));
-  const series = efficiencySeries(runs.reverse(), 161);
+  const series = efficiencySeries(runs.reverse(), { hrLimit: 161 });
   assert.equal(series.length, 6);
   assert.equal(series[0].avg, series[0].ef);   // first run: average of one
   const last5 = series.slice(-5).reduce((s, r) => s + r.ef, 0) / 5;

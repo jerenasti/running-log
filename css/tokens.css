@@ -35,6 +35,9 @@
   --status-watch: #C9A227;
   --status-warn: #C2453A;
 
+  /* Form errors (Settings): same red as the warning status, named for what it means */
+  --error: var(--status-warn);
+
   color-scheme: light;
 }
 

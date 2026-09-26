@@ -18,7 +18,15 @@
 
 <header class="wrap app-header">
   <h1 class="brand">Running Log</h1>
-  <p class="updated" id="updated" hidden></p>
+  <div class="header-end">
+    <p class="updated" id="updated" hidden></p>
+    <a class="icon-btn" id="settingsLink" href="#settings" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+    </a>
+  </div>
 </header>
 
 <nav class="tabbar" aria-label="Sections">
@@ -235,7 +243,7 @@
           <p class="hint" id="efEmpty" hidden>No easy runs found yet.</p>
           <details class="info"><summary>How it's calculated</summary>
             <p><b>Efficiency</b> = average speed in metres per minute ÷ average heart rate. Running 6:00 /km (167 m/min) at 140 bpm gives 1.19. If it rises over time, you run faster at the same heart rate: your aerobic fitness is improving. The line is the average of the last 5 easy runs, which smooths out day-to-day noise such as heat or hills.</p>
-            <p><b>Easy run</b>: a run of at least 30 minutes with heart rate data, no interval, tempo, repeats, threshold, rolling, progressive, fartlek or race in the name, named easy or recovery or classified by Garmin as Recovery or Aerobic base, and an average heart rate below zone 4.</p>
+            <p><b>Easy run</b>: a run of at least 30 minutes with heart rate data, no interval, tempo, repeats, threshold, rolling, progressive, fartlek or race in the name, one of your easy run words in the name (Settings, default: easy, recovery, kevyt, palauttava) or classified by Garmin as Recovery or Aerobic base, and an average heart rate below your limit (Settings, default: zone 4).</p>
           </details>
           <details class="easy-list" id="easyList"></details>
         </section>
@@ -360,6 +368,14 @@
     </div>
   </section>
 
+  <!-- ===================== Settings (opened from the gear icon, not a tab) ===================== -->
+  <section id="panel-settings" data-page="settings" aria-labelledby="settingsTitle" hidden>
+    <div class="page-head">
+      <h2 class="page-title" id="settingsTitle">Settings</h2>
+      <p class="hint">Saved in settings.json on this computer. Nothing here is sent anywhere.</p>
+    </div>
+    <form id="settingsForm" novalidate></form>
+  </section>
 </main>
 
 </body>

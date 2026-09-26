@@ -1,5 +1,6 @@
 // Tab navigation. The open tab is kept in the address (#training), so a reload stays on it.
 // Follows the WAI-ARIA tabs pattern: arrow keys move between tabs.
+// Pages that are not tabs (Settings, [data-page]) open the same way from a link (#settings).
 
 const DEFAULT_TAB = 'overview';  // the front page
 
@@ -15,13 +16,22 @@ function revealTab(tab) {
 export function initTabs(onShow) {
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   const names = tabs.map(t => t.dataset.tab);
+  const pages = [...document.querySelectorAll('[data-page]')];
 
   function show(name, focus = false) {
-    if (!names.includes(name)) name = DEFAULT_TAB;
+    const page = pages.find(p => p.dataset.page === name);
+    if (!page && !names.includes(name)) name = DEFAULT_TAB;
+    for (const p of pages) p.hidden = p !== page;
+    for (const l of document.querySelectorAll('a[href^="#"]')) {
+      if (pages.some(p => '#' + p.dataset.page === l.getAttribute('href'))) {
+        if (l.getAttribute('href') === '#' + name) l.setAttribute('aria-current', 'page'); else l.removeAttribute('aria-current');
+      }
+    }
     for (const t of tabs) {
       const on = t.dataset.tab === name;
       t.setAttribute('aria-selected', String(on));
-      t.tabIndex = on ? 0 : -1;
+      // On a page no tab is selected; the first tab stays reachable with the keyboard
+      t.tabIndex = on || (page && t === tabs[0]) ? 0 : -1;
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
       if (on) {
         if (focus) t.focus();

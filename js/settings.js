@@ -26,6 +26,51 @@ export async function saveSettings(settings) {
   }
 }
 
+// Garmin's own zone floors as shares of max HR, used when Garmin gave no zones (HR_MAX method)
+const DEFAULT_ZONE_SHARES = [0.5, 0.6, 0.7, 0.8, 0.9];
+
+/**
+ * Garmin data with the settings applied, so the tabs never have to look at the settings themselves:
+ * - plan.source 'none'  → no scheduled workouts
+ * - weight manual       → weight { kg, date: null, source: 'manual' }
+ * - max HR manual       → hrSettings with that max; zone floors scaled from Garmin's own zones
+ *                         (they keep your zone setup), else 50/60/70/80/90% of max
+ * - resting HR manual   → restingHrManual (Garmin's daily resting HR stays for the Recovery checks)
+ * Every value carries its source ('garmin' | 'manual') so the tabs can say where it came from.
+ */
+export function applySettings(meta, settings) {
+  if (!meta) return meta;
+  if (!settings) return { ...meta, weight: meta.weight && { ...meta.weight, source: 'garmin' } };
+  const b = settings.body;
+  const out = { ...meta };
+  if (settings.plan.source === 'none') out.schedule = [];
+  out.weight = b.weight_source === 'manual' && b.weight_kg > 0
+    ? { kg: b.weight_kg, date: null, source: 'manual' }
+    : meta.weight && { ...meta.weight, source: 'garmin' };
+  if (b.max_hr_source === 'manual' && b.max_hr > 0) {
+    const g = meta.hrSettings;
+    const floors = g?.zone_floors?.length === 5 && g.max_hr > 0
+      ? g.zone_floors.map(f => Math.round(f * b.max_hr / g.max_hr))
+      : DEFAULT_ZONE_SHARES.map(x => Math.round(x * b.max_hr));
+    out.hrSettings = { max_hr: b.max_hr, zone_floors: floors, method: 'HR_MAX', source: 'manual' };
+  } else if (meta.hrSettings) {
+    out.hrSettings = { ...meta.hrSettings, source: 'garmin' };
+  }
+  out.restingHrManual = b.resting_hr_source === 'manual' && b.resting_hr > 0 ? b.resting_hr : null;
+  return out;
+}
+
+/** The easy run rule for isEasyRun(): words from the settings, HR limit from the settings or zone 4 */
+export function easyRule(settings, meta) {
+  const zone4 = meta?.hrSettings?.zone_floors?.[3] ?? null;
+  const p = settings?.plan;
+  return {
+    words: p?.easy_keywords ?? undefined,
+    hrLimit: p?.easy_max_hr || zone4,
+    hrSource: p?.easy_max_hr ? 'settings' : zone4 ? 'zone 4' : null,
+  };
+}
+
 /**
  * The goals as the race list the tabs use: time trials (with their results) and the main race
  * (with its goal time), in date order. Same shape as the old content/races.json.

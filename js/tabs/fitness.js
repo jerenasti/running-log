@@ -9,6 +9,7 @@ import { danielsPaces, runnaPaces, runnaVdot, PACE_SHARES } from '../paces.js';
 import { calibration, timeTrials, raceResults, vdot, parseTime, timeForVdot } from '../forecast.js';
 import { parseDate } from '../parse.js';
 import { addDays } from '../dates.js';
+import { easyRule } from '../settings.js';
 
 const $ = s => document.querySelector(s);
 const CHART_DAYS = 180;  // load chart shows at most the last ~6 months
@@ -182,10 +183,10 @@ export function renderFitness() {
   if (!hasZones) return;
 
   const hr = state.meta?.hrSettings;
-  const zone4Floor = hr?.zone_floors?.[3] ?? null;
+  const rule = easyRule(state.settings, state.meta);
   const days = loadModel(state.acts);
   const today = days[days.length - 1];
-  const runs = efficiencySeries(state.acts, zone4Floor);
+  const runs = efficiencySeries(state.acts, rule);
 
   // Warn while there is less than 6 weeks of data: CTL starts from zero and needs time to build up
   const short = days.length < MIN_RELIABLE_DAYS;
@@ -212,7 +213,10 @@ export function renderFitness() {
   const rhr = state.meta?.restingHr || [];
   const lastRhr = rhr[rhr.length - 1];
   $('#hrInfo').textContent = [
-    hr ? `Heart rate zones from Garmin: max ${hr.max_hr} bpm, zones start at ${hr.zone_floors.join(' / ')} bpm.` : 'Heart rate zone settings not available.',
-    lastRhr ? `Resting heart rate ${lastRhr.bpm} bpm (${fmtDate(new Date(lastRhr.date + 'T00:00'))}).` : '',
+    hr ? `Heart rate zones ${hr.source === 'manual' ? 'from your max HR in Settings' : 'from Garmin'}: max ${hr.max_hr} bpm, zones start at ${hr.zone_floors.join(' / ')} bpm.` : 'Heart rate zone settings not available.',
+    state.meta?.restingHrManual ? `Resting heart rate ${state.meta.restingHrManual} bpm (entered in Settings).`
+      : lastRhr ? `Resting heart rate ${lastRhr.bpm} bpm (${fmtDate(new Date(lastRhr.date + 'T00:00'))}).` : '',
+    rule.words ? `Easy run words: ${rule.words.join(', ')}.` : '',
+    rule.hrLimit ? `Easy run limit: average HR below ${rule.hrLimit} bpm (${rule.hrSource === 'settings' ? 'your limit' : 'zone 4'}).` : '',
   ].join(' ');
 }

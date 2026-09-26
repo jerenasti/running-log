@@ -23,7 +23,7 @@ DEFAULTS = {
     },
     "plan": {
         "source": "garmin",        # "garmin" (workouts in the Garmin calendar) | "none"
-        "easy_keywords": ["easy", "recovery"],
+        "easy_keywords": ["easy", "recovery", "kevyt", "palauttava"],   # same as DEFAULT_EASY_WORDS in js/metrics.js
         "easy_max_hr": None,       # None = below heart rate zone 4
     },
     "body": {
@@ -141,6 +141,8 @@ TIME = re.compile(r"^\d{1,2}:[0-5]\d:[0-5]\d$")
 
 
 def _date_error(value) -> str | None:
+    if value in (None, ""):
+        return "Enter a date."
     if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
         return "Use the format YYYY-MM-DD, e.g. 2027-05-15."
     try:

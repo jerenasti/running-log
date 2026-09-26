@@ -78,20 +78,24 @@ export function acwrSeries(days, n = 28) {
 
 /* ---------- Easy runs and aerobic efficiency ---------- */
 
-const EASY_WORDS = /easy|recovery|kevyt|palauttava/i;
+export const DEFAULT_EASY_WORDS = ['easy', 'recovery', 'kevyt', 'palauttava'];
 const HARD_WORDS = /interval|tempo|repeat|threshold|rolling|progress|fartlek|race|kilpa|time\s*trial|\btt\b|\btest\b|testi|aika-ajo/i;
 const EASY_LABELS = ['RECOVERY', 'AEROBIC_BASE'];
 const isRun = a => /run|juoks|treadmill|trail/i.test(a.type || '');
+const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const wordsRe = words => words.length ? new RegExp(words.map(w => escapeRe(w.trim())).join('|'), 'i') : null;
 
 /**
  * An easy run: a run of at least 30 minutes with a heart rate, no hard-session words in the name,
- * named easy/recovery or classified by Garmin as Recovery/Aerobic base, and average HR below zone 4.
+ * one of the easy words in the name (settings: plan.easy_keywords) or classified by Garmin as
+ * Recovery/Aerobic base, and average HR below `hrLimit` (settings: plan.easy_max_hr, else zone 4).
  */
-export function isEasyRun(a, zone4Floor) {
+export function isEasyRun(a, { hrLimit = null, words = DEFAULT_EASY_WORDS } = {}) {
   if (!isRun(a) || !(a.sec >= 30 * 60) || !(a.hr > 0) || !(a.km > 0)) return false;
   if (HARD_WORDS.test(a.title || '')) return false;
-  if (!EASY_WORDS.test(a.title || '') && !EASY_LABELS.includes(a.teLabel)) return false;
-  if (zone4Floor && a.hr >= zone4Floor) return false;
+  const easy = wordsRe(words);
+  if (!(easy && easy.test(a.title || '')) && !EASY_LABELS.includes(a.teLabel)) return false;
+  if (hrLimit && a.hr >= hrLimit) return false;
   return true;
 }
 
@@ -99,8 +103,8 @@ export function isEasyRun(a, zone4Floor) {
 export const efficiency = a => (a.km * 1000 / (a.sec / 60)) / a.hr;
 
 /** Easy runs with their efficiency and the rolling average over the last EF_WINDOW runs */
-export function efficiencySeries(acts, zone4Floor) {
-  const runs = acts.filter(a => isEasyRun(a, zone4Floor)).map(a => ({ act: a, ef: efficiency(a) }));
+export function efficiencySeries(acts, rule) {
+  const runs = acts.filter(a => isEasyRun(a, rule)).map(a => ({ act: a, ef: efficiency(a) }));
   runs.forEach((r, i) => {
     const win = runs.slice(Math.max(0, i - EF_WINDOW + 1), i + 1);
     r.avg = win.reduce((s, x) => s + x.ef, 0) / win.length;
