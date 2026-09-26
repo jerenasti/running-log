@@ -6,6 +6,7 @@ import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { renderReview, initReview } from './review.js';
 import { renderLongRuns } from './longruns.js';
+import { weeklyAverage } from '../metrics.js';
 
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
@@ -150,9 +151,13 @@ export function renderTraining() {
   $('#source').textContent = 'Garmin Connect · ' + count + ' activities';
 
   const r = compute();
-  const weeks = r.weeks.length || 1;
+  // Average only over finished weeks since the Garmin data starts (not empty weeks before it)
+  const firstData = state.acts.reduce((m, a) => (!m || a.date < m ? a.date : m), null);
+  const avg = weeklyAverage(r.weeks, firstData);
   $('#stats').innerHTML =
-    kpi('Total distance', fmtKm(r.tot), 'km', fmtKm(r.tot / weeks) + ' km per week') +
+    kpi('Total distance', fmtKm(r.tot), 'km', avg.km != null
+      ? `${fmtKm(avg.km)} km per week (${avg.weeks} finished ${avg.weeks === 1 ? 'week' : 'weeks'} with data)`
+      : 'No finished week with data yet') +
     kpi(state.sport === 'run' ? 'Runs' : 'Activities', fmtInt(r.inRange.length)) +
     kpi('Average pace', fmtPace(r.pace), '/km') +
     kpi('Longest activity', r.longest ? fmtKm(r.longest.km) : DASH, 'km', r.longest ? fmtDate(r.longest.date) : '');

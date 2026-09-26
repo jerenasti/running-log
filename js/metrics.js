@@ -3,7 +3,7 @@
 // Activities come from state.acts: { date, type, title, km, sec, hr, speed, teLabel, zones }
 // where zones = seconds in heart rate zones 1–5 (Garmin data only, otherwise null).
 
-import { dayKey, startOfDay, addDays } from './dates.js';
+import { dayKey, startOfDay, addDays, mondayOf } from './dates.js';
 
 export const CTL_DAYS = 42;          // fitness: long-term average
 export const ATL_DAYS = 7;           // fatigue: short-term average
@@ -106,4 +106,20 @@ export function efficiencySeries(acts, zone4Floor) {
     r.avg = win.reduce((s, x) => s + x.ef, 0) / win.length;
   });
   return runs;
+}
+
+/* ---------- Weekly average ---------- */
+
+/**
+ * Average of weeks[].km over the weeks that have data: from the week of the first Garmin activity
+ * (`firstData`, any sport) on, and only finished weeks (a week in progress would pull it down).
+ * A rest week inside the data counts as 0 km. Returns { km, weeks } or { km: null, weeks: 0 }.
+ */
+export function weeklyAverage(weeks, firstData, today = new Date()) {
+  if (!firstData) return { km: null, weeks: 0 };
+  const start = mondayOf(firstData);
+  const counted = weeks.filter(w => w.mon >= start && addDays(w.mon, 7) <= startOfDay(today));
+  return counted.length
+    ? { km: counted.reduce((s, w) => s + w.km, 0) / counted.length, weeks: counted.length }
+    : { km: null, weeks: 0 };
 }

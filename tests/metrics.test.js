@@ -2,8 +2,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey } from '../js/dates.js';
-import { edwardsTrimp, loadModel, acwr, acwrSeries, isEasyRun, efficiency, efficiencySeries, CTL_DAYS, ATL_DAYS } from '../js/metrics.js';
+import { dayKey, addDays } from '../js/dates.js';
+import { edwardsTrimp, loadModel, acwr, acwrSeries, isEasyRun, efficiency, efficiencySeries, CTL_DAYS, ATL_DAYS, weeklyAverage } from '../js/metrics.js';
 import { TODAY, run, zonesForLoad } from './helpers.js';
 
 test('Edwards TRIMP: minutes in each zone × zone number', () => {
@@ -93,4 +93,18 @@ test('aerobic efficiency = metres per minute ÷ average HR, with a 5-run average
   assert.equal(series[0].avg, series[0].ef);   // first run: average of one
   const last5 = series.slice(-5).reduce((s, r) => s + r.ef, 0) / 5;
   assert.ok(Math.abs(series[5].avg - last5) < 1e-12);
+});
+
+test('weekly average: only finished weeks from the start of the data, rest weeks count as 0', () => {
+  // TODAY is Saturday 26 Sep 2026. Weeks (Mondays): 31 Aug, 7 Sep, 14 Sep, 21 Sep (in progress)
+  const mon = n => addDays(new Date(2026, 8, 21), -7 * n);
+  const weeks = [
+    { mon: mon(5), km: 0 }, { mon: mon(4), km: 0 },          // before the data starts
+    { mon: mon(3), km: 30 }, { mon: mon(2), km: 0 }, { mon: mon(1), km: 36 },
+    { mon: mon(0), km: 10 },                                 // this week, not finished
+  ];
+  const r = weeklyAverage(weeks, new Date(2026, 8, 2, 7, 30), TODAY);   // first activity on Wed 2 Sep
+  assert.deepEqual(r, { km: 22, weeks: 3 });
+  assert.deepEqual(weeklyAverage([{ mon: mon(0), km: 10 }], new Date(2026, 8, 22), TODAY), { km: null, weeks: 0 });
+  assert.deepEqual(weeklyAverage(weeks, null, TODAY), { km: null, weeks: 0 });
 });
