@@ -15,6 +15,7 @@ export const state = {
   fetchStatus: null, // data/fetch_status.json: how the last Garmin fetch went (not saved)
   content: null,   // content/meals.json and the races from the settings: { meals: { data | error }, races: { data | error } } (not saved)
   settings: null,  // settings.json through the app server (serve.py), or null if it isn't available (not saved)
+  firstRun: false, // settings.json doesn't exist yet: the first-run wizard is showing (not saved)
   theme: 'system', // appearance.theme, remembered so the page opens in the right theme before the settings load
 };
 

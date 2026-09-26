@@ -70,6 +70,25 @@ def test_invalid_settings_are_not_saved(server):
     assert not server.settings_path.exists()
 
 
+def test_validate_checks_without_saving(server):
+    bad = json.loads(json.dumps(EXAMPLE))
+    bad["goals"]["weekly_km"] = -5
+    assert call(server, "POST", "/api/validate", bad) == (200, {"errors": {"goals.weekly_km": "Enter a value between 0 and 500 km."}})
+    assert call(server, "POST", "/api/validate", EXAMPLE) == (200, {"errors": {}})
+    assert not server.settings_path.exists()
+
+
+def test_check_tokens_only_looks_for_the_file(server, tmp_path):
+    folder = tmp_path / "tokens"
+    folder.mkdir()
+    assert call(server, "POST", "/api/check-tokens", {"dir": str(folder)})[1]["found"] is False
+    (folder / "garmin_tokens.json").write_text('{"secret": "never sent back"}', encoding="utf-8")
+    code, body = call(server, "POST", "/api/check-tokens", {"dir": str(folder)})
+    assert code == 200 and body == {"found": True, "folder": str(folder)}, "the answer never contains the tokens"
+    assert call(server, "POST", "/api/check-tokens", {"dir": ""})[0] == 400
+    assert call(server, "POST", "/api/check-tokens", {"dir": str(folder)}, {"Origin": "https://evil.example"})[0] == 403
+
+
 def test_other_websites_and_hosts_are_refused(server):
     port = server.server_address[1]
     assert call(server, "POST", "/api/settings", EXAMPLE, {"Origin": "https://evil.example"})[0] == 403

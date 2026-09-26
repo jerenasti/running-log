@@ -120,9 +120,15 @@ function renderFood(ctx) {
     <ul class="meals">${list.map(({ m, slot }) => `<li><span class="slot">${slot}</span><div class="meal-body"><span class="meal-name">${esc(m.name)}</span></div></li>`).join('')}</ul>`;
 }
 
+// What to do when a countdown has nothing to count down to
+const cta = {
+  'Next test run': '<button type="button" class="btn small" data-open-settings="add-trial">Add a time trial</button>',
+  Marathon: '<button type="button" class="btn small" data-open-settings="add-main">Add your main race</button>',
+};
+
 function renderCountdown(goalRace, testRace) {
   const row = (label, r) => {
-    if (!r) return `<div class="countdown"><div class="kpi-label">${label}</div><p class="hint">No ${label.toLowerCase()} in Settings yet.</p></div>`;
+    if (!r) return `<div class="countdown"><div class="kpi-label">${label}</div>${cta[label]}</div>`;
     const d = daysUntil(r.day);
     return `<div class="countdown"><div class="kpi-label">${label}</div>
       <div class="kpi-value">${d}<span class="unit">days</span></div>
@@ -210,7 +216,7 @@ function renderForecasts(ctx, attention) {
   $('#ovForecastEmpty').hidden = has;
   if (!has) {
     $('#ovForecastEmpty').innerHTML = !goalRace
-      ? '<p class="hint">Add your marathon with a goal time in Settings to see the forecast.</p>'
+      ? '<div class="cta"><p class="hint">Add the race you are training for, with a goal time, to see the forecast.</p><button type="button" class="btn" data-open-settings="add-main">Add your main race</button></div>'
       : '<p class="hint">The forecast needs at least 5 VO2max values from Garmin.</p>';
     return;
   }
@@ -349,7 +355,7 @@ export function renderOverview() {
         (fs.error ? `<details><summary>Show details</summary><code>${esc(fs.error)}</code></details>` : '') });
   }
   if (fs?.ok && fs.warnings?.length) attention.push({ level: 'info', text: `The last Garmin fetch could not get: ${fs.warnings.map(esc).join(', ')}. Those parts may be out of date.`, tab: null });
-  if (state.fetchedAt && (Date.now() - state.fetchedAt) > 36 * 3600 * 1000) attention.push({ level: 'watch', text: `Garmin data is ${Math.floor((Date.now() - state.fetchedAt) / 86400000)} days old. Run start.bat or check data/fetch_data.log.`, tab: null });
+  if (state.fetchedAt && (Date.now() - state.fetchedAt) > 36 * 3600 * 1000) attention.push({ level: 'watch', text: `Garmin data is ${Math.floor((Date.now() - state.fetchedAt) / 86400000)} days old. Fetch it again, or check data/fetch_data.log if the morning fetch keeps failing.`, tab: 'settings', tabLabel: 'Settings' });
 
   // Training plan: missed sessions this week, and last week's distance jump
   const thisWeek = weekReview(new Date(), { acts: state.acts, schedule: meta.schedule || [], meta });

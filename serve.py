@@ -3,6 +3,7 @@
 Usage:
     uv run --no-project python serve.py            # http://localhost:8000
     uv run --no-project python serve.py --port 8080
+    uv run --no-project python serve.py --settings test-settings.json   # e.g. to try the first-run wizard
 
 Standard library only (no packages to install). Besides serving files like `python -m http.server`:
 - JavaScript and CSS are always sent with the correct MIME type (on Windows the registry can map
@@ -12,6 +13,8 @@ Standard library only (no packages to install). Besides serving files like `pyth
     GET  /api/settings   {settings, first_run}          settings.json, or the defaults if it is missing
     POST /api/settings   the whole settings object      → 200 {settings} or 400 {errors: {field: message}}
     GET  /api/status     {status, running, retry_after_s}  how the last Garmin fetch went
+    POST /api/validate   the whole settings object      → 200 {errors} without saving (first-run wizard steps)
+    POST /api/check-tokens {dir}                        → {found, folder}: is garmin_tokens.json there (never read)
     POST /api/refresh    starts fetch_garmin.py          → 202, 409 (already running), 429 (too soon)
 
 Safety: listens on 127.0.0.1 only; requests must name localhost as the host (blocks DNS rebinding),
@@ -144,18 +147,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not self.host_ok() or not self.post_ok():
             return self.send_json(403, {"error": "Only this app can change settings."})
         path = self.path.split("?")[0]
-        if path == "/api/settings":
+        if path in ("/api/settings", "/api/validate", "/api/check-tokens"):
             length = int(self.headers.get("Content-Length") or 0)
             if length > MAX_BODY:
-                return self.send_json(413, {"error": "Settings are too large."})
+                return self.send_json(413, {"error": "The request is too large."})
             try:
                 body = json.loads(self.rfile.read(length) or b"null")
             except ValueError:
                 return self.send_json(400, {"error": "The request was not valid JSON."})
             if not isinstance(body, dict):
-                return self.send_json(400, {"error": "Settings must be a JSON object."})
+                return self.send_json(400, {"error": "Send a JSON object."})
+        if path == "/api/check-tokens":
+            # Only checks that the file exists; the tokens are never read or sent anywhere
+            folder = body.get("dir")
+            if not isinstance(folder, str) or not folder.strip():
+                return self.send_json(400, {"error": "Enter a folder."})
+            resolved = Path(folder.strip()).expanduser()
+            return self.send_json(200, {"found": (resolved / "garmin_tokens.json").is_file(), "folder": str(resolved)})
+        if path in ("/api/settings", "/api/validate"):
             settings = app_settings.normalize(body)
             errors = app_settings.validate(settings)
+            if path == "/api/validate":
+                return self.send_json(200, {"errors": errors})
             if errors:
                 return self.send_json(400, {"errors": errors})
             app_settings.save(settings, self.server.settings_path)
@@ -181,11 +194,13 @@ def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refreshe
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--port", type=int, default=8000, help="port to listen on (default 8000)")
+    parser.add_argument("--settings", type=Path, default=app_settings.SETTINGS,
+                        help="settings file (default settings.json; another path is handy for trying the first-run wizard)")
     args = parser.parse_args()
 
-    if app_settings.upgrade_file():
-        print("Updated settings.json to the current format.")
-    with make_server(args.port) as httpd:
+    if app_settings.upgrade_file(args.settings):
+        print(f"Updated {args.settings.name} to the current format.")
+    with make_server(args.port, settings_path=args.settings) as httpd:
         print(f"Serving Running Log at http://localhost:{args.port}  (Ctrl+C to stop)")
         try:
             httpd.serve_forever()

@@ -39,7 +39,7 @@ export function renderLongRuns() {
   $('#longStats').innerHTML = `
     <div class="kpi"><div class="kpi-label">Longest, last 4 weeks</div><div class="kpi-value">${fmtKm(outlook ? outlook.current : Math.max(...weeks.map(w => w.longest)))}<span class="unit">km</span></div><div class="kpi-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-label">Peak target</div><div class="kpi-value">${LONG_RUN.peakKm[0]}–${LONG_RUN.peakKm[1]}<span class="unit">km</span></div>
-      <div class="kpi-sub">${outlook ? 'by ' + fmtDate(outlook.peakBy) : 'Add your marathon in Settings'}</div></div>
+      <div class="kpi-sub">${outlook ? 'by ' + fmtDate(outlook.peakBy) : '<button type="button" class="link-btn" data-open-settings="add-main">Add your main race</button>'}</div></div>
     <div class="kpi"><div class="kpi-label">Needed build-up</div><div class="kpi-value">${outlook?.perWeek != null ? '+' + fmtKm(outlook.perWeek) : '–'}<span class="unit">km / wk</span></div>
       <div class="kpi-sub">${outlook ? `${Math.round(outlook.weeksToPeak)} weeks to the peak` : ''}</div></div>
     <div class="kpi"><div class="kpi-label">Long run share, last week</div><div class="kpi-value">${lastFull?.share != null ? Math.round(lastFull.share * 100) : '–'}<span class="unit">%</span></div>

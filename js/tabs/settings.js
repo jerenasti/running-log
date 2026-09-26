@@ -1,9 +1,10 @@
 // Settings page (gear icon in the header): goals, training plan, body and heart rate, privacy, data, appearance.
 // The form edits a draft; Save sends the whole settings object to the app server, which validates it
 // (settings.py) and answers with a message per invalid field.
+// The first-run wizard (#welcome, when settings.json doesn't exist yet) uses the same fields and checks.
 
 import { state } from '../state.js';
-import { saveSettings } from '../settings.js';
+import { saveSettings, validateSettings, checkTokens } from '../settings.js';
 import { fmtDate, fmtTime, fmtKm, esc } from '../format.js';
 import { parseDate } from '../parse.js';
 
@@ -19,6 +20,15 @@ let errors = {};         // { 'goals.main_race.date': 'Use the format …' } fro
 let message = null;      // { kind: 'ok' | 'error', text } after saving
 let refresh = { busy: false, text: '' };
 let hooks = { onSaved: () => {}, onRefreshed: async () => {} };
+let pendingAction = null; // an action to run when the settings page opens (from an empty state's button)
+let wizardStep = 0;       // first-run wizard: 0 Garmin, 1 main race, 2 plan and weekly goal, 3 done
+let tokenCheck = null;    // { found, folder } from /api/check-tokens
+let tokenWarned = false;  // the "no tokens in this folder" warning has been shown for this folder
+
+const onWelcome = () => location.hash === '#welcome';
+const activeForm = () => onWelcome() ? $('#welcomeForm') : $('#settingsForm');
+/** Redraw whichever form is showing */
+const rerender = () => onWelcome() ? renderWelcome() : renderSettings();
 
 /* ---------- Reading and writing values by path ("goals.time_trials.0.name") ---------- */
 function setPath(obj, path, value) {
@@ -41,7 +51,7 @@ function readValue(el) {
 /** The draft with every value currently in the form */
 function collect() {
   const d = clone(draft);
-  for (const el of $('#settingsForm').querySelectorAll('[name]')) {
+  for (const el of activeForm().querySelectorAll('[name]')) {
     if (el.type === 'radio' && !el.checked) continue;
     setPath(d, el.name, readValue(el));
   }
@@ -250,6 +260,14 @@ export function renderSettings() {
   // Errors for things without their own input (e.g. a whole list) go into the summary
   const extra = Object.entries(errors).filter(([path]) => !document.getElementById(idOf(path)) && !form.querySelector(`[name="${path}"]`));
   if (extra.length && $('#errorSummary')) $('#errorSummary').insertAdjacentHTML('beforeend', `<ul>${extra.map(([, m]) => `<li>${esc(m)}</li>`).join('')}</ul>`);
+
+  // An empty state's button asked for something here, e.g. "Add a time trial"
+  if (pendingAction) {
+    const action = pendingAction;
+    pendingAction = null;
+    if (action === 'refresh') { $('#settingsForm [data-action="refresh"]')?.scrollIntoView({ block: 'center' }); startRefresh(); }
+    else runAction(action);
+  }
 }
 
 async function save() {
@@ -272,21 +290,21 @@ async function save() {
 
 async function startRefresh() {
   refresh = { busy: true, text: 'Starting…' };
-  renderSettings();
+  rerender();
   let res, body;
   try {
     res = await fetch('api/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     body = await res.json();
   } catch (e) {
     refresh = { busy: false, text: 'Could not reach the app server.' };
-    return renderSettings();
+    return rerender();
   }
   if (res.status !== 202) {
     refresh = { busy: false, text: body.error || `The fetch could not start (HTTP ${res.status}).` };
-    return renderSettings();
+    return rerender();
   }
   refresh.text = 'Fetching from Garmin. This usually takes under a minute.';
-  renderSettings();
+  rerender();
   // Ask the local app server (not Garmin) every 2 s whether the fetch has finished; give up after 10 min
   for (let i = 0; i < 300; i++) {
     await sleep(2000);
@@ -297,71 +315,203 @@ async function startRefresh() {
   }
   await hooks.onRefreshed();
   const fs = state.fetchStatus;
-  refresh = { busy: false, text: fs?.ok ? 'Done: the data is up to date.' : `The fetch failed: ${fs?.message || 'see data/refresh.log'}` };
-  renderSettings();
+  refresh = { busy: false, done: !!fs?.ok, text: fs?.ok ? 'Done: the data is up to date.' : `The fetch failed: ${fs?.message || 'see data/refresh.log'}` };
+  rerender();
 }
 
+/** Buttons inside the forms: add/remove rows, discard, refresh */
+function runAction(action, i) {
+  if (action === 'refresh') return startRefresh();
+  if (action === 'discard') {
+    draft = clone(state.settings); dirty = false; errors = {}; message = null;
+    return renderSettings();
+  }
+  draft = collect();
+  const g = draft.goals;
+  if (action === 'add-main') g.main_race = g.main_race || { name: '', date: '', distance_km: 42.195, goal: '' };
+  if (action === 'remove-main') g.main_race = null;
+  if (action === 'add-trial') g.time_trials.push({ name: '', date: '', distance_km: null, result: '' });
+  if (action === 'remove-trial') g.time_trials.splice(i, 1);
+  if (action === 'add-zone') draft.privacy.zones.push({ name: '', lat: null, lon: null, radius_m: 400 });
+  if (action === 'remove-zone') draft.privacy.zones.splice(i, 1);
+  dirty = true; message = null;
+  errors = {};   // indexes may have moved; the next save checks everything again
+  renderSettings();
+  // Put the cursor in the first field of what was just added
+  if (action.startsWith('add-')) {
+    const sel = { 'add-main': 'goals.main_race.name', 'add-trial': `goals.time_trials.${g.time_trials.length - 1}.name`,
+      'add-zone': `privacy.zones.${draft.privacy.zones.length - 1}.name` }[action];
+    const el = document.getElementById(idOf(sel));
+    el?.scrollIntoView({ block: 'center' });
+    el?.focus();
+  }
+}
+
+/* ---------- First-run wizard (#welcome) ---------- */
+const STEPS = ['Garmin', 'Main race', 'Training', 'Done'];
+// Which settings each step asks for; only their errors stop the step
+const STEP_FIELDS = [['data.'], ['goals.main_race'], ['plan.', 'goals.weekly_km']];
+const BLANK_RACE = () => ({ name: '', date: '', distance_km: 42.195, goal: '' });
+
+function stepsBar() {
+  return `<ol class="steps">${STEPS.map((name, i) => `<li${i === wizardStep ? ' aria-current="step"' : ''}${i < wizardStep ? ' class="done"' : ''}>
+    <span class="num">${i + 1}</span> ${name}</li>`).join('')}</ol>`;
+}
+
+function tokenLine() {
+  if (!tokenCheck) return '';
+  return tokenCheck.found
+    ? `<p class="data-line ok-text">Found garmin_tokens.json in <code>${esc(tokenCheck.folder)}</code>.</p>`
+    : `<p class="data-line warn-text">No garmin_tokens.json in <code>${esc(tokenCheck.folder)}</code>. Sign in once with the garmin-mcp-auth tool, or fix the folder. You can also continue and fix it later in Settings.</p>`;
+}
+
+function welcomeStep() {
+  const d = draft;
+  if (wizardStep === 0) return `
+    <h2 id="welcomeHeading" tabindex="-1">Welcome to Running Log</h2>
+    <p class="lead">Three short steps and the app is ready. Everything can be changed later in Settings (the gear icon).</p>
+    <div class="fields one">${text('Garmin token folder', 'data.garmin_tokens_dir', d.data.garmin_tokens_dir, { mono: true,
+      hint: 'The folder with garmin_tokens.json. Create it by signing in once with the garmin-mcp-auth tool. The app never asks for your Garmin password.' })}</div>
+    ${tokenLine()}`;
+  if (wizardStep === 1) {
+    const r = d.goals.main_race;
+    return `
+    <h2 id="welcomeHeading" tabindex="-1">Your main race</h2>
+    <p class="lead">The race you are training for. The marathon forecast, countdown and long-run plan are built around it.</p>
+    <div class="fields">
+      ${text('Name', 'goals.main_race.name', r.name, { placeholder: 'e.g. City Marathon' })}
+      ${dateInput('Race day', 'goals.main_race.date', r.date)}
+      ${num('Distance', 'goals.main_race.distance_km', r.distance_km, { unit: 'km', min: 0.1, max: 300, hint: 'Marathon 42.195, half 21.0975' })}
+      ${timeInput('Goal time', 'goals.main_race.goal', r.goal, 'h:mm:ss, e.g. 3:30:00')}
+    </div>`;
+  }
+  if (wizardStep === 2) return `
+    <h2 id="welcomeHeading" tabindex="-1">Training plan and weekly goal</h2>
+    <p class="lead">Where your planned workouts are, and how far you want to run each week.</p>
+    ${choice('Plan source', 'plan.source', d.plan.source, [['garmin', 'Garmin calendar'], ['none', 'No plan']],
+      'Garmin calendar: workouts scheduled in Garmin Connect, e.g. synced from Runna.')}
+    <div class="fields">${num('Weekly goal', 'goals.weekly_km', d.goals.weekly_km || '', { unit: 'km', step: 1, min: 0, max: 500, empty: '0', hint: 'Empty or 0 = no goal' })}</div>`;
+  const hasData = state.acts.length > 0;
+  return `
+    <h2 id="welcomeHeading" tabindex="-1">All set</h2>
+    <p class="lead">Your settings are saved in settings.json. ${hasData ? 'Your Garmin data is already here.' : 'Next, fetch your Garmin data. After that it can be fetched automatically every morning.'}</p>
+    ${hasData || refresh.done ? '' : `<div class="row-actions">
+      <button type="button" class="btn" data-action="refresh"${refresh.busy ? ' disabled' : ''}>${refresh.busy ? 'Fetching…' : 'Fetch my Garmin data now'}</button>
+      <span class="hint" role="status">${esc(refresh.text)}</span></div>`}
+    ${refresh.done ? `<p class="data-line ok-text" role="status">${esc(refresh.text)}</p>` : ''}`;
+}
+
+export function renderWelcome() {
+  const form = $('#welcomeForm');
+  if (!state.settings) { form.innerHTML = '<div class="card"><p class="hint">Loading…</p></div>'; return; }
+  if (!draft) { draft = clone(state.settings); draftBase = state.settings; }
+  if (wizardStep === 1 && !draft.goals.main_race) draft.goals.main_race = BLANK_RACE();
+  const count = Object.keys(errors).length;
+  const back = wizardStep > 0 && wizardStep < 3 ? '<button type="button" class="btn" data-wizard="back">Back</button>' : '';
+  const skip = wizardStep === 1 ? '<button type="button" class="btn" data-wizard="skip">I have no race yet</button>' : '';
+  const next = wizardStep < 2 ? `<button type="submit" class="btn primary">${wizardStep === 0 && tokenWarned ? 'Continue anyway' : 'Next'}</button>`
+    : wizardStep === 2 ? '<button type="submit" class="btn primary">Save and finish</button>'
+    : '<a class="btn primary" href="#overview">Go to the overview</a>';
+  form.innerHTML = `
+    ${stepsBar()}
+    <section class="card wizard">
+      ${count ? `<div class="notice error-summary" role="alert" id="errorSummary" tabindex="-1">Check the highlighted ${count === 1 ? 'field' : `fields (${count})`}.</div>` : ''}
+      ${message?.kind === 'error' ? `<p class="data-line warn-text" role="alert">${esc(message.text)}</p>` : ''}
+      ${welcomeStep()}
+      <div class="row-actions wizard-actions">${back}${skip}${next}</div>
+    </section>`;
+}
+
+async function wizardNext() {
+  draft = collect();
+  message = null;
+  if (wizardStep === 0) tokenCheck = await checkTokens(draft.data.garmin_tokens_dir);
+  const all = (await validateSettings(draft)).errors || {};
+  errors = Object.fromEntries(Object.entries(all).filter(([path]) => STEP_FIELDS[wizardStep].some(p => path.startsWith(p))));
+  if (!Object.keys(errors).length && wizardStep === 2) {
+    const r = await saveSettings(draft);
+    if (r.settings) {
+      draft = clone(r.settings); dirty = false;
+      hooks.onSaved(r.settings);
+      draftBase = state.settings;
+    } else {
+      errors = r.errors || {};
+      message = { kind: 'error', text: r.error || 'Not saved: check the earlier steps.' };
+    }
+  }
+  // Missing tokens don't stop the wizard, but the warning is shown once before moving on
+  const warnFirst = wizardStep === 0 && tokenCheck && !tokenCheck.found && !tokenWarned;
+  if (warnFirst) tokenWarned = true;
+  if (!Object.keys(errors).length && !message && !warnFirst) wizardStep++;
+  renderWelcome();
+  ($('#welcomeForm [aria-invalid="true"]') || $('#welcomeHeading'))?.focus();
+}
+
+function wizardMove(kind) {
+  draft = collect();
+  errors = {}; message = null;
+  if (kind === 'skip') { draft.goals.main_race = null; wizardStep = 2; }
+  if (kind === 'back') {
+    wizardStep = Math.max(0, wizardStep - 1);
+    // Back from the plan step to a skipped race: show the empty race form again
+    if (wizardStep === 1 && !draft.goals.main_race) draft.goals.main_race = BLANK_RACE();
+  }
+  renderWelcome();
+  $('#welcomeHeading')?.focus();
+}
+
+/* ---------- Events ---------- */
 export function initSettings({ onSaved, onRefreshed }) {
   hooks = { onSaved, onRefreshed };
-  const form = $('#settingsForm');
 
-  form.addEventListener('submit', e => { e.preventDefault(); save(); });
+  for (const form of [$('#settingsForm'), $('#welcomeForm')]) {
+    form.addEventListener('submit', e => { e.preventDefault(); if (form.id === 'welcomeForm') wizardNext(); else save(); });
 
-  form.addEventListener('input', e => {
-    if (!e.target.name) return;
-    dirty = true;
-    message = null;
-    draft = collect();
-    // An edited field is no longer marked invalid
-    if (errors[e.target.name]) {
-      delete errors[e.target.name];
-      e.target.removeAttribute('aria-invalid');
-      e.target.closest('.field')?.classList.remove('invalid');
-      e.target.closest('.field')?.querySelector('.field-error')?.remove();
-    }
-    const status = form.querySelector('.form-message');
-    if (status) { status.className = 'form-message'; status.textContent = 'Unsaved changes'; }
-    const discard = form.querySelector('[data-action="discard"]');
-    if (discard) discard.disabled = false;
-  });
+    form.addEventListener('input', e => {
+      if (!e.target.name) return;
+      dirty = true;
+      message = null;
+      draft = collect();
+      if (e.target.name === 'data.garmin_tokens_dir') { tokenCheck = null; tokenWarned = false; }
+      // An edited field is no longer marked invalid
+      if (errors[e.target.name]) {
+        delete errors[e.target.name];
+        e.target.removeAttribute('aria-invalid');
+        e.target.closest('.field')?.classList.remove('invalid');
+        e.target.closest('.field')?.querySelector('.field-error')?.remove();
+      }
+      const status = form.querySelector('.form-message');
+      if (status) { status.className = 'form-message'; status.textContent = 'Unsaved changes'; }
+      const discard = form.querySelector('[data-action="discard"]');
+      if (discard) discard.disabled = false;
+    });
 
-  // Garmin / manual: the manual number is editable only when "Enter myself" is chosen
-  form.addEventListener('change', e => {
-    if (e.target.type !== 'radio') return;
-    for (const el of form.querySelectorAll(`[data-enabled-by="${e.target.name}"]`)) el.disabled = e.target.value !== el.dataset.enabledValue;
-  });
+    // Garmin / manual: the manual number is editable only when "Enter myself" is chosen
+    form.addEventListener('change', e => {
+      if (e.target.type !== 'radio') return;
+      for (const el of form.querySelectorAll(`[data-enabled-by="${e.target.name}"]`)) el.disabled = e.target.value !== el.dataset.enabledValue;
+    });
 
-  form.addEventListener('click', e => {
-    const b = e.target.closest('[data-action]');
-    if (!b) return;
-    const action = b.dataset.action, i = +b.dataset.index;
-    if (action === 'refresh') return startRefresh();
-    if (action === 'discard') {
-      draft = clone(state.settings); dirty = false; errors = {}; message = null;
-      return renderSettings();
-    }
-    draft = collect();
-    const g = draft.goals;
-    if (action === 'add-main') g.main_race = { name: '', date: '', distance_km: 42.195, goal: '' };
-    if (action === 'remove-main') g.main_race = null;
-    if (action === 'add-trial') g.time_trials.push({ name: '', date: '', distance_km: null, result: '' });
-    if (action === 'remove-trial') g.time_trials.splice(i, 1);
-    if (action === 'add-zone') draft.privacy.zones.push({ name: '', lat: null, lon: null, radius_m: 400 });
-    if (action === 'remove-zone') draft.privacy.zones.splice(i, 1);
-    dirty = true; message = null;
-    errors = {};   // indexes may have moved; the next save checks everything again
-    renderSettings();
-    // Put the cursor in the first field of what was just added
-    if (action.startsWith('add-')) {
-      const sel = { 'add-main': 'goals.main_race.name', 'add-trial': `goals.time_trials.${g.time_trials.length - 1}.name`,
-        'add-zone': `privacy.zones.${draft.privacy.zones.length - 1}.name` }[action];
-      document.getElementById(idOf(sel))?.focus();
-    }
-  });
+    form.addEventListener('click', e => {
+      const w = e.target.closest('[data-wizard]');
+      if (w) return wizardMove(w.dataset.wizard);
+      const b = e.target.closest('[data-action]');
+      if (b) runAction(b.dataset.action, +b.dataset.index);
+    });
+  }
 }
 
-/** Open the settings page on a section, e.g. from an empty state ("Add a time trial") */
+/** Show the settings page, doing `action` there first (e.g. "add-trial" from an empty state's button) */
 export function openSettings(action) {
-  location.hash = '#settings';
-  if (action) setTimeout(() => $(`#settingsForm [data-action="${action}"]`)?.click(), 0);
+  pendingAction = action || null;
+  if (location.hash === '#settings') { renderSettings(); return; }
+  location.hash = '#settings';      // nav.js shows the page, then app.js calls renderSettings()
+}
+
+/** Start the first-run wizard from the beginning */
+export function startWelcome() {
+  wizardStep = 0; errors = {}; message = null; tokenCheck = null; tokenWarned = false;
+  draft = state.settings ? clone(state.settings) : null;
+  draftBase = state.settings;
+  location.hash = '#welcome';
 }

@@ -377,3 +377,22 @@ h3.mini { margin: 16px 0 6px; font-size: .85rem; font-weight: 600; }
 .form-message.error { color: var(--error); font-weight: 500; }
 .error-summary { border-color: var(--border); border-left-color: var(--error); }
 .error-summary ul { margin: 6px 0 0; padding-left: 1.2rem; }
+.btn.small { font-size: .8rem; padding: .35rem .7rem; margin-top: 6px; }
+.link-btn { font: inherit; color: var(--text); background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.empty .btn { margin: 4px 0 12px; }
+
+/* ---------- First-run wizard ---------- */
+.welcome { max-width: 720px; margin: 8px auto 0; }
+.wizard h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.wizard .lead { margin: 0 0 16px; color: var(--text-2); font-size: .92rem; max-width: 60ch; }
+.wizard-actions { margin-top: 20px; }
+.wizard-actions .btn.primary { margin-left: auto; }
+.fields.one { grid-template-columns: minmax(0, 1fr); }
+.ok-text { color: var(--text); }
+.ok-text::before { content: ''; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: var(--status-ok); margin-right: .45rem; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0 0 var(--gap); padding: 0; font-size: .82rem; color: var(--text-3); }
+.steps li { display: inline-flex; align-items: center; gap: .4rem; }
+.steps .num { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 1px solid var(--border-strong); font-size: .75rem; }
+.steps li[aria-current="step"] { color: var(--text); font-weight: 600; }
+.steps li[aria-current="step"] .num { background: var(--text); color: var(--bg); border-color: var(--text); }
+.steps li.done { color: var(--text-2); }

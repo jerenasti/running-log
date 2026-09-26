@@ -11,7 +11,7 @@ import { renderFitness } from './tabs/fitness.js';
 import { renderRecovery } from './tabs/recovery.js';
 import { renderNutrition } from './tabs/nutrition.js';
 import { renderOverview } from './tabs/overview.js';
-import { initSettings, renderSettings } from './tabs/settings.js';
+import { initSettings, renderSettings, renderWelcome, openSettings, startWelcome } from './tabs/settings.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
@@ -41,6 +41,7 @@ function render() {
   if (currentTab === 'nutrition') renderNutrition();
   if (currentTab === 'overview') renderOverview();
   if (currentTab === 'settings') renderSettings();
+  if (currentTab === 'welcome') renderWelcome();
 }
 
 /** Light / dark / same as the system (appearance.theme); tokens.css reads <html data-theme> */
@@ -85,7 +86,7 @@ applyTheme(state.theme);
 state.meta = applySettings(state.garminMeta, null);
 initTraining();
 initSettings({
-  onSaved: useSettings,
+  onSaved: settings => { state.firstRun = false; useSettings(settings); },
   // After "Refresh now": reload the data and the fetch status
   onRefreshed: async () => {
     try { await loadGarmin(); notice(''); } catch (err) { notice(err.message); }
@@ -95,12 +96,26 @@ initSettings({
 });
 initTabs(name => { currentTab = name; render(); });
 
+// Empty states offer a button instead of a dead end, e.g. <button data-open-settings="add-trial">
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-open-settings]');
+  if (b) { e.preventDefault(); openSettings(b.dataset.openSettings); }
+});
+
 // Meal ideas and the settings (goals, races) load alongside the Garmin data
 Promise.all([fetchContent('meals.json'), loadSettings(), fetchStatus()]).then(async ([meals, loaded, status]) => {
   state.content = { meals, races: loaded.error ? { error: loaded.error } : null };
   state.fetchStatus = status;
   if (!loaded.settings) return render();
   let settings = loaded.settings;
+  state.firstRun = loaded.firstRun;
+  if (loaded.firstRun) {
+    // No settings.json yet: the wizard asks for the essentials (the data still loads behind it)
+    state.settings = settings;
+    state.meta = applySettings(state.garminMeta, settings);
+    startWelcome();
+    return render();
+  }
   if (!settings.goals.weekly_km && state.goal > 0 && !loaded.firstRun) {
     // A weekly goal saved in this browser by an older version moves into settings.json once
     const saved = await saveSettings({ ...settings, goals: { ...settings.goals, weekly_km: state.goal } });

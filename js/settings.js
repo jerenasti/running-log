@@ -26,6 +26,30 @@ export async function saveSettings(settings) {
   }
 }
 
+/** Check settings without saving them: { errors: { field: message } } (empty when fine) */
+export async function validateSettings(settings) {
+  try {
+    const res = await fetch('api/validate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings),
+    });
+    return await res.json();
+  } catch (e) {
+    return { errors: {} };   // the save at the end still checks everything
+  }
+}
+
+/** Is garmin_tokens.json in this folder? { found, folder }. The server only checks that the file exists. */
+export async function checkTokens(dir) {
+  try {
+    const res = await fetch('api/check-tokens', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dir }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Garmin's own zone floors as shares of max HR, used when Garmin gave no zones (HR_MAX method)
 const DEFAULT_ZONE_SHARES = [0.5, 0.6, 0.7, 0.8, 0.9];
 

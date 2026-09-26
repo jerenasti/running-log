@@ -46,7 +46,8 @@
   <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden>
     <div class="card empty" id="ovNoData" hidden>
       <h2>No Garmin data yet</h2>
-      <p class="hint">Start the app with start.bat to fetch your data from Garmin Connect.</p>
+      <p class="hint">Fetch your activities, sleep and heart rate from Garmin Connect with your saved sign-in.</p>
+      <button type="button" class="btn" data-open-settings="refresh">Fetch my Garmin data</button>
     </div>
 
     <div id="ovDash" hidden>
@@ -101,13 +102,9 @@
 
     <div class="card empty" id="empty">
       <h2>No activities loaded</h2>
-      <p class="hint">Your activities are fetched from Garmin Connect with your saved sign-in:</p>
-      <ol>
-        <li>Start the app with start.bat. It fetches fresh data before opening the browser.</li>
-        <li>Or run <code>uv run fetch_garmin.py</code> in the project folder and reload this page.</li>
-        <li>After that, the scheduled task fetches new data every morning.</li>
-      </ol>
-      <p class="hint">If fetching fails, see <code>data/fetch_data.log</code>. Expired sign-in tokens are renewed with the garmin-mcp-auth tool.</p>
+      <p class="hint">Your activities are fetched from Garmin Connect with your saved sign-in. After the first fetch, the scheduled task can fetch new data every morning.</p>
+      <button type="button" class="btn" data-open-settings="refresh">Fetch my Garmin data</button>
+      <p class="hint">If fetching fails, see <code>data/refresh.log</code>. Expired sign-in tokens are renewed with the garmin-mcp-auth tool.</p>
     </div>
 
     <div id="dash" hidden>
@@ -209,7 +206,8 @@
 
     <div class="card empty" id="fitNoData" hidden>
       <h2>Garmin heart rate data needed</h2>
-      <p class="hint">Training load and aerobic efficiency are calculated from the time you spend in each heart rate zone, which comes from Garmin. Fetch your data with start.bat. Activities recorded without a heart rate can't be used.</p>
+      <p class="hint">Training load and aerobic efficiency are calculated from the time you spend in each heart rate zone, which comes from Garmin. Activities recorded without a heart rate can't be used.</p>
+      <button type="button" class="btn" data-open-settings="refresh">Fetch my Garmin data</button>
     </div>
 
     <div id="fitDash" hidden>
@@ -269,7 +267,8 @@
 
     <div class="card empty" id="recNoData" hidden>
       <h2>No recovery data yet</h2>
-      <p class="hint">HRV, sleep and Body Battery come from Garmin. Fetch your data with start.bat. Your watch needs to be worn overnight and synced.</p>
+      <p class="hint">HRV, sleep and Body Battery come from Garmin. Your watch needs to be worn overnight and synced.</p>
+      <button type="button" class="btn" data-open-settings="refresh">Fetch my Garmin data</button>
     </div>
 
     <div id="recDash" hidden>
@@ -331,7 +330,8 @@
   <section id="panel-nutrition" role="tabpanel" aria-labelledby="tab-nutrition" hidden>
     <div class="card empty" id="nutNoData" hidden>
       <h2>Garmin data needed</h2>
-      <p class="hint">Nutrition advice is based on your workouts and your Garmin training calendar. Fetch your data with start.bat.</p>
+      <p class="hint">Nutrition advice is based on your workouts and your Garmin training calendar.</p>
+      <button type="button" class="btn" data-open-settings="refresh">Fetch my Garmin data</button>
     </div>
 
     <div id="nutDash" hidden>
@@ -366,6 +366,11 @@
         </section>
       </div>
     </div>
+  </section>
+
+  <!-- ===================== First-run wizard (when settings.json doesn't exist yet) ===================== -->
+  <section id="panel-welcome" data-page="welcome" aria-label="First-time setup" hidden>
+    <form id="welcomeForm" class="welcome" novalidate></form>
   </section>
 
   <!-- ===================== Settings (opened from the gear icon, not a tab) ===================== -->

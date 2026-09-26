@@ -82,7 +82,7 @@ function renderBasis(kg, weight) {
     <tr><td>${DAY_TARGETS[k].label}${k === 'rest' ? ' / easy' : ''}</td><td class="num">${perKg(DAY_TARGETS[k].carbs)}</td><td class="num">${fmtGrams(grams(kg, DAY_TARGETS[k].carbs))}</td></tr>`).join('');
   $('#basisCard').innerHTML = `
     <div class="card-head"><div><h2>Your daily targets</h2>
-      <p class="sub">${weight ? `Body weight ${fmtKm(weight.kg)} kg (${weight.source === 'manual' ? 'entered in Settings' : `Garmin weigh-in ${fmtDate(new Date(weight.date + 'T00:00'))}`}) × g/kg.` : 'No weight yet, so targets are shown per kg only. Add a Garmin weigh-in or enter your weight in Settings.'}</p></div></div>
+      <p class="sub">${weight ? `Body weight ${fmtKm(weight.kg)} kg (${weight.source === 'manual' ? 'entered in Settings' : `Garmin weigh-in ${fmtDate(new Date(weight.date + 'T00:00'))}`}) × g/kg.` : 'No weight yet, so targets are shown per kg only. Add a Garmin weigh-in or <a href="#settings">enter your weight in Settings</a>.'}</p></div></div>
     <div class="table-wrap"><table class="rules targets">
       <thead><tr><th>Day</th><th class="num">Carbs</th><th class="num">Per day</th></tr></thead>
       <tbody>${rows}
