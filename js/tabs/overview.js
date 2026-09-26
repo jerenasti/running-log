@@ -139,12 +139,13 @@ function renderCountdown(goalRace, testRace) {
 
 /* ---------- Part 2 and 3: forecasts ---------- */
 // Dashed vertical line with a label, e.g. at race day
-const markerPlugin = (index, color, label, font) => ({
+// The line uses the accent fill; the label the accent's text color (small text needs 4.5:1)
+const markerPlugin = (index, color, label, font, textColor = color) => ({
   id: 'marker',
   afterDatasetsDraw(chart) {
     if (index < 0) return;
     const x = chart.scales.x.getPixelForValue(index), { top, bottom } = chart.chartArea, c = chart.ctx;
-    c.save(); c.strokeStyle = color; c.fillStyle = color; c.setLineDash([3, 3]); c.lineWidth = 1;
+    c.save(); c.strokeStyle = color; c.fillStyle = textColor; c.setLineDash([3, 3]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(x, top); c.lineTo(x, bottom); c.stroke();
     c.font = `11px ${font}`; c.textAlign = 'right'; c.fillText(label, x - 4, top + 11); c.restore();
   },
@@ -176,7 +177,7 @@ function drawVo2(fc) {
           label: c => c.dataset.label === '80% range' ? `80% range: ${fmtDec1(s[c.dataIndex].lo)}–${fmtDec1(s[c.dataIndex].hi)}` : `${c.dataset.label}: ${fmtDec1(c.parsed.y)}` } } },
       scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTicks() } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
-    plugins: [markerPlugin(s.length - 1, t.accent, 'Race day', t.sans)],
+    plugins: [markerPlugin(s.length - 1, t.accent, 'Race day', t.sans, t.accentText)],
   });
 }
 
@@ -205,7 +206,7 @@ function drawMarathon(mf, garmin, goalSec, results) {
       scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTicks() } },
         // Ticks every 15 minutes, shown as h:mm
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, stepSize: 15 * 60, callback: v => fmtDuration(v).replace(/:\d\d$/, '') } } } },
-    plugins: [markerPlugin(mf.length - 1, t.accent, 'Race day', t.sans)],
+    plugins: [markerPlugin(mf.length - 1, t.accent, 'Race day', t.sans, t.accentText)],
   });
 }
 

@@ -59,6 +59,24 @@ def test_fills_and_controls_meet_non_text_contrast(theme, fill):
         assert contrast(t[fill], t[bg]) >= 3, f"{theme}: {fill} on {bg} is {contrast(t[fill], t[bg]):.2f}"
 
 
+def soft(css_block: str, surface: str) -> str:
+    """--accent-soft (an rgba) painted on a surface, as a hex color"""
+    r, g, b, a = re.search(r"--accent-soft:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)", css_block).groups()
+    base = [int(surface[i:i + 2], 16) for i in (1, 3, 5)]
+    mixed = [round(int(c) * float(a) + s * (1 - float(a))) for c, s in zip((r, g, b), base)]
+    return "#" + "".join(f"{c:02X}" for c in mixed)
+
+
+@pytest.mark.parametrize("theme, start", [("light", ":root {"), ("dark", ':root[data-theme="dark"] {')])
+def test_accent_text_on_accent_soft_background(theme, start):
+    """Badges: accent text on the soft accent background"""
+    i = CSS.index(start)
+    body = CSS[i: CSS.index("}", i)]
+    t = THEMES[theme]
+    bg = soft(body, t["--surface"])
+    assert contrast(t["--accent-text"], bg) >= 4.5, f"{theme}: {contrast(t['--accent-text'], bg):.2f}"
+
+
 @pytest.mark.parametrize("theme", THEMES)
 def test_chart_tooltips_are_readable(theme):
     t = THEMES[theme]

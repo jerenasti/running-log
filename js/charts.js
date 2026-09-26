@@ -10,7 +10,8 @@ const cssVar = name => getComputedStyle(document.documentElement).getPropertyVal
 export function theme() {
   return {
     text: cssVar('--text'), text3: cssVar('--text-3'), bg: cssVar('--bg'),
-    accent: cssVar('--accent'), bar: cssVar('--chart-bar'), line: cssVar('--chart-line'), grid: cssVar('--chart-grid'),
+    accent: cssVar('--accent'), accentText: cssVar('--accent-text'),
+    tooltipBg: cssVar('--chart-tooltip-bg'), tooltipText: cssVar('--chart-tooltip-text'), tooltipMuted: cssVar('--chart-tooltip-muted'), bar: cssVar('--chart-bar'), line: cssVar('--chart-line'), grid: cssVar('--chart-grid'),
     warn: cssVar('--status-warn'), watch: cssVar('--status-watch'),
     sans: cssVar('--font-sans'), num: cssVar('--font-num'),
   };
@@ -26,7 +27,8 @@ export function baseOptions(t, titleFn) {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: t.text, titleColor: t.bg, bodyColor: t.bg,
+        // Every tooltip text has a color from the tokens (Chart.js would draw the footer white)
+        backgroundColor: t.tooltipBg, titleColor: t.tooltipText, bodyColor: t.tooltipText, footerColor: t.tooltipMuted,
         padding: 10, displayColors: false, cornerRadius: 6,
         titleFont: { family: t.sans, weight: '500' }, bodyFont: { family: t.num },
         callbacks: { title: titleFn },
