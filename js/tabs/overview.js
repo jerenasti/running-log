@@ -122,7 +122,7 @@ function renderFood(ctx) {
 
 function renderCountdown(goalRace, testRace) {
   const row = (label, r) => {
-    if (!r) return `<div class="countdown"><div class="kpi-label">${label}</div><p class="hint">No ${label.toLowerCase()} in content/races.json yet.</p></div>`;
+    if (!r) return `<div class="countdown"><div class="kpi-label">${label}</div><p class="hint">No ${label.toLowerCase()} in Settings yet.</p></div>`;
     const d = daysUntil(r.day);
     return `<div class="countdown"><div class="kpi-label">${label}</div>
       <div class="kpi-value">${d}<span class="unit">days</span></div>
@@ -210,7 +210,7 @@ function renderForecasts(ctx, attention) {
   $('#ovForecastEmpty').hidden = has;
   if (!has) {
     $('#ovForecastEmpty').innerHTML = !goalRace
-      ? '<p class="hint">Add your marathon with a goal time to content/races.json to see the forecast.</p>'
+      ? '<p class="hint">Add your marathon with a goal time in Settings to see the forecast.</p>'
       : '<p class="hint">The forecast needs at least 5 VO2max values from Garmin.</p>';
     return;
   }

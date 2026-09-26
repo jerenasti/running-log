@@ -2,6 +2,7 @@
 
 import { state, save, restore } from './state.js';
 import { fetchGarmin, garminToActivities, fetchContent, fetchStatus } from './data.js';
+import { loadSettings, saveSettings, racesFromSettings } from './settings.js';
 import { parseDate } from './parse.js';
 import { fmtDate, fmtTime, esc } from './format.js';
 import { initTabs } from './nav.js';
@@ -51,10 +52,22 @@ restore();
 initTraining();
 initTabs(name => { currentTab = name; render(); });
 
-// Editable content files (meal ideas, races) load alongside the Garmin data
-Promise.all([fetchContent('meals.json'), fetchContent('races.json'), fetchStatus()]).then(([meals, races, status]) => {
+// Meal ideas and the settings (goals, races) load alongside the Garmin data
+Promise.all([fetchContent('meals.json'), loadSettings(), fetchStatus()]).then(async ([meals, loaded, status]) => {
+  state.settings = loaded.settings || null;
+  const races = loaded.error ? { error: loaded.error } : { data: { races: racesFromSettings(loaded.settings) } };
   state.content = { meals, races };
   state.fetchStatus = status;
+  if (state.settings) {
+    const weekly = state.settings.goals.weekly_km;
+    if (!weekly && state.goal > 0 && !loaded.firstRun) {
+      // A weekly goal saved in this browser by an older version moves into settings.json once
+      const saved = await saveSettings({ ...state.settings, goals: { ...state.settings.goals, weekly_km: state.goal } });
+      if (saved.settings) { state.settings = saved.settings; save(); }
+    } else {
+      state.goal = weekly || 0;
+    }
+  }
   render();
 });
 

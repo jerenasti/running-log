@@ -3,7 +3,7 @@
 Usage:
     uv run --no-project python backup.py
 
-Copies content/races.json (your races and goal) and data/activities.json (it holds the training plan
+Copies settings.json (your goals, races and settings) and data/activities.json (it holds the training plan
 history, which Garmin drops) into a dated folder, one per day, and keeps the newest KEEP_DAYS folders.
 
 Where: the BACKUP_DIR environment variable if set, otherwise your personal OneDrive
@@ -17,7 +17,7 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-FILES = [ROOT / "content" / "races.json", ROOT / "data" / "activities.json"]
+FILES = [ROOT / "settings.json", ROOT / "data" / "activities.json"]
 KEEP_DAYS = 30
 FOLDER_NAME = "Juoksupaivakirja-varmuuskopio"
 
@@ -52,7 +52,7 @@ def main() -> None:
     target = backup_dir()
     copied = backup(target, FILES, date.today())
     if not copied:
-        sys.exit("Backup: nothing to copy (content/races.json and data/activities.json are both missing).")
+        sys.exit("Backup: nothing to copy (settings.json and data/activities.json are both missing).")
     print(f"Backup: {', '.join(p.name for p in copied)} -> {copied[0].parent}")
 
 

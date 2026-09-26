@@ -278,10 +278,24 @@ def test_status_keeps_the_time_of_the_last_success_when_a_run_fails(tmp_path, mo
 
 def test_tokens_dir_comes_from_settings_and_ignores_environment_variables(tmp_path, monkeypatch):
     settings = tmp_path / "settings.json"
-    settings.write_text(json.dumps({"garmin_tokens_dir": str(tmp_path / "tokens")}), encoding="utf-8")
+    settings.write_text(json.dumps({"data": {"garmin_tokens_dir": str(tmp_path / "tokens")}}), encoding="utf-8")
     monkeypatch.setattr(fg, "SETTINGS", settings)
     monkeypatch.setenv("GARMINTOKENS", str(tmp_path / "somewhere-else"))
     assert fg.tokens_dir() == tmp_path / "tokens"
+
+
+def test_tokens_dir_still_reads_the_first_settings_format(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"garmin_tokens_dir": str(tmp_path / "old")}), encoding="utf-8")
+    monkeypatch.setattr(fg, "SETTINGS", settings)
+    assert fg.tokens_dir() == tmp_path / "old"
+
+
+def test_fetch_range_comes_from_settings(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"data": {"fetch_days": 90}}), encoding="utf-8")
+    monkeypatch.setattr(fg, "SETTINGS", settings)
+    assert fg.load_settings()["data"]["fetch_days"] == 90
 
 
 def test_tokens_dir_falls_back_to_the_default_without_settings(tmp_path, monkeypatch):
@@ -293,8 +307,11 @@ def test_tokens_dir_falls_back_to_the_default_without_settings(tmp_path, monkeyp
     assert fg.tokens_dir() == fg.DEFAULT_TOKENSTORE
 
 
-def test_project_settings_point_to_the_garmin_mcp_auth_folder():
+def test_default_and_example_settings_point_to_the_garmin_mcp_auth_folder(monkeypatch):
+    example = Path(__file__).parent.parent / "settings.example.json"
+    monkeypatch.setattr(fg, "SETTINGS", example)
     assert fg.tokens_dir() == Path.home() / "AppData" / "Local" / "garminconnect"
+    assert fg.DEFAULT_TOKENSTORE == Path.home() / "AppData" / "Local" / "garminconnect"
 
 
 # ---------- Optional requests ----------

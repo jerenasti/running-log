@@ -182,7 +182,7 @@ export function timeTrials(acts) {
     .map(trialEffort).filter(Boolean);
 }
 
-/** Race results written in content/races.json, in the same shape as time trial efforts */
+/** Race results from the settings (time trials with a result), in the same shape as time trial efforts */
 export function raceResults(races, today = new Date()) {
   return (races || []).filter(r => r.result && parseDate(r.date) && parseDate(r.date) <= today).map(r => {
     const sec = parseTime(r.result), m = r.distance_km * 1000;

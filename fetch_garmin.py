@@ -28,19 +28,26 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
-SETTINGS = Path(__file__).parent / "settings.json"
+import settings as app_settings
+
+SETTINGS = app_settings.SETTINGS
 DEFAULT_TOKENSTORE = Path.home() / "AppData" / "Local" / "garminconnect"   # used only if settings.json is missing
 OUTPUT = Path(__file__).parent / "data" / "activities.json"
 
 
-def tokens_dir() -> Path:
-    """The token folder always comes from settings.json (garmin_tokens_dir). Environment variables are
-    ignored on purpose, so nothing outside the settings can point the script at another folder."""
+def load_settings() -> dict:
+    """settings.json (see settings.py); the defaults if it is missing or broken."""
     try:
-        value = json.loads(SETTINGS.read_text(encoding="utf-8")).get("garmin_tokens_dir")
-    except (OSError, ValueError):
-        value = None
-    return Path(value).expanduser() if value else DEFAULT_TOKENSTORE
+        return app_settings.load(SETTINGS)[0]
+    except (OSError, app_settings.SettingsError):
+        return app_settings.defaults()
+
+
+def tokens_dir() -> Path:
+    """The token folder always comes from settings.json (data.garmin_tokens_dir). Environment variables are
+    ignored on purpose, so nothing outside the settings can point the script at another folder."""
+    value = load_settings()["data"].get("garmin_tokens_dir")
+    return Path(value).expanduser() if isinstance(value, str) and value.strip() else DEFAULT_TOKENSTORE
 
 
 # Why a run stopped, in words for the user. The app and the Windows notification show these;
@@ -349,7 +356,9 @@ def main() -> None:
 
 def run() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--days", type=int, default=365, help="how many days back to fetch (default 365)")
+    days = load_settings()["data"].get("fetch_days")
+    parser.add_argument("--days", type=int, default=days if isinstance(days, int) and days > 0 else 365,
+                        help="how many days back to fetch (default: data.fetch_days in settings.json, else 365)")
     args = parser.parse_args()
 
     garmin = connect(tokens_dir())

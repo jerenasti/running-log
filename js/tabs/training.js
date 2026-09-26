@@ -7,6 +7,7 @@ import { theme, baseOptions, drawChart } from '../charts.js';
 import { renderReview, initReview } from './review.js';
 import { renderLongRuns } from './longruns.js';
 import { weeklyAverage } from '../metrics.js';
+import { saveSettings } from '../settings.js';
 
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
@@ -180,6 +181,13 @@ export function initTraining() {
   initReview();
   $('#showAll').addEventListener('click', () => { state.showAll = !state.showAll; renderTraining(); });
   // The bar updates while typing; the chart is redrawn only when the field loses focus (change)
-  $('#goalInput').addEventListener('input', e => { state.goal = Math.max(0, Math.round(+e.target.value)) || 0; save(); renderGoal(); });
-  $('#goalInput').addEventListener('change', renderTraining);
+  $('#goalInput').addEventListener('input', e => { state.goal = Math.max(0, Math.round(+e.target.value)) || 0; renderGoal(); });
+  $('#goalInput').addEventListener('change', async () => {
+    renderTraining();
+    // The goal is kept in settings.json (goals.weekly_km)
+    if (!state.settings) return;
+    const saved = await saveSettings({ ...state.settings, goals: { ...state.settings.goals, weekly_km: state.goal } });
+    if (saved.settings) state.settings = saved.settings;
+    else $('#goalText').textContent = 'The goal was not saved: ' + (saved.errors?.['goals.weekly_km'] || saved.error);
+  });
 }

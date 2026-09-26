@@ -1,5 +1,5 @@
 // Nutrition tab: race-week fuelling, tomorrow's tip, recovery meals after recent runs and a 7-day menu.
-// Numbers and rules live in ../nutrition.js, meal ideas in content/meals.json, races in content/races.json.
+// Numbers and rules live in ../nutrition.js, meal ideas in content/meals.json, races from the settings (settings.json).
 
 import { state } from '../state.js';
 import {
@@ -143,7 +143,7 @@ export function renderNutrition() {
   if (!has) return;
 
   const c = state.content || {};
-  // races.json is optional (it is not in git); only a broken file is reported
+  // Races come from the settings; a settings problem is reported here too
   const errors = [c.meals?.error, c.races?.error && !/not found/.test(c.races.error) ? c.races.error : null].filter(Boolean);
   $('#nutContentError').hidden = !errors.length;
   $('#nutContentError').textContent = errors.join(' ');
