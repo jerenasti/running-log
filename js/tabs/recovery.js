@@ -60,12 +60,16 @@ function renderStats(a) {
 }
 
 /* ---------- Charts ---------- */
-// A shaded "normal range" band: an invisible lower line and an upper line filled down to it
+// A shaded "normal range" band: an invisible lower line and an upper line filled down to it.
+// Chart.js draws datasets with a higher `order` first, so order 10 keeps the band underneath the lines
+// (the position in the datasets list does not decide the layering).
+const BAND_ORDER = 10;
 function band(t, low, high) {
+  const fillColor = t.bar + '80'; // #RRGGBB + 80 = 50% opacity, so grid lines show through
   return [
-    { label: '_low', data: low, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: false, spanGaps: true },
+    { label: '_low', data: low, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: false, spanGaps: true, order: BAND_ORDER },
     { label: 'Normal range', data: high, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: '-1',
-      backgroundColor: t.grid, pointStyle: 'rect', spanGaps: true },
+      backgroundColor: fillColor, borderColor: fillColor, pointStyle: 'rect', spanGaps: true, order: BAND_ORDER },
   ];
 }
 const legend = t => ({ display: true, position: 'bottom',
