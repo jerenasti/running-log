@@ -4,7 +4,7 @@
 import { state } from '../state.js';
 import { loadModel, acwr, efficiencySeries, ACWR_ZONES, MIN_RELIABLE_DAYS, CTL_DAYS, ATL_DAYS, EF_WINDOW } from '../metrics.js';
 import { fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc, paceLabel } from '../format.js';
-import { theme, baseOptions, drawChart } from '../charts.js';
+import { theme, baseOptions, drawChart, legend, mainLine, secondaryLine, points, xTickLimit } from '../charts.js';
 import { danielsPaces, runnaPaces, runnaVdot, PACE_SHARES } from '../paces.js';
 import { calibration, timeTrials, raceResults, vdot, parseTime, timeForVdot } from '../forecast.js';
 import { parseDate } from '../parse.js';
@@ -70,24 +70,21 @@ function drawLoadChart(days) {
     data: {
       labels: shown.map(d => fmtDay(d.date)),
       datasets: [
-        { type: 'line', label: 'Fitness (CTL)', data: shown.map(d => d.ctl), borderColor: t.text, backgroundColor: t.text,
-          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointStyle: 'line', tension: .2, order: 1 },
-        { type: 'line', label: 'Fatigue (ATL)', data: shown.map(d => d.atl), borderColor: t.line, backgroundColor: t.line,
-          borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 4, pointStyle: 'line', tension: .2, order: 2 },
-        { type: 'bar', label: 'Form (TSB)', data: shown.map(d => d.tsb), backgroundColor: t.bar, borderRadius: 2, pointStyle: 'rect', order: 3 },
+        { type: 'line', label: 'Fitness (CTL)', data: shown.map(d => d.ctl), ...mainLine(t, { order: 1 }) },
+        { type: 'line', label: 'Fatigue (ATL)', data: shown.map(d => d.atl), ...secondaryLine(t, { order: 2 }) },
+        { type: 'bar', label: 'Form (TSB)', data: shown.map(d => d.tsb), backgroundColor: t.bar, borderRadius: t.radius / 4, pointStyle: 'rect', order: 3 },
       ],
     },
     options: { ...base,
       plugins: { ...base.plugins,
-        legend: { display: true, position: 'bottom',
-          labels: { color: t.text3, font: { family: t.sans, size: 11 }, usePointStyle: true, boxWidth: 14, boxHeight: 8, padding: 14 } },
+        legend: legend(t),
         tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label + ': ' + (c.datasetIndex === 2 ? fmtSigned(c.parsed.y) : fmtInt(c.parsed.y)),
           footer: items => 'Load that day: ' + fmtInt(shown[items[0].dataIndex].load),
-        }, footerFont: { family: t.num, weight: '400' } } },
+        } } },
       scales: { ...base.scales,
-        x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: 8 } },
+        x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(8) } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
   });
 }
@@ -103,21 +100,18 @@ function drawEfficiencyChart(runs) {
     data: {
       labels: runs.map(r => fmtDay(r.act.date)),
       datasets: [
-        { label: 'Easy run', data: runs.map(r => r.ef), showLine: false, pointRadius: 3.5, pointHoverRadius: 5,
-          borderColor: t.text3, backgroundColor: t.text3 },
-        { label: `${EF_WINDOW}-run average`, data: runs.map(r => r.avg), borderColor: t.text, backgroundColor: t.text,
-          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointStyle: 'line', tension: .25 },
+        { label: 'Easy run', data: runs.map(r => r.ef), ...points(t, { borderColor: t.line, backgroundColor: t.line }) },
+        { label: `${EF_WINDOW}-run average`, data: runs.map(r => r.avg), ...mainLine(t, { tension: .25 }) },
       ],
     },
     options: { ...base,
       plugins: { ...base.plugins,
-        legend: { display: true, position: 'bottom',
-          labels: { color: t.text3, font: { family: t.sans, size: 11 }, usePointStyle: true, boxWidth: 14, boxHeight: 8, padding: 14 } },
+        legend: legend(t),
         tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label + ': ' + fmtRatio(c.parsed.y),
           footer: items => { const a = runs[items[0].dataIndex].act; return fmtPace(a.sec / a.km) + ' ' + paceLabel() + ' · ' + fmtInt(a.hr) + ' bpm'; },
-        }, footerFont: { family: t.num, weight: '400' } } },
+        } } },
       scales: { ...base.scales, y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtRatio(v) } } } },
   });
 }

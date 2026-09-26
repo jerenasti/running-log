@@ -217,9 +217,10 @@ details.easy-list table { min-width: 520px; }
 .stages { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin: 12px 0 0; gap: 2px; }
 .stages span { height: 100%; }
 .stage-deep { background: var(--text); }
-.stage-light { background: var(--chart-bar); }
+/* Sleep stages: a neutral ramp from deep (darkest) to awake (lightest); not status colors */
+.stage-light { background: var(--chart-bar-2); }
 .stage-rem { background: var(--chart-line); }
-.stage-awake { background: var(--status-watch); }
+.stage-awake { background: var(--chart-bar); }
 
 /* ---------- Nutrition ---------- */
 .principle { margin: 0 0 var(--gap); color: var(--text-2); font-size: var(--fs-md); }

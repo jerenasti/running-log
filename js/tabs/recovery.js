@@ -4,7 +4,7 @@
 import { state } from '../state.js';
 import { assess, restingHrTrend, recoveryTrends, RULES } from '../recovery.js';
 import { fmtInt, fmtRatio, fmtHm, fmtHClock, fmtDay, fmtDate, esc, DASH } from '../format.js';
-import { theme, baseOptions, drawChart } from '../charts.js';
+import { theme, baseOptions, drawChart, legend, band, mainLine, secondaryLine, xTickLimit } from '../charts.js';
 import { parseDate } from '../parse.js';
 import { dayKey } from '../dates.js';
 
@@ -61,21 +61,7 @@ function renderStats(a) {
 }
 
 /* ---------- Charts ---------- */
-// A shaded "normal range" band: an invisible lower line and an upper line filled down to it.
-// Chart.js draws datasets with a higher `order` first, so order 10 keeps the band underneath the lines
-// (the position in the datasets list does not decide the layering).
-const BAND_ORDER = 10;
-function band(t, low, high) {
-  const fillColor = t.bar + '80'; // #RRGGBB + 80 = 50% opacity, so grid lines show through
-  return [
-    { label: '_low', data: low, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: false, spanGaps: true, order: BAND_ORDER },
-    { label: 'Normal range', data: high, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: '-1',
-      backgroundColor: fillColor, borderColor: fillColor, pointStyle: 'rect', spanGaps: true, order: BAND_ORDER },
-  ];
-}
-const legend = t => ({ display: true, position: 'bottom',
-  labels: { color: t.text3, font: { family: t.sans, size: 11 }, usePointStyle: true, boxWidth: 14, boxHeight: 8, padding: 14,
-    filter: item => !item.text.startsWith('_') } });
+// Ranges, legends and line styles come from the shared chart theme (js/charts.js)
 
 function drawHrv(list) {
   const t = theme();
@@ -85,20 +71,19 @@ function drawHrv(list) {
     type: 'line',
     data: { labels: list.map(h => fmtDay(parseDate(h.date))), datasets: [
       ...band(t, list.map(h => h.baseline_low), list.map(h => h.baseline_high)),
-      { label: 'Last night', data: list.map(h => h.last_night), borderColor: t.text, backgroundColor: out.map(o => o ? t.warn : t.text),
-        pointBorderColor: out.map(o => o ? t.warn : t.text), borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', tension: .2, spanGaps: true },
-      { label: '7-day average', data: list.map(h => h.weekly_avg), borderColor: t.line, borderDash: [4, 3], borderWidth: 1.5,
-        pointRadius: 0, pointHoverRadius: 3, pointStyle: 'line', tension: .2, spanGaps: true },
+      { label: 'Last night', data: list.map(h => h.last_night), ...mainLine(t, { backgroundColor: out.map(o => o ? t.warn : t.text),
+        pointBorderColor: out.map(o => o ? t.warn : t.text), pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', spanGaps: true }) },
+      { label: '7-day average', data: list.map(h => h.weekly_avg), ...secondaryLine(t, { spanGaps: true }) },
     ] },
     options: { ...base,
       plugins: { ...base.plugins, legend: legend(t),
-        tooltip: { ...base.plugins.tooltip, filter: c => c.dataset.label !== '_low', callbacks: {
+        tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label === 'Normal range'
             ? `Normal range: ${fmtInt(list[c.dataIndex].baseline_low)}–${fmtInt(list[c.dataIndex].baseline_high)} ms`
             : `${c.dataset.label}: ${fmtInt(c.parsed.y)} ms`,
         } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 7 } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(7) } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
   });
 }
@@ -111,19 +96,19 @@ function drawRhr(trend) {
     type: 'line',
     data: { labels: trend.map(d => fmtDay(d.date)), datasets: [
       ...band(t, trend.map(d => d.normal ? d.normal.low : null), trend.map(d => d.normal ? d.normal.high : null)),
-      { label: 'Resting HR', data: trend.map(d => d.bpm), borderColor: t.text, backgroundColor: out.map(o => o ? t.warn : t.text),
-        pointBorderColor: out.map(o => o ? t.warn : t.text), borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', tension: .2 },
+      { label: 'Resting HR', data: trend.map(d => d.bpm), ...mainLine(t, { backgroundColor: out.map(o => o ? t.warn : t.text),
+        pointBorderColor: out.map(o => o ? t.warn : t.text), pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle' }) },
     ] },
     options: { ...base,
       plugins: { ...base.plugins, legend: legend(t),
-        tooltip: { ...base.plugins.tooltip, filter: c => c.dataset.label !== '_low', callbacks: {
+        tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
           label: c => { const d = trend[c.dataIndex];
             return c.dataset.label === 'Normal range'
               ? `Normal range: ${fmtInt(d.normal.low)}–${fmtInt(d.normal.high)} bpm`
               : `Resting HR: ${fmtInt(c.parsed.y)} bpm`; },
         } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 7 } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(7) } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
   });
 }
@@ -163,21 +148,21 @@ function drawSleep(list) {
   drawChart('sleepChart', {
     type: 'bar',
     data: { labels: list.map(s => fmtDay(parseDate(s.date))), datasets: [
-      stage('Deep', 'deep_s', t.text), stage('Light', 'light_s', t.bar), stage('REM', 'rem_s', t.line), stage('Awake', 'awake_s', t.watch),
-      { type: 'line', label: 'Sleep score', data: list.map(s => s.score ?? null), yAxisID: 'y1', borderColor: t.text3, backgroundColor: t.text3,
-        borderWidth: 1.5, borderDash: [4, 3], pointRadius: 2, pointHoverRadius: 4, pointStyle: 'line', tension: .2, spanGaps: true, order: 1 },
+      // Neutral ramp, same as .stage-* in components.css: deep darkest, awake lightest
+      stage('Deep', 'deep_s', t.text), stage('Light', 'light_s', t.bar2), stage('REM', 'rem_s', t.line), stage('Awake', 'awake_s', t.bar),
+      { type: 'line', label: 'Sleep score', data: list.map(s => s.score ?? null), yAxisID: 'y1', ...secondaryLine(t, { pointRadius: 2, spanGaps: true, order: 1 }) },
     ] },
     options: { ...base,
       plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip, callbacks: {
         title: base.plugins.tooltip.callbacks.title,
         label: c => c.dataset.yAxisID === 'y1' ? `Score: ${fmtInt(c.parsed.y)}` : `${c.dataset.label}: ${fmtHm(c.parsed.y * 3600)}`,
         footer: items => 'Asleep: ' + fmtHm(list[items[0].dataIndex].duration_s),
-      }, footerFont: { family: t.num, weight: '400' } } },
+      } } },
       scales: {
-        x: { ...base.scales.x, stacked: true, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 10 } },
+        x: { ...base.scales.x, stacked: true, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(10) } },
         y: { ...base.scales.y, stacked: true, beginAtZero: true, ticks: { ...base.scales.y.ticks, callback: v => v + ' h' } },
         y1: { position: 'right', min: 0, max: 100, grid: { display: false }, border: { display: false },
-              ticks: { color: t.text3, font: { family: t.num, size: 11 }, stepSize: 25 } },
+              ticks: { ...base.scales.y.ticks, stepSize: 25 } },
       } },
   });
 }
@@ -190,14 +175,14 @@ function drawBodyBattery(list) {
     type: 'bar',
     data: { labels: list.map(b => fmtDay(parseDate(b.date))), datasets: [{
       label: 'Body Battery', data: list.map(b => b.low != null && b.high != null ? [b.low, b.high] : null),
-      backgroundColor: list.map(b => b.date === todayKey ? t.bar : t.line), borderRadius: 3, maxBarThickness: 18,
+      backgroundColor: list.map(b => b.date === todayKey ? t.bar : t.line), borderRadius: t.radius / 2, maxBarThickness: 18,
     }] },
     options: { ...base,
       plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: {
         title: base.plugins.tooltip.callbacks.title,
         label: c => { const b = list[c.dataIndex]; return [`High ${fmtInt(b.high)} · low ${fmtInt(b.low)}`, `Charged +${fmtInt(b.charged)} · drained −${fmtInt(b.drained)}`]; },
       } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 10 } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(10) } },
         y: { ...base.scales.y, min: 0, max: 100, ticks: { ...base.scales.y.ticks, stepSize: 25 } } } },
   });
 }

@@ -5,7 +5,7 @@ import { weeklyLongRuns, plannedLongRuns, longRunOutlook, progressionLine, LONG_
 import { fmtKm, fmtKmWhole, fmtDec1, fmtDate, fmtDay, esc, distLabel, distIn } from '../format.js';
 import { mondayOf, isoWeek, addDays } from '../dates.js';
 import { parseDate } from '../parse.js';
-import { theme, baseOptions, drawChart } from '../charts.js';
+import { theme, baseOptions, drawChart, legend, band, secondaryLine, xTickLimit } from '../charts.js';
 
 const $ = s => document.querySelector(s);
 const STATUS = {
@@ -62,18 +62,17 @@ export function renderLongRuns() {
     type: 'bar',
     data: { labels, datasets: [
       { label: 'Longest run', data: weeks.map(w => w.longest ? distIn(w.longest) : null), backgroundColor: weeks.map(w => w.monday.getTime() === thisMon ? t.accent : t.line),
-        borderRadius: 3, maxBarThickness: 22, grouped: false, order: 2 },
+        borderRadius: t.radius / 2, maxBarThickness: 22, grouped: false, order: 2 },
       { label: 'Planned (Runna)', data: weeks.map(w => { const km = planned.get(w.monday.getTime())?.km; return km != null ? distIn(km) : null; }), backgroundColor: t.bar, borderColor: t.line,
-        borderWidth: 1, borderDash: [3, 2], borderRadius: 3, maxBarThickness: 22, grouped: false, order: 3 },
-      { type: 'line', label: 'Needed build-up', data: line.map(v => v != null ? distIn(v) : null), borderColor: t.text3, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, order: 1 },
-      { type: 'line', label: '_lo', data: weeks.map(w => inTarget(w) ? distIn(LONG_RUN.peakKm[0]) : null), borderWidth: 0, pointRadius: 0, fill: false, order: 10 },
-      { type: 'line', label: `Peak target ${peakText}`, data: weeks.map(w => inTarget(w) ? distIn(LONG_RUN.peakKm[1]) : null),
-        borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: t.bar + '80', pointStyle: 'rect', order: 10 },
+        borderWidth: 1, borderDash: [3, 2], borderRadius: t.radius / 2, maxBarThickness: 22, grouped: false, order: 3 },
+      { type: 'line', label: 'Needed build-up', data: line.map(v => v != null ? distIn(v) : null), ...secondaryLine(t, { tension: 0, order: 1 }) },
+      ...band(t, weeks.map(w => inTarget(w) ? distIn(LONG_RUN.peakKm[0]) : null), weeks.map(w => inTarget(w) ? distIn(LONG_RUN.peakKm[1]) : null),
+        `Peak target ${peakText}`),
     ] },
     options: { ...base,
       plugins: { ...base.plugins,
-        legend: { display: true, position: 'bottom', labels: { color: t.text3, font: { family: t.sans, size: 11 }, usePointStyle: true, boxWidth: 14, boxHeight: 8, padding: 12, filter: i => !i.text.startsWith('_') } },
-        tooltip: { ...base.plugins.tooltip, filter: c => !c.dataset.label.startsWith('_') && c.parsed.y != null, callbacks: {
+        legend: legend(t),
+        tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
           label: c => {
             const w = weeks[c.dataIndex];
@@ -82,7 +81,7 @@ export function renderLongRuns() {
             if (c.dataset.label.startsWith('Peak')) return `Peak target: ${peakText}`;
             return `${c.dataset.label}: ${fmtDec1(c.parsed.y)} ${distLabel()}`;
           } } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 12 } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(12) } },
         y: { ...base.scales.y, beginAtZero: true, suggestedMax: distIn(LONG_RUN.peakKm[1] + 2), ticks: { ...base.scales.y.ticks, callback: v => v + ' ' + distLabel() } } } },
   });
 }

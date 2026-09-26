@@ -121,6 +121,7 @@
 
   /* Charts (see js/charts.js: every chart takes its colors from here) */
   --chart-bar: #CDD2D8;         /* bars in general */
+  --chart-bar-2: #9AA1A9;       /* a second neutral for stacked bars (sleep stages) */
   --chart-line: #5B636C;        /* the main line */
   --chart-grid: #E6E8EB;        /* grid lines */
   --chart-axis: var(--text-3);  /* axis labels */
@@ -155,6 +156,7 @@
     --status-watch: #DDBB4E;      --status-watch-text: #E2C466;
     --status-warn: #E26D61;       --status-warn-text: #EA8278;
     --chart-bar: #3A3F45;
+    --chart-bar-2: #6B737C;
     --chart-line: #A9B0B8;
     --chart-grid: #2A2E33;
     --chart-band: rgba(169, 176, 184, .16);
@@ -186,6 +188,7 @@
   --status-watch: #DDBB4E;      --status-watch-text: #E2C466;
   --status-warn: #E26D61;       --status-warn-text: #EA8278;
   --chart-bar: #3A3F45;
+  --chart-bar-2: #6B737C;
   --chart-line: #A9B0B8;
   --chart-grid: #2A2E33;
   --chart-band: rgba(169, 176, 184, .16);

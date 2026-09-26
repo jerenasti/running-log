@@ -3,7 +3,7 @@
 import { state, save } from '../state.js';
 import { fmtKm, fmtInt, fmtPace, fmtClock, fmtDuration, fmtDay, fmtDate, esc, DASH, distLabel, paceLabel, distIn, distFromUnit, paceIn } from '../format.js';
 import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
-import { theme, baseOptions, drawChart } from '../charts.js';
+import { theme, baseOptions, drawChart, mainLine, secondaryLine } from '../charts.js';
 import { renderReview, initReview } from './review.js';
 import { renderLongRuns } from './longruns.js';
 import { weeklyAverage } from '../metrics.js';
@@ -92,18 +92,17 @@ function drawCharts(r) {
     return 'Week ' + isoWeek(w.mon) + ' (' + fmtDay(w.mon) + ' – ' + fmtDate(sun) + ')';
   };
   const base = baseOptions(t, tipTitle);
-  const lineStyle = { borderColor: t.line, backgroundColor: t.line, pointRadius: 2.5, pointHoverRadius: 5,
-    pointHoverBackgroundColor: t.accent, borderWidth: 2, tension: .25, spanGaps: true };
+  const lineStyle = mainLine(t, { pointRadius: 2.5, pointHoverRadius: 5, pointStyle: 'circle', tension: .25, spanGaps: true });
 
   drawChart('weekChart', {
     type: 'bar',
     data: { labels, datasets: [
       { data: r.weeks.map(w => +distIn(w.km).toFixed(1)),
         backgroundColor: r.weeks.map(w => w.mon.getTime() === thisMon ? t.accent : t.bar),
-        borderRadius: 3, maxBarThickness: 36 },
-      // Weekly goal as a dashed line (only if a goal is set)
-      ...(state.goal ? [{ type: 'line', data: r.weeks.map(() => distIn(state.goal)), borderColor: t.text3, borderDash: [5, 4],
-        borderWidth: 1.25, pointRadius: 0, pointHoverRadius: 0 }] : []),
+        borderRadius: t.radius / 2, maxBarThickness: 36 },
+      // Weekly goal as a dashed accent line (only if a goal is set)
+      ...(state.goal ? [{ type: 'line', label: '_goal', data: r.weeks.map(() => distIn(state.goal)),
+        ...secondaryLine(t, { borderColor: t.accent, pointHoverRadius: 0 }) }] : []),
     ] },
     options: { ...base,
       plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, filter: c => c.datasetIndex === 0,

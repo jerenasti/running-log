@@ -10,7 +10,7 @@ import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, go
 import { fmtKm, fmtKmWhole, distLabel, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
 import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js';
 import { parseDate } from '../parse.js';
-import { theme, baseOptions, drawChart } from '../charts.js';
+import { theme, baseOptions, drawChart, legend, band, mainLine, secondaryLine, points, xTickLimit } from '../charts.js';
 import { weekReview } from '../plan.js';
 import { runnaPaces, runnaVdot } from '../paces.js';
 import { longRunOutlook, weeklyLongRuns, LONG_RUN } from '../longruns.js';
@@ -140,24 +140,16 @@ function renderCountdown(goalRace, testRace) {
 /* ---------- Part 2 and 3: forecasts ---------- */
 // Dashed vertical line with a label, e.g. at race day
 // The line uses the accent fill; the label the accent's text color (small text needs 4.5:1)
-const markerPlugin = (index, color, label, font, textColor = color) => ({
+const markerPlugin = (index, color, label, font, textColor = color, size = 12) => ({
   id: 'marker',
   afterDatasetsDraw(chart) {
     if (index < 0) return;
     const x = chart.scales.x.getPixelForValue(index), { top, bottom } = chart.chartArea, c = chart.ctx;
     c.save(); c.strokeStyle = color; c.fillStyle = textColor; c.setLineDash([3, 3]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(x, top); c.lineTo(x, bottom); c.stroke();
-    c.font = `11px ${font}`; c.textAlign = 'right'; c.fillText(label, x - 4, top + 11); c.restore();
+    c.font = `${size}px ${font}`; c.textAlign = 'right'; c.fillText(label, x - 4, top + 11); c.restore();
   },
 });
-// Fewer date labels on a narrow screen, so they don't run into each other
-const xTicks = () => window.innerWidth < 600 ? 4 : 8;
-const legend = t => ({ display: true, position: 'bottom',
-  labels: { color: t.text3, font: { family: t.sans, size: 11 }, usePointStyle: true, boxWidth: 14, boxHeight: 8, padding: 12, filter: i => !i.text.startsWith('_') } });
-const band = (t, lo, hi, label) => [
-  { label: '_lo', data: lo, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: false, order: 10 },
-  { label, data: hi, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: t.bar + '80', pointStyle: 'rect', order: 10 },
-];
 
 function drawVo2(fc) {
   const t = theme();
@@ -167,15 +159,14 @@ function drawVo2(fc) {
     type: 'line',
     data: { labels: s.map(p => fmtDay(p.date)), datasets: [
       ...band(t, s.map(p => p.lo), s.map(p => p.hi), '80% range'),
-      { label: 'Forecast', data: s.map(p => p.mid), borderColor: t.line, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, pointStyle: 'line' },
-      { label: 'Garmin VO2max', data: s.map(p => measured.get(dayKey(p.date)) ?? null), showLine: false, pointRadius: 3, pointHoverRadius: 5,
-        borderColor: t.text, backgroundColor: t.text, pointStyle: 'circle' },
+      { label: 'Forecast', data: s.map(p => p.mid), ...secondaryLine(t, { tension: 0 }) },
+      { label: 'Garmin VO2max', data: s.map(p => measured.get(dayKey(p.date)) ?? null), ...points(t) },
     ] },
     options: { ...base,
-      plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip, filter: c => c.dataset.label !== '_lo' && c.parsed.y != null,
+      plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip,
         callbacks: { title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label === '80% range' ? `80% range: ${fmtDec1(s[c.dataIndex].lo)}–${fmtDec1(s[c.dataIndex].hi)}` : `${c.dataset.label}: ${fmtDec1(c.parsed.y)}` } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTicks() } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(8) } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
     plugins: [markerPlugin(s.length - 1, t.accent, 'Race day', t.sans, t.accentText)],
   });
@@ -190,20 +181,19 @@ function drawMarathon(mf, garmin, goalSec, results) {
     type: 'line',
     data: { labels: mf.map(p => fmtDay(p.date)), datasets: [
       ...band(t, mf.map(p => p.slow), mf.map(p => p.fast), 'Main forecast, 80% range'),
-      { label: 'Main forecast', data: mf.map(p => p.mid), borderColor: t.line, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, pointStyle: 'line' },
-      { label: 'Garmin prediction', data: mf.map(p => g.get(dayKey(p.date)) ?? null), borderColor: t.text, backgroundColor: t.text, borderWidth: 2,
-        pointRadius: 0, pointHoverRadius: 4, pointStyle: 'line', spanGaps: false },
+      { label: 'Main forecast', data: mf.map(p => p.mid), ...secondaryLine(t, { tension: 0 }) },
+      { label: 'Garmin prediction', data: mf.map(p => g.get(dayKey(p.date)) ?? null), ...mainLine(t, { spanGaps: false }) },
       { label: 'Goal', data: mf.map(() => goalSec), borderColor: t.accent, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 0, pointStyle: 'line' },
       ...(results.length ? [{ label: 'Time trial (as marathon)', data: mf.map(p => res.get(dayKey(p.date)) ?? null), showLine: false,
-        pointRadius: 5, pointStyle: 'rectRot', borderColor: t.text, backgroundColor: t.text }] : []),
+        ...points(t, { pointRadius: 5, pointStyle: 'rectRot' }) }] : []),
     ] },
     options: { ...base,
-      plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip, filter: c => c.dataset.label !== '_lo' && c.parsed.y != null,
+      plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip,
         callbacks: { title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label.startsWith('Main forecast,')
             ? `80% range: ${fmtDuration(mf[c.dataIndex].fast)}–${fmtDuration(mf[c.dataIndex].slow)}`
             : `${c.dataset.label}: ${fmtDuration(c.parsed.y)}` } } },
-      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTicks() } },
+      scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTickLimit(8) } },
         // Ticks every 15 minutes, shown as h:mm
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, stepSize: 15 * 60, callback: v => fmtDuration(v).replace(/:\d\d$/, '') } } } },
     plugins: [markerPlugin(mf.length - 1, t.accent, 'Race day', t.sans, t.accentText)],
