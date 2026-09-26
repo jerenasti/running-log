@@ -15,7 +15,7 @@ The user is learning to program through this project: briefly explain what you a
 
 - Windows. Uses `uv` (Python dependencies and running scripts) and `git`.
 - Garmin library: `python-garminconnect` (the `garminconnect` package, pinned to 0.3.2).
-- Saved tokens: `%LOCALAPPDATA%\garminconnect` (created with the `garmin-mcp-auth` tool from Taxuspt/garmin_mcp).
+- Saved tokens: `%LOCALAPPDATA%\garminconnect` (created with the `garmin-mcp-auth` tool from Taxuspt/garmin_mcp). The path comes **only** from `settings.json` (`garmin_tokens_dir`); environment variables such as `GARMINTOKENS` are ignored on purpose.
 
 ## Conventions
 
@@ -63,7 +63,7 @@ Then open http://localhost:8000. Stop the server with Ctrl+C. The same server is
 
 The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_data.bat` daily at 06:00 (or as soon as the computer is on, if that time was missed). Log: `data/fetch_data.log`.
 `fetch_data.bat` then runs `backup.py` (always) and, if the fetch failed, `notify.ps1` (Windows toast with the error from `data/fetch_status.json`).
-- `data/fetch_status.json` (`{at, ok, error, warnings}`): written by `fetch_garmin.py`'s `main()` for every run, also when it stops with an error; failed optional requests are listed in `warnings`. The Overview attention list shows it.
+- `data/fetch_status.json` (`{at, ok, reason, message, error, last_success, warnings}`): written by `fetch_garmin.py`'s `main()` for every run, also when it stops with an error. `reason` (no_tokens, invalid_tokens, rate_limited, network, unknown) maps to a plain-words `message` (`REASONS`); `error` is the technical text, shown in the app only under "Show details". Stops go through `Stopped` (a `SystemExit` that carries the reason). The header shows the last successful fetch and an OK / Fetch failed badge; the Overview attention list explains a failure.
 - `backup.py`: copies `content/races.json` and `data/activities.json` (holds the plan history Garmin drops) to a dated folder, keeps 30 days. Location: `BACKUP_DIR`, else the **personal** OneDrive (`%OneDriveConsumer%\Juoksupaivakirja-varmuuskopio`; `%OneDrive%` can be a work or school OneDrive and must not be used), else `data/backups`. Once a day is enough: do not add more frequent scheduling (Garmin rate limits).
 
 ## Structure
