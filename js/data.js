@@ -24,9 +24,23 @@ export function garminToActivities(json) {
   const acts = json.activities.map(a => ({
     date: parseDate(a.start_time), type: String(a.type || ''), title: String(a.name || ''),
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr,
-    maxHr: a.max_hr ?? null, teLabel: a.te_label ?? null, zones: a.hr_zones_s ?? null,
+    maxHr: a.max_hr ?? null, teLabel: a.te_label ?? null, zones: a.hr_zones_s ?? null, kcal: a.calories ?? null,
   })).filter(a => a.date).sort((a, b) => a.date - b.date);
-  // Garmin extras for the Fitness and load and Recovery tabs
-  const meta = { hrSettings: json.hr_settings ?? null, restingHr: json.resting_hr ?? [], recovery: json.recovery ?? null };
+  // Garmin extras for the Fitness and load, Recovery and Nutrition tabs
+  const meta = {
+    hrSettings: json.hr_settings ?? null, restingHr: json.resting_hr ?? [], recovery: json.recovery ?? null,
+    schedule: json.schedule ?? [], weight: json.weight ?? null,
+  };
   return { acts, meta };
+}
+
+/** Editable content files in content/ (meal ideas, races). A missing or broken file gives an error message. */
+export async function fetchContent(name) {
+  try {
+    const res = await fetch('content/' + name, { cache: 'no-store' });
+    if (!res.ok) return { error: `content/${name} was not found.` };
+    return { data: await res.json() };
+  } catch (e) {
+    return { error: `content/${name} is not valid JSON (${e.message}). Check the quotes and commas.` };
+  }
 }

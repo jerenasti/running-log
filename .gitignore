@@ -13,6 +13,7 @@ data/
 *.fit
 *.gpx
 *.tcx
+content/races.json
 
 # --- Python virtual environments and caches ---
 .venv/

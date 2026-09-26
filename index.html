@@ -224,15 +224,38 @@
 
   <!-- ===================== Nutrition ===================== -->
   <section id="panel-nutrition" role="tabpanel" aria-labelledby="tab-nutrition" hidden>
-    <div class="card placeholder">
-      <span class="badge">Coming soon</span>
-      <h2>Nutrition</h2>
-      <p>What you eat and drink compared with how much you train.</p>
-      <ul>
-        <li>Daily calories and macronutrients</li>
-        <li>Energy balance on training days</li>
-        <li>Hydration</li>
-      </ul>
+    <div class="card empty" id="nutNoData" hidden>
+      <h2>Garmin data needed</h2>
+      <p class="hint">Nutrition advice is based on your workouts and your Garmin training calendar. Fetch your data with start.bat.</p>
+    </div>
+
+    <div id="nutDash" hidden>
+      <p class="principle">Food fuels your training. It isn't something you earn by training.</p>
+      <p class="notice" id="nutContentError" role="alert" hidden></p>
+
+      <section class="card race-card" id="raceCard" hidden></section>
+
+      <div class="grid">
+        <section class="card" id="tomorrowCard"></section>
+        <section class="card" id="basisCard"></section>
+
+        <section class="card span-2">
+          <div class="card-head"><div><h2>After your recent runs</h2><p class="sub">Recovery meal for each run in the last 7 days.</p></div></div>
+          <div id="recentMeals"></div>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-head"><div><h2>This week's menu</h2><p class="sub">The next 7 days, based on your Garmin training calendar.</p></div></div>
+          <div id="weekMenu"></div>
+          <details class="info"><summary>How it works</summary>
+            <p><b>Day type</b>: a race-week day first, then what you actually did, then what is scheduled in your Garmin calendar, otherwise a rest day. <b>Long run</b>: "long" in the name or 75 minutes or more. <b>Tempo / intervals</b>: tempo, interval, repeats, hills, threshold, progressive or fartlek in the name, or Garmin classified the run as tempo, threshold or VO2 max. Everything else is easy.</p>
+            <p><b>Targets</b> are general sports nutrition guidelines in grams per kg of body weight: carbs vary with the day's training, protein stays at 1.6 g/kg every day. The day's carbs go where the training is: before and after the session.</p>
+            <p><b>Training energy</b> is Garmin's calorie estimate (for planned runs: your average kcal per km × planned distance). It is background information only, not something to eat back or to earn.</p>
+            <p><b>Meal ideas</b> come from content/meals.json, which you can edit. The same day always gets the same ideas.</p>
+            <p>These are general guidelines, not personal dietary advice.</p>
+          </details>
+        </section>
+      </div>
     </div>
   </section>
 

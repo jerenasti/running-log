@@ -1,13 +1,14 @@
 // Entry point: loads the Garmin data and wires up the tabs.
 
 import { state, save, restore } from './state.js';
-import { fetchGarmin, garminToActivities } from './data.js';
+import { fetchGarmin, garminToActivities, fetchContent } from './data.js';
 import { parseDate } from './parse.js';
 import { fmtDate, fmtTime } from './format.js';
 import { initTabs } from './nav.js';
 import { initTraining, renderTraining } from './tabs/training.js';
 import { renderFitness } from './tabs/fitness.js';
 import { renderRecovery } from './tabs/recovery.js';
+import { renderNutrition } from './tabs/nutrition.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
@@ -23,6 +24,7 @@ function render() {
   if (currentTab === 'training') renderTraining();
   if (currentTab === 'fitness') renderFitness();
   if (currentTab === 'recovery') renderRecovery();
+  if (currentTab === 'nutrition') renderNutrition();
 }
 
 // Redraw charts when the system switches between light and dark mode
@@ -35,6 +37,12 @@ if (typeof Chart === 'undefined') notice('The chart library failed to load. Relo
 restore();
 initTraining();
 initTabs(name => { currentTab = name; render(); });
+
+// Editable content files (meal ideas, races) load alongside the Garmin data
+Promise.all([fetchContent('meals.json'), fetchContent('races.json')]).then(([meals, races]) => {
+  state.content = { meals, races };
+  render();
+});
 
 fetchGarmin().then(o => {
   fetchedAt = parseDate(o.fetchedAt);

@@ -1,0 +1,14 @@
+{
+  "_help": [
+    "Your races for the race-week fuelling view on the Nutrition tab.",
+    "Copy this file to content/races.json and edit it there (races.json stays out of git).",
+    "date: race day as YYYY-MM-DD. name: anything you like. distance_km: race distance.",
+    "21 km or longer: carb loading on the two days before, view opens 7 days before.",
+    "Shorter: a carb-rich day before, view opens 3 days before."
+  ],
+  "races": [
+    { "date": "2026-10-10", "name": "10 km test run", "distance_km": 10 },
+    { "date": "2026-11-15", "name": "Half marathon test", "distance_km": 21.1 },
+    { "date": "2027-02-07", "name": "Marathon", "distance_km": 42.2 }
+  ]
+}

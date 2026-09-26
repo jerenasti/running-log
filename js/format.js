@@ -52,6 +52,17 @@ export function fmtHClock(sec) {
 
 /** 25 Sep */
 export const fmtDay = d => d.getDate() + ' ' + MONTHS[d.getMonth()];
+/** Sat 26 Sep */
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export const fmtWeekday = d => WEEKDAYS[d.getDay()] + ' ' + fmtDay(d);
+
+/** Gram range: "270–450 g", or one value when both ends round to the same number */
+export function fmtGrams(range) {
+  if (!range) return DASH;
+  const [lo, hi] = range.map(Math.round);
+  return (lo === hi ? nf0.format(lo) : nf0.format(lo) + '–' + nf0.format(hi)) + ' g';
+}
+
 /** 25 Sep 2026 */
 export const fmtDate = d => fmtDay(d) + ' ' + d.getFullYear();
 /** 06:05 */

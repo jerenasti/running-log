@@ -71,6 +71,7 @@ def simplify(activity: dict) -> dict:
         "max_hr": round(activity["maxHR"]) if activity.get("maxHR") else None,
         "avg_speed_mps": round(activity["averageSpeed"], 3) if activity.get("averageSpeed") else None,
         "te_label": activity.get("trainingEffectLabel"),       # Garmin's classification, e.g. "AEROBIC_BASE"
+        "calories": round(activity["calories"]) if activity.get("calories") else None,  # Garmin's estimate
         # Seconds in heart rate zones 1–5 (null if the activity has no heart rate)
         "hr_zones_s": [round(z or 0) for z in zones] if any(z is not None for z in zones) else None,
     }
@@ -153,6 +154,31 @@ def fetch_body_battery(garmin: Garmin, start: date, end: date) -> list[dict]:
     return out
 
 
+def fetch_schedule(garmin: Garmin, today: date) -> list[dict]:
+    """Workouts scheduled in the Garmin calendar from today on (this month and next month)."""
+    next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
+    workouts = {}
+    for d in (today, next_month):
+        for item in (garmin.get_scheduled_workouts(d.year, d.month) or {}).get("calendarItems") or []:
+            if item.get("itemType") == "workout" and (item.get("date") or "") >= today.isoformat():
+                workouts[item.get("id")] = {"date": item["date"], "title": item.get("title"), "sport": item.get("sportTypeKey")}
+    return sorted(workouts.values(), key=lambda w: w["date"])
+
+
+def fetch_weight(garmin: Garmin, start: date, end: date) -> dict | None:
+    """The latest weigh-in in the period, in kg."""
+    data = garmin.get_weigh_ins(start.isoformat(), end.isoformat()) or {}
+    found = []
+    for day in data.get("dailyWeightSummaries") or []:
+        for m in [day.get("latestWeight")] + (day.get("allWeightMetrics") or []):
+            if m and m.get("weight"):
+                found.append((m.get("calendarDate") or day.get("summaryDate"), m["weight"]))
+    if not found:
+        return None
+    when, grams = max(found, key=lambda x: x[0] or "")
+    return {"kg": round(grams / 1000, 1), "date": when}
+
+
 def optional(label: str, fetch, default):
     """Run an extra request. A failure only prints a warning, so the activities are still saved.
     429 (too many requests) still stops the script, as everywhere else."""
@@ -196,6 +222,8 @@ def main() -> None:
         "hr_settings": hr_settings,
         "resting_hr": resting_hr,
         "recovery": recovery,
+        "schedule": optional("scheduled workouts", lambda: fetch_schedule(garmin, date.today()), []),
+        "weight": optional("weight", lambda: fetch_weight(garmin, start, date.today()), None),
     }
 
     # Write to a temporary file first and swap it in only at the end,
@@ -207,7 +235,8 @@ def main() -> None:
 
     print(f"Saved {len(activities)} activities, {len(resting_hr)} resting HR days"
           f"{', HR zones' if hr_settings else ''}, {len(recovery['hrv'])} HRV / {len(recovery['sleep'])} sleep /"
-          f" {len(recovery['body_battery'])} Body Battery days to {OUTPUT}")
+          f" {len(recovery['body_battery'])} Body Battery days, {len(payload['schedule'])} scheduled workouts,"
+          f" weight {payload['weight']['kg'] if payload['weight'] else 'n/a'} to {OUTPUT}")
 
 
 if __name__ == "__main__":

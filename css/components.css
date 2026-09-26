@@ -212,4 +212,36 @@ details.easy-list table { min-width: 520px; }
 .stage-rem { background: var(--chart-line); }
 .stage-awake { background: var(--status-watch); }
 
+/* ---------- Nutrition ---------- */
+.principle { margin: 0 0 var(--gap); color: var(--text-2); font-size: .9rem; }
+.race-card { margin-bottom: var(--gap); border-color: var(--accent); }
+.type-badge {
+  display: inline-block; flex: none;
+  font: 500 .72rem var(--font-sans); color: var(--text-2);
+  background: var(--surface-2); border-radius: 999px; padding: .15rem .6rem; white-space: nowrap;
+}
+.tip { margin: 0 0 10px; font-size: .9rem; }
+.notice.fuel { margin: 0 0 10px; font-size: .85rem; }
+h3.mini { margin: 16px 0 6px; font-size: .85rem; font-weight: 600; }
+.meals { margin: 0; padding: 0; list-style: none; }
+.meals li { display: flex; align-items: baseline; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--border); font-size: .88rem; }
+.meals li:first-child { border-top: 0; }
+.meals .slot { flex: 0 0 7.5rem; color: var(--text-3); font-size: .78rem; }
+/* Name, hints and note wrap inside their own column, aligned after the slot label */
+.meal-body { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.meals .muted { font-size: .75rem; }
+.meal-note { flex-basis: 100%; color: var(--text-3); font-size: .78rem; }
+@media (max-width: 480px) { .meals li { flex-wrap: wrap; } .meals .slot { flex-basis: 100%; } }
+.meal-block { padding: 14px 0; border-top: 1px solid var(--border); }
+.meal-block:first-child { padding-top: 0; border-top: 0; }
+.menu-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 6px; font-size: .9rem; }
+.menu-head > .num:first-child { font-weight: 500; min-width: 6.5rem; }
+.meal-title { font-weight: 500; }
+.menu-head .muted { font-size: .8rem; }
+.targets-line { margin: 0 0 6px; font-size: .8rem; color: var(--text-2); }
+/* Small table: fits a phone card without sideways scrolling */
+.rules.targets { min-width: 0; }
+.targets td, .targets th { padding: 6px 6px; }
+.targets td:first-child { white-space: normal; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
