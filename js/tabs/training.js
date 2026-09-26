@@ -5,6 +5,7 @@ import { fmtKm, fmtInt, fmtPace, fmtDuration, fmtDay, fmtDate, esc, DASH } from 
 import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { renderReview, initReview } from './review.js';
+import { renderLongRuns } from './longruns.js';
 
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
@@ -160,6 +161,7 @@ export function renderTraining() {
   drawCharts(r);
   renderTable(r);
   renderReview();
+  renderLongRuns();
 }
 
 /* ---------- Events ---------- */

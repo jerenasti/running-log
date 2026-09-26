@@ -6,18 +6,19 @@ import { state } from '../state.js';
 import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
 import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
-import { vo2Forecast, marathonForecast, garminPredictions, calibration, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
+import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
 import { fmtKm, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
-import { mondayOf, dayKey, startOfDay, DAY_MS } from '../dates.js';
+import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js';
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { weekReview } from '../plan.js';
 import { runnaPaces, runnaVdot } from '../paces.js';
+import { longRunOutlook, weeklyLongRuns, LONG_RUN } from '../longruns.js';
 
 const $ = s => document.querySelector(s);
 const STATUS = { hard: 'ok', easy: 'watch', rest: 'warn', unknown: 'none' };
 const isRun = a => /run|juoks|treadmill|trail/i.test(a.type || '');
-const daysUntil = d => Math.round((startOfDay(d) - startOfDay(new Date())) / DAY_MS);
+const daysUntil = d => daysBetween(new Date(), d);
 const titleCase = s => s ? s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ') : '';
 
 /* ---------- Sparkline: a tiny line chart as inline SVG ---------- */
@@ -212,8 +213,11 @@ function renderForecasts(ctx, attention) {
     return;
   }
   const fc = vo2Forecast(meta.vo2max, goalRace.day);
-  // Calibration: Runna time trials found in the Garmin data, plus race results from content/races.json
-  const cal = calibration([...timeTrials(ctx.acts), ...raceResults(ctx.races)], meta.vo2max);
+  // Calibration: time trials in the Garmin data and race results first; until there are any, the VDOT
+  // that the Runna plan's paces correspond to (the user chose this on 26 Sep 2026)
+  const rv = Object.values(runnaVdot(runnaPaces((meta.schedule || []).filter(w => parseDate(w.date) >= addDays(new Date(), -14)))));
+  const runnaV = rv.length ? rv.reduce((a, b) => a + b, 0) / rv.length : null;
+  const cal = chooseCalibration([...timeTrials(ctx.acts), ...raceResults(ctx.races)], runnaV, meta.vo2max);
   const mf = marathonForecast(fc, cal.factor);
   const garmin = garminPredictions(meta.racePredictions);
   const goalSec = parseTime(goalRace.goal);
@@ -237,26 +241,23 @@ function renderForecasts(ctx, attention) {
     Mean error <span class="num">${fmtKm(bt.mae)}</span>; the forecast was on average <span class="num">${fmtKm(Math.abs(bt.bias))}</span> ${bt.bias < 0 ? 'too low' : 'too high'},
     and ${bt.inside} of ${bt.n} values fell inside the 80% range.${bt.bias < -0.2 ? ' The model expects progress to slow down; so far it has not.' : ''}` : 'Backtest needs more data.';
 
-  const calText = cal.results.length
+  const calText = cal.source === 'efforts'
     ? `Calibrated with ${cal.results.length} effort${cal.results.length > 1 ? 's' : ''}: your time trial VDOT is ${Math.round(cal.factor * 100)}% of Garmin's VO2max. ` +
       cal.results.map(r => `${esc(r.name)} (${fmtDate(r.date)}): ${fmtKm(r.distance_m / 1000)} km in ${fmtDuration(r.sec)}, VDOT ${fmtKm(r.vdot)}${r.source === 'whole activity' ? ', whole activity incl. warm-up' : ''}.`).join(' ')
-    : 'Not calibrated yet: your first Runna time trial calibrates the forecast automatically (name contains time trial, TT, test, testi or aika-ajo).';
+    : cal.source === 'runna'
+      ? `Calibrated with your Runna plan: its paces correspond to VDOT ${fmtDec1(cal.runnaVdot)}, which is ${Math.round(cal.factor * 100)}% of Garmin's VO2max (${fmtDec1(cal.vo2max)}). Your first time trial will replace this (a run named time trial, TT, test, testi or aika-ajo).`
+      : 'Not calibrated yet: your first Runna time trial calibrates the forecast automatically (name contains time trial, TT, test, testi or aika-ajo).';
   $('#mfStats').innerHTML = `
     <div class="kpi"><div class="kpi-label">VDOT needed for ${esc(goalRace.goal)}</div><div class="kpi-value">${fmtKm(needVdot)}</div><div class="kpi-sub">Daniels' formula</div></div>
     <div class="kpi"><div class="kpi-label">Forecast VDOT on race day</div><div class="kpi-value">${fmtKm(race.mid * cal.factor)}</div>
-      <div class="kpi-sub num">${fmtKm(race.lo * cal.factor)}–${fmtKm(race.hi * cal.factor)} · ${cal.results.length ? 'calibrated' : 'uncalibrated'}</div></div>
+      <div class="kpi-sub num">${fmtKm(race.lo * cal.factor)}–${fmtKm(race.hi * cal.factor)} · ${{ efforts: 'calibrated with time trials', runna: 'calibrated with Runna paces' }[cal.source] || 'uncalibrated'}</div></div>
     <div class="kpi"><div class="kpi-label">VDOT forecast, race day</div><div class="kpi-value">${fmtDuration(raceTime.mid)}</div>
       <div class="kpi-sub num">${fmtDuration(raceTime.fast)}–${fmtDuration(raceTime.slow)}</div></div>
     <div class="kpi"><div class="kpi-label">Garmin prediction today</div><div class="kpi-value">${lastG ? fmtDuration(lastG.sec) : '–'}</div>
       <div class="kpi-sub">${lastG ? `= VDOT ${fmtKm(lastG.vdot)} · ${fmtDay(lastG.date)}` : 'No data'}</div></div>`;
-  $('#mfCal').innerHTML = `${calText} ${!cal.results.length && lastG && raceTime.mid < lastG.sec - 20 * 60
+  $('#mfCal').innerHTML = `${calText} ${!cal.source && lastG && raceTime.mid < lastG.sec - 20 * 60
     ? `The VDOT forecast is much faster than Garmin's prediction: Daniels' formula assumes marathon endurance to match your VO2max, while Garmin also looks at your current training volume. Your first time trial will show which is closer.` : ''}`;
-  // A third point of view: the fitness your Runna plan's paces assume
-  const rv = Object.values(runnaVdot(runnaPaces((meta.schedule || []).filter(w => parseDate(w.date) >= new Date(Date.now() - 14 * DAY_MS)))));
-  if (rv.length) {
-    const runnaV = rv.reduce((a, b) => a + b, 0) / rv.length;
-    $('#mfCal').innerHTML += ` Your Runna paces correspond to VDOT ${fmtDec1(runnaV)}, a ${fmtDuration(timeForVdot(runnaV))} marathon today (see Training paces on the Fitness and load tab).`;
-  }
+  if (runnaV) $('#mfCal').innerHTML += ` Runna's paces mean a ${fmtDuration(timeForVdot(runnaV))} marathon today (see Training paces on the Fitness and load tab).`;
 
   drawVo2(fc);
   drawMarathon(mf, garmin, goalSec, results);
@@ -264,7 +265,8 @@ function renderForecasts(ctx, attention) {
   // Attention items from the forecast
   if (fc.preliminary) attention.push({ level: 'info', text: `Forecasts are preliminary: ${fc.spanDays} days of VO2max data, 8 weeks recommended.`, tab: 'overview', tabLabel: 'Forecast' });
   if (lastG && lastG.sec > goalSec) attention.push({ level: 'watch', text: `Garmin predicts ${fmtDuration(lastG.sec)} for the marathon today, ${fmtDuration(lastG.sec - goalSec)} slower than your goal ${esc(goalRace.goal)}.`, tab: 'overview', tabLabel: 'Forecast' });
-  if (!cal.results.length) attention.push({ level: 'info', text: 'Marathon forecast is not calibrated yet. It calibrates itself after your first Runna time trial.', tab: null });
+  if (cal.source === 'runna') attention.push({ level: 'info', text: 'Marathon forecast is calibrated with your Runna paces until your first time trial.', tab: 'overview', tabLabel: 'Forecast' });
+  if (!cal.source) attention.push({ level: 'info', text: 'Marathon forecast is not calibrated yet. It calibrates itself after your first Runna time trial.', tab: null });
   cal.results.filter(r => r.source === 'whole activity').forEach(r => attention.push({ level: 'watch', text: `Time trial "${esc(r.name)}" had no workout laps, so the whole activity (incl. warm-up) was used. Its VDOT may be too low.`, tab: null }));
 }
 
@@ -315,9 +317,17 @@ export function renderOverview() {
   const thisWeek = weekReview(new Date(), { acts: state.acts, schedule: meta.schedule || [], meta });
   const missed = thisWeek.plan.items.filter(i => i.status === 'missed');
   if (missed.length) attention.push({ level: 'watch', text: `Missed this week: ${missed.map(i => esc(i.title)).join(', ')}.`, tab: 'training', tabLabel: 'Training' });
-  const lastWeek = weekReview(new Date(Date.now() - 7 * DAY_MS), { acts: state.acts, schedule: meta.schedule || [], meta });
+  const lastWeek = weekReview(addDays(new Date(), -7), { acts: state.acts, schedule: meta.schedule || [], meta });
   const jump = lastWeek.highlights.find(h => h.level === 'watch' && h.text.startsWith('Distance'));
   if (jump) attention.push({ level: 'watch', text: `Last week: ${esc(jump.text.charAt(0).toLowerCase() + jump.text.slice(1))}`, tab: 'training', tabLabel: 'Training' });
+
+  // Long runs: build-up to the marathon peak, and last week's long run share
+  if (goalRace) {
+    const lr = longRunOutlook(state.acts, goalRace.day);
+    if (lr.status === 'steep') attention.push({ level: 'watch', text: `Long runs: reaching ${LONG_RUN.targetKm} km by ${fmtDate(lr.peakBy)} needs ${fmtKm(lr.perWeek)} km more per week, more than the usual ${LONG_RUN.maxKmPerWeek}.`, tab: 'training', tabLabel: 'Training' });
+  }
+  const lastFull = weeklyLongRuns(state.acts, addDays(mondayOf(new Date()), -7), addDays(mondayOf(new Date()), -7))[0];
+  if (lastFull?.share > LONG_RUN.maxShare) attention.push({ level: 'info', text: `Last week's long run was ${Math.round(lastFull.share * 100)}% of your running (${fmtKm(lastFull.longest)} of ${fmtKm(lastFull.weekKm)} km). Over 35% makes it a big single stress.`, tab: 'training', tabLabel: 'Training' });
 
   renderForecasts(ctx, attention);
   renderAttention(attention);

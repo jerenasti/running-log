@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  vdot, timeForVdot, parseTime, vo2Forecast, marathonForecast, nominalDistance, trialEffort, timeTrials, raceResults, calibration, MARATHON_M, MODEL,
+  vdot, timeForVdot, parseTime, vo2Forecast, marathonForecast, nominalDistance, trialEffort, timeTrials, raceResults, calibration, chooseCalibration, MARATHON_M, MODEL,
 } from '../js/forecast.js';
 import { TODAY, day, iso, run } from './helpers.js';
 
@@ -126,6 +126,18 @@ test('calibration: effort VDOT ÷ VO2max on that day, averaged', () => {
   near(cal.factor, (44 / 50 + 45 / 50) / 2, 1e-12, 'factor');
   assert.equal(calibration([], vo2).factor, 1, 'no efforts → uncalibrated');
   assert.equal(calibration([{ date: day(-30), vdot: 40 }], vo2).results.length, 0, 'no VO2max before the effort');
+});
+
+test('calibration choice: efforts first, then Runna paces, then none', () => {
+  const vo2 = [{ date: iso(-20), vo2max: 48 }, { date: iso(-2), vo2max: 50 }];
+  const effort = { date: day(-10), distance_m: 5000, sec: 1340, vdot: 44 };
+  const withEffort = chooseCalibration([effort], 42, vo2);
+  assert.equal(withEffort.source, 'efforts');
+  near(withEffort.factor, 44 / 48, 1e-12, 'effort factor uses VO2max on the effort day');
+  const withRunna = chooseCalibration([], 42, vo2);
+  assert.equal(withRunna.source, 'runna');
+  near(withRunna.factor, 42 / 50, 1e-12, 'Runna factor uses the latest VO2max');
+  assert.deepEqual(chooseCalibration([], null, vo2), { factor: 1, results: [], source: null });
 });
 
 test('race results from races.json: only past races with a result', () => {

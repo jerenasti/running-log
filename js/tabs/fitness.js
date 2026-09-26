@@ -8,6 +8,7 @@ import { theme, baseOptions, drawChart } from '../charts.js';
 import { danielsPaces, runnaPaces, runnaVdot, PACE_SHARES } from '../paces.js';
 import { calibration, timeTrials, raceResults, vdot, parseTime, timeForVdot } from '../forecast.js';
 import { parseDate } from '../parse.js';
+import { addDays } from '../dates.js';
 
 const $ = s => document.querySelector(s);
 const CHART_DAYS = 180;  // load chart shows at most the last ~6 months
@@ -139,7 +140,7 @@ function renderPaces() {
   const races = state.content?.races?.data?.races || [];
   const goal = races.filter(r => r.goal && parseDate(r.date) >= new Date()).sort((a, b) => a.date.localeCompare(b.date))[0];
   const cal = calibration([...timeTrials(state.acts), ...raceResults(races)], meta.vo2max);
-  const runna = runnaPaces((meta.schedule || []).filter(w => parseDate(w.date) >= new Date(Date.now() - 14 * 864e5)));
+  const runna = runnaPaces((meta.schedule || []).filter(w => parseDate(w.date) >= addDays(new Date(), -14)));
   const rv = runnaVdot(runna);
   const runnaV = Object.values(rv).length ? Object.values(rv).reduce((a, b) => a + b, 0) / Object.values(rv).length : null;
 

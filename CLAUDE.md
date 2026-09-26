@@ -34,6 +34,10 @@ uv run --with pytest --with garminconnect==0.3.2 pytest tests -q       # Python 
 - When fixing a bug, add a test that fails without the fix (see the `null < 60` sleep-score and `\b` time-trial regressions).
 - Only the logic files are tested (js/*.js, fetch_garmin.py); the tab files in js/tabs/ are checked in the browser.
 
+## Dates
+
+- Never add days as `n × 24 h` (`DAY_MS`, `864e5`): on daylight saving changes a day is 23 or 25 hours and the date lands on the wrong day. Use `addDays()` / `daysBetween()` from `js/dates.js`. `DAY_MS` is only fine for rounded or approximate differences.
+
 ## Constraints (absolute)
 
 - **NEVER log in to Garmin with a password.** Garmin blocks repeated logins (HTTP 429). Use only the saved tokens. If the tokens are expired or missing, the script must stop with a clear error message and must not try to log in again. The user renews the tokens themselves with the `garmin-mcp-auth` tool.
@@ -79,9 +83,10 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
 - `content/meals.json`: editable meal ideas (tracked). `content/races.json`: the user's races with optional `goal` and `result` (gitignored, template in `races.example.json`). Loaded with `fetchContent()`; a broken file shows an error notice.
 - `js/plan.js`: plan follow-up and weekly review. A run matches a planned workout by Garmin `workoutId` (within 7 days): done / moved / missed / today / upcoming / extra. Before the plan history, Runna names ("W3 Tue ...") give the planned day. `weekReview()` compares a week with the one before and builds highlights by fixed rules (missed, distance +10%, HRV −5 ms, resting HR ±2 bpm, VO2max change). `js/tabs/review.js` draws the "Plan and weekly review" card on the Training tab (week navigation).
 - `js/paces.js`: Daniels training paces from VDOT (easy 59–74%, threshold 88%, interval 98%, repetition 105% of VDOT; marathon = marathon race pace), checked against the published pace table. Runna puts no pace targets in the Garmin workout steps, only in the description text ("no faster than 5:40/km", "1.5km at 4:50/km"): `runnaPaces()` parses them (kind from the sentence, else the workout name) and `runnaVdot()` gives the VDOT they correspond to. Shown as the Training paces card on the Fitness and load tab and as a line in the Overview marathon card. Runna's plan: "Run Further Plan", 13 weeks.
+- `js/longruns.js`: long run progression (weekly longest run and its share of the week, planned long runs from the plan, outlook: longest of the last 4 weeks → 32 km peak 3 weeks before the marathon, needed km/week, status on-track/steep/reached/late). Drawn by `js/tabs/longruns.js` on the Training tab.
 - `js/tabs/overview.js`: Overview tab, the front page and default tab. Reuses the other logic files (recovery, metrics, nutrition, forecast); the attention list collects items from all tabs, sorted warn > watch > info.
 - `js/forecast.js`: VO2max forecast (saturating curve a + b·(1 − e^(−t/τ)), τ = 90 d under 8 weeks of data, else best fit in 45–120 d; 80% band covers the prediction interval for every τ in that range; 2-week backtest) and Daniels' VDOT formula (no lookup table), marathon time by bisection, calibration from time trials found in the activities (`timeTrials`: laps of the same workout step are summed, because Garmin splits steps into 1 km laps; the step closest to the distance in the name is used; warm-up/cool-down/rest are skipped) plus race results in races.json. Checked against the published VDOT table (within ~10 s).
-- Marathon goal: the user's main race and goal time (in `content/races.json` as the race with `goal`). Uncalibrated VDOT forecast is far faster than Garmin's prediction; the UI says so and calibrates automatically after the first time trial.
+- Marathon goal: the user's main race and goal time (in `content/races.json` as the race with `goal`). Calibration (`chooseCalibration`): time trials / race results first; until the first one, the VDOT implied by the Runna plan's paces ÷ Garmin's latest VO2max (user's choice, 26 Sep 2026). The UI always says which source is used.
 - A new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
 - Chart.js is loaded as a global from cdnjs in `index.html`.
 - `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task. `test.bat`: all tests.

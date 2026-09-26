@@ -155,6 +155,18 @@
           </details>
         </section>
 
+        <section class="card span-2" id="longCard">
+          <div class="card-head"><div><h2>Long runs</h2><p class="sub">Your longest run each week, on the way to the marathon.</p></div></div>
+          <div class="kpis" id="longStats"></div>
+          <p class="long-status" id="longStatus"></p>
+          <div class="chart"><canvas id="longChart" aria-label="Longest run per week, planned long runs and the build-up to the marathon peak" role="img"></canvas></div>
+          <details class="info"><summary>How it works</summary>
+            <p><b>Longest run</b>: the longest run of each week (Monday to Sunday). The current week is highlighted. <b>Planned</b>: long runs in your Runna plan ("long" in the name), with the distance from the name.</p>
+            <p><b>Peak target</b>: marathon plans usually build the longest run to 30–35 km, about 3 weeks before race day, and then taper. <b>Needed build-up</b> is the straight line from your longest run of the last 4 weeks to 32 km on that date; the number above it is the average weekly increase. A common guideline is 1–2 km a week with an easier week every 3–4 weeks, so the real curve goes up in steps.</p>
+            <p><b>Long run share</b>: the long run's part of the week's running. Over about 35% makes the long run a big single stress for the week.</p>
+          </details>
+        </section>
+
         <section class="card span-2">
           <div class="card-head"><div><h2>Weekly distance</h2><p class="sub">The current week is highlighted.</p></div></div>
           <div class="chart"><canvas id="weekChart" aria-label="Weekly distance as a bar chart" role="img"></canvas></div>
