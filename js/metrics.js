@@ -37,7 +37,9 @@ export function loadModel(acts, today = new Date()) {
   const days = [];
   let ctl = 0, atl = 0;
   const end = startOfDay(today).getTime();
-  for (let t = startOfDay(withLoad[0].date).getTime(); t <= end; t += DAY_MS) {
+  // Start from the earliest activity, whatever order the list is in
+  const first = Math.min(...withLoad.map(a => startOfDay(a.date).getTime()));
+  for (let t = first; t <= end; t += DAY_MS) {
     const date = new Date(t);
     const load = loadByDay.get(dayKey(date)) || 0;
     const tsb = ctl - atl;            // yesterday's values

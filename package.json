@@ -1,0 +1,9 @@
+{
+  "name": "running-log",
+  "private": true,
+  "type": "module",
+  "description": "Running Log. No npm dependencies: this file only tells Node that js/ uses ES modules and defines the test command.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}

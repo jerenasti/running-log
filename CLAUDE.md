@@ -22,6 +22,18 @@ The user is learning to program through this project: briefly explain what you a
 - Write commit messages in English (imperative mood, e.g. "Add weekly goal"). Older commits are in Finnish; leave them as they are.
 - Code, comments and UI text are in English.
 
+## Testing
+
+Run the tests before every commit: double-click `test.bat`, or run
+```
+node --test "tests/*.test.js"                                          # JavaScript (js/), no npm packages needed
+uv run --with pytest --with garminconnect==0.3.2 pytest tests -q       # Python (fetch_garmin.py)
+```
+- `tests/*.test.js` use Node's built-in `node:test` and a fixed date (`TODAY` in `tests/helpers.js`), never the real date. `package.json` only sets `"type": "module"` and the test script.
+- `tests/test_fetch_garmin.py` uses `FakeGarmin`, so tests never contact Garmin. It also checks the absolute rule: `connect()` never passes an email or password and stops without tokens.
+- When fixing a bug, add a test that fails without the fix (see the `null < 60` sleep-score and `\b` time-trial regressions).
+- Only the logic files are tested (js/*.js, fetch_garmin.py); the tab files in js/tabs/ are checked in the browser.
+
 ## Constraints (absolute)
 
 - **NEVER log in to Garmin with a password.** Garmin blocks repeated logins (HTTP 429). Use only the saved tokens. If the tokens are expired or missing, the script must stop with a clear error message and must not try to log in again. The user renews the tokens themselves with the `garmin-mcp-auth` tool.
@@ -70,7 +82,7 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
 - Marathon goal: the user's main race and goal time (in `content/races.json` as the race with `goal`). Uncalibrated VDOT forecast is far faster than Garmin's prediction; the UI says so and calibrates automatically after the first time trial.
 - A new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
 - Chart.js is loaded as a global from cdnjs in `index.html`.
-- `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task.
+- `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task. `test.bat`: all tests.
 
 ## Design (direction "Graphite")
 
