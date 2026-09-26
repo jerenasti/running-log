@@ -172,12 +172,12 @@ function drawSleep(list) {
         title: base.plugins.tooltip.callbacks.title,
         label: c => c.dataset.yAxisID === 'y1' ? `Score: ${fmtInt(c.parsed.y)}` : `${c.dataset.label}: ${fmtHm(c.parsed.y * 3600)}`,
         footer: items => 'Asleep: ' + fmtHm(list[items[0].dataIndex].duration_s),
-      }, footerFont: { family: t.mono, weight: '400' } } },
+      }, footerFont: { family: t.num, weight: '400' } } },
       scales: {
         x: { ...base.scales.x, stacked: true, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 10 } },
         y: { ...base.scales.y, stacked: true, beginAtZero: true, ticks: { ...base.scales.y.ticks, callback: v => v + ' h' } },
         y1: { position: 'right', min: 0, max: 100, grid: { display: false }, border: { display: false },
-              ticks: { color: t.text3, font: { family: t.mono, size: 11 }, stepSize: 25 } },
+              ticks: { color: t.text3, font: { family: t.num, size: 11 }, stepSize: 25 } },
       } },
   });
 }

@@ -29,7 +29,6 @@
   --font-num: var(--font-sans);              /* numbers: same family ... */
   --num-variant: tabular-nums;               /* ... with equal-width figures */
   --font-code: ui-monospace, 'Cascadia Mono', Consolas, monospace;   /* file names and code only */
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;   /* old: replaced by --font-num in step 2 */
 
   /* Size scale (rem, 1rem = 16px) */
   --fs-xs: .75rem;      /* 12px  axis labels, badges, small print */

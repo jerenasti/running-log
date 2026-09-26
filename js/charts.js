@@ -12,7 +12,7 @@ export function theme() {
     text: cssVar('--text'), text3: cssVar('--text-3'), bg: cssVar('--bg'),
     accent: cssVar('--accent'), bar: cssVar('--chart-bar'), line: cssVar('--chart-line'), grid: cssVar('--chart-grid'),
     warn: cssVar('--status-warn'), watch: cssVar('--status-watch'),
-    sans: cssVar('--font-sans'), mono: cssVar('--font-mono'),
+    sans: cssVar('--font-sans'), num: cssVar('--font-num'),
   };
 }
 
@@ -28,7 +28,7 @@ export function baseOptions(t, titleFn) {
       tooltip: {
         backgroundColor: t.text, titleColor: t.bg, bodyColor: t.bg,
         padding: 10, displayColors: false, cornerRadius: 6,
-        titleFont: { family: t.sans, weight: '500' }, bodyFont: { family: t.mono },
+        titleFont: { family: t.sans, weight: '500' }, bodyFont: { family: t.num },
         callbacks: { title: titleFn },
       },
     },
@@ -36,7 +36,7 @@ export function baseOptions(t, titleFn) {
       x: { grid: { display: false }, border: { color: t.grid },
            ticks: { color: t.text3, autoSkip: true, maxRotation: 0, font: { family: t.sans, size: 11 } } },
       y: { grid: { color: t.grid }, border: { display: false },
-           ticks: { color: t.text3, font: { family: t.mono, size: 11 } } },
+           ticks: { color: t.text3, font: { family: t.num, size: 11 } } },
     },
   };
 }

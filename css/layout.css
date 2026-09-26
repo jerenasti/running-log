@@ -6,7 +6,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 400 15px/1.5 var(--font-sans);
+  font: var(--type-body);
+  font-variant-numeric: var(--num-variant);   /* every number in the app lines up */
 }
 
 /* Centered content column with a 16px gutter on phones.
@@ -23,7 +24,7 @@ body {
   padding-top: max(20px, env(safe-area-inset-top));
   padding-bottom: 8px;
 }
-.brand { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
+.brand { margin: 0; font: var(--type-page-title); font-variant-numeric: var(--num-variant); letter-spacing: -.01em; }
 
 /* Tab bar sticks to the top while scrolling; scrolls sideways on narrow screens */
 .tabbar {

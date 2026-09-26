@@ -85,7 +85,7 @@ function drawLoadChart(days) {
           title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label + ': ' + (c.datasetIndex === 2 ? fmtSigned(c.parsed.y) : fmtInt(c.parsed.y)),
           footer: items => 'Load that day: ' + fmtInt(shown[items[0].dataIndex].load),
-        }, footerFont: { family: t.mono, weight: '400' } } },
+        }, footerFont: { family: t.num, weight: '400' } } },
       scales: { ...base.scales,
         x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: 8 } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
@@ -117,7 +117,7 @@ function drawEfficiencyChart(runs) {
           title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label + ': ' + fmtRatio(c.parsed.y),
           footer: items => { const a = runs[items[0].dataIndex].act; return fmtPace(a.sec / a.km) + ' ' + paceLabel() + ' · ' + fmtInt(a.hr) + ' bpm'; },
-        }, footerFont: { family: t.mono, weight: '400' } } },
+        }, footerFont: { family: t.num, weight: '400' } } },
       scales: { ...base.scales, y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtRatio(v) } } } },
   });
 }

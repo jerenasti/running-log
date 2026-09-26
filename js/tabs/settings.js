@@ -81,18 +81,18 @@ function attrs(path, hint) {
 }
 
 const text = (label, path, value, { hint = '', placeholder = '', mono = false, kind = '' } = {}) =>
-  field(label, `<input type="text" ${attrs(path, hint)} value="${esc(value ?? '')}" placeholder="${esc(placeholder)}"${mono ? ' class="mono"' : ''}${kind ? ` data-kind="${kind}"` : ''} autocomplete="off">`, path, hint);
+  field(label, `<input type="text" ${attrs(path, hint)} value="${esc(value ?? '')}" placeholder="${esc(placeholder)}"${mono ? ' class="code"' : ''}${kind ? ` data-kind="${kind}"` : ''} autocomplete="off">`, path, hint);
 
 const dateInput = (label, path, value, hint = '') =>
-  field(label, `<input type="date" class="mono" ${attrs(path, hint)} value="${esc(value ?? '')}">`, path, hint);
+  field(label, `<input type="date" class="num" ${attrs(path, hint)} value="${esc(value ?? '')}">`, path, hint);
 
 const timeInput = (label, path, value, hint = '') =>
-  field(label, `<input type="text" class="mono" ${attrs(path, hint)} value="${esc(value ?? '')}" placeholder="h:mm:ss" autocomplete="off" spellcheck="false">`, path, hint);
+  field(label, `<input type="text" class="num" ${attrs(path, hint)} value="${esc(value ?? '')}" placeholder="h:mm:ss" autocomplete="off" spellcheck="false">`, path, hint);
 
 /** A distance kept in km, shown and typed in the chosen unit (Settings → Appearance → Units) */
 function dist(label, path, km, { decimals = 2, hint = '', empty = '' } = {}) {
   const shown = km == null || km === '' || (empty && !km) ? '' : String(+distIn(km).toFixed(decimals));
-  const input = `<span class="with-unit"><input type="number" class="mono" ${attrs(path, hint)} data-kind="distance"
+  const input = `<span class="with-unit"><input type="number" class="num" ${attrs(path, hint)} data-kind="distance"
     ${empty ? `data-empty="${empty}"` : ''} data-km="${km ?? ''}" data-shown="${shown}" value="${shown}" step="any" min="0" inputmode="decimal"><span class="unit">${distLabel()}</span></span>`;
   return field(label, input, path, hint);
 }
@@ -100,7 +100,7 @@ const raceHint = () => units() === 'mi' ? 'Marathon 26.22, half 13.11' : 'Marath
 
 function num(label, path, value, { unit = '', hint = '', step = 'any', min = '', max = '', empty = '', enabledBy = null } = {}) {
   const on = !enabledBy || enabledBy.on;
-  const input = `<span class="with-unit"><input type="number" class="mono" ${attrs(path, hint)} data-kind="number"
+  const input = `<span class="with-unit"><input type="number" class="num" ${attrs(path, hint)} data-kind="number"
     ${empty ? `data-empty="${empty}"` : ''} value="${value ?? ''}" step="${step}" min="${min}" max="${max}" inputmode="decimal"
     ${enabledBy ? `data-enabled-by="${enabledBy.path}" data-enabled-value="${enabledBy.value}"` : ''}${on ? '' : ' disabled'}>${unit ? `<span class="unit">${unit}</span>` : ''}</span>`;
   return field(label, input, path, hint);
