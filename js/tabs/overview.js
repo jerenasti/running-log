@@ -311,6 +311,10 @@ export function renderOverview() {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
   const tPlan = dayType(tomorrow, { acts: [], planned, race: ctx.race });
   if (tPlan.type === 'long' && tPlan.plan?.minutes >= LONG_MINUTES) attention.push({ level: 'info', text: `Long run tomorrow: practise race fuelling (${FUELING.training[0]}–${FUELING.training[1]} g of carbs per hour).`, tab: 'nutrition', tabLabel: 'Nutrition' });
+  // How the last Garmin fetch went (data/fetch_status.json)
+  const fs = state.fetchStatus;
+  if (fs && !fs.ok) attention.push({ level: 'warn', text: `The last Garmin fetch failed (${fmtDate(parseDate(fs.at))} at ${fs.at.slice(11, 16)}): ${esc(fs.error || 'unknown error')} The data shown is from the last successful fetch.`, tab: null });
+  if (fs?.ok && fs.warnings?.length) attention.push({ level: 'info', text: `The last Garmin fetch could not get: ${fs.warnings.map(esc).join(', ')}. Those parts may be out of date.`, tab: null });
   if (state.fetchedAt && (Date.now() - state.fetchedAt) > 36 * 3600 * 1000) attention.push({ level: 'watch', text: `Garmin data is ${Math.floor((Date.now() - state.fetchedAt) / 86400000)} days old. Run start.bat or check data/fetch_data.log.`, tab: null });
 
   // Training plan: missed sessions this week, and last week's distance jump

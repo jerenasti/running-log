@@ -38,6 +38,14 @@ export function garminToActivities(json) {
   return { acts, meta };
 }
 
+/** data/fetch_status.json written by fetch_garmin.py: { at, ok, error, warnings }, or null if missing */
+export async function fetchStatus() {
+  try {
+    const res = await fetch('data/fetch_status.json', { cache: 'no-store' });
+    return res.ok ? await res.json() : null;
+  } catch (e) { return null; }
+}
+
 /** Editable content files in content/ (meal ideas, races). A missing or broken file gives an error message. */
 export async function fetchContent(name) {
   try {

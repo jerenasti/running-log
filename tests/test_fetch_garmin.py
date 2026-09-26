@@ -219,6 +219,44 @@ def test_previous_laps_are_reused(tmp_path, monkeypatch):
     assert fg.previous_laps() == {}
 
 
+# ---------- Status file (read by the app and the failure notification) ----------
+
+def run_main(tmp_path, monkeypatch, run):
+    status = tmp_path / "fetch_status.json"
+    monkeypatch.setattr(fg, "STATUS", status)
+    monkeypatch.setattr(fg, "WARNINGS", [])
+    monkeypatch.setattr(fg, "run", run)
+    return status
+
+
+def test_status_after_a_successful_run_lists_warnings(tmp_path, monkeypatch):
+    def run():
+        fg.optional("sleep", lambda: (_ for _ in ()).throw(ValueError("boom")), [])
+    status = run_main(tmp_path, monkeypatch, run)
+    fg.main()
+    s = json.loads(status.read_text(encoding="utf-8"))
+    assert s["ok"] is True and s["error"] is None and s["warnings"] == ["sleep"]
+
+
+def test_status_records_why_the_run_stopped(tmp_path, monkeypatch):
+    def run():
+        sys.exit("The saved tokens are not valid (expired).")
+    status = run_main(tmp_path, monkeypatch, run)
+    with pytest.raises(SystemExit):
+        fg.main()
+    s = json.loads(status.read_text(encoding="utf-8"))
+    assert s["ok"] is False and s["error"] == "The saved tokens are not valid (expired)."
+
+
+def test_status_records_unexpected_errors_too(tmp_path, monkeypatch):
+    def run():
+        raise ConnectionError("no network")
+    status = run_main(tmp_path, monkeypatch, run)
+    with pytest.raises(ConnectionError):
+        fg.main()
+    assert json.loads(status.read_text(encoding="utf-8"))["error"] == "ConnectionError: no network"
+
+
 # ---------- Optional requests ----------
 
 def test_optional_request_failure_is_only_a_warning(capsys):

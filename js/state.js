@@ -11,6 +11,7 @@ export const state = {
   goal: 0,         // weekly distance goal in km (0 = not set)
   showAll: false,  // Training: show every activity in the table
   fetchedAt: null,  // when data/activities.json was written (ms), for the data freshness check (not saved)
+  fetchStatus: null, // data/fetch_status.json: how the last Garmin fetch went (not saved)
   content: null,   // content/meals.json and content/races.json: { meals: { data | error }, races: { data | error } } (not saved)
 };
 

@@ -264,6 +264,10 @@ def previous_laps() -> dict:
         return {}
 
 
+STATUS = OUTPUT.parent / "fetch_status.json"
+WARNINGS: list[str] = []   # optional requests that failed during this run
+
+
 def optional(label: str, fetch, default):
     """Run an extra request. A failure only prints a warning, so the activities are still saved.
     429 (too many requests) still stops the script, as everywhere else."""
@@ -273,10 +277,32 @@ def optional(label: str, fetch, default):
         sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
     except Exception as e:
         print(f"Warning: could not fetch {label} ({e}). Continuing without it.")
+        WARNINGS.append(label)
         return default
 
 
+def write_status(ok: bool, error: str | None = None) -> None:
+    """data/fetch_status.json: how the last run went. The app and the failure notification read it."""
+    STATUS.parent.mkdir(exist_ok=True)
+    STATUS.write_text(json.dumps({"at": datetime.now().isoformat(timespec="seconds"), "ok": ok,
+                                  "error": error, "warnings": WARNINGS}, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def main() -> None:
+    """Run the fetch and record the outcome in data/fetch_status.json, also when it stops with an error."""
+    try:
+        run()
+    except SystemExit as e:
+        if e.code not in (0, None):
+            write_status(False, str(e.code))
+        raise
+    except Exception as e:  # e.g. no network: record it, then show the normal traceback
+        write_status(False, f"{type(e).__name__}: {e}")
+        raise
+    write_status(True)
+
+
+def run() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--days", type=int, default=365, help="how many days back to fetch (default 365)")
     args = parser.parse_args()

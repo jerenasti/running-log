@@ -1,7 +1,7 @@
 // Entry point: loads the Garmin data and wires up the tabs.
 
 import { state, save, restore } from './state.js';
-import { fetchGarmin, garminToActivities, fetchContent } from './data.js';
+import { fetchGarmin, garminToActivities, fetchContent, fetchStatus } from './data.js';
 import { parseDate } from './parse.js';
 import { fmtDate, fmtTime } from './format.js';
 import { initTabs } from './nav.js';
@@ -41,8 +41,9 @@ initTraining();
 initTabs(name => { currentTab = name; render(); });
 
 // Editable content files (meal ideas, races) load alongside the Garmin data
-Promise.all([fetchContent('meals.json'), fetchContent('races.json')]).then(([meals, races]) => {
+Promise.all([fetchContent('meals.json'), fetchContent('races.json'), fetchStatus()]).then(([meals, races, status]) => {
   state.content = { meals, races };
+  state.fetchStatus = status;
   render();
 });
 

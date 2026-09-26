@@ -61,7 +61,10 @@ Then open http://localhost:8000. Stop the server with Ctrl+C. The same server is
 
 ## Scheduling
 
-The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_data.bat` daily at 06:00 (or as soon as the computer is on, if that time was missed). Log: `data/fetch_data.log`. Once a day is enough: do not add more frequent scheduling (Garmin rate limits).
+The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_data.bat` daily at 06:00 (or as soon as the computer is on, if that time was missed). Log: `data/fetch_data.log`.
+`fetch_data.bat` then runs `backup.py` (always) and, if the fetch failed, `notify.ps1` (Windows toast with the error from `data/fetch_status.json`).
+- `data/fetch_status.json` (`{at, ok, error, warnings}`): written by `fetch_garmin.py`'s `main()` for every run, also when it stops with an error; failed optional requests are listed in `warnings`. The Overview attention list shows it.
+- `backup.py`: copies `content/races.json` and `data/activities.json` (holds the plan history Garmin drops) to a dated folder, keeps 30 days. Location: `BACKUP_DIR`, else the **personal** OneDrive (`%OneDriveConsumer%\Juoksupaivakirja-varmuuskopio`; `%OneDrive%` can be a work or school OneDrive and must not be used), else `data/backups`. Once a day is enough: do not add more frequent scheduling (Garmin rate limits).
 
 ## Structure
 
