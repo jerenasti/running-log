@@ -99,6 +99,60 @@ def fetch_resting_hr(garmin: Garmin, start: date, end: date) -> list[dict]:
     return [{"date": v["calendarDate"], "bpm": round(v["value"])} for v in values if v.get("value")]
 
 
+RECOVERY_DAYS = 28  # HRV, sleep and Body Battery: the last 4 weeks, one request each
+
+
+def fetch_hrv(garmin: Garmin, start: date, end: date) -> list[dict]:
+    """Nightly HRV with Garmin's status and personal baseline (normal range)."""
+    data = garmin.connectapi(f"/hrv-service/hrv/daily/{start.isoformat()}/{end.isoformat()}") or {}
+    out = []
+    for h in data.get("hrvSummaries") or []:
+        base = h.get("baseline") or {}
+        out.append({
+            "date": h.get("calendarDate"),
+            "last_night": h.get("lastNightAvg"),          # ms, average of last night
+            "weekly_avg": h.get("weeklyAvg"),
+            "status": h.get("status"),                    # e.g. "BALANCED", "UNBALANCED", "LOW"
+            "baseline_low": base.get("balancedLow"),      # Garmin's personal normal range
+            "baseline_high": base.get("balancedUpper"),
+        })
+    return out
+
+
+def fetch_sleep(garmin: Garmin, start: date, end: date) -> list[dict]:
+    """Nightly sleep: duration, score and stages. The date is the morning you woke up."""
+    data = garmin.connectapi(f"/sleep-service/stats/sleep/daily/{start.isoformat()}/{end.isoformat()}") or {}
+    out = []
+    for s in data.get("individualStats") or []:
+        v = s.get("values") or {}
+        out.append({
+            "date": s.get("calendarDate"),
+            "duration_s": v.get("totalSleepTimeInSeconds"),
+            "score": v.get("sleepScore"),
+            "quality": v.get("sleepScoreQuality"),        # e.g. "FAIR", "GOOD"
+            "deep_s": v.get("deepTime"),
+            "light_s": v.get("lightTime"),
+            "rem_s": v.get("remTime"),
+            "awake_s": v.get("awakeTime"),
+        })
+    return out
+
+
+def fetch_body_battery(garmin: Garmin, start: date, end: date) -> list[dict]:
+    """Daily Body Battery: highest and lowest value of the day, charged and drained."""
+    out = []
+    for d in garmin.get_body_battery(start.isoformat(), end.isoformat()) or []:
+        levels = [v[1] for v in d.get("bodyBatteryValuesArray") or [] if len(v) > 1 and v[1] is not None]
+        out.append({
+            "date": d.get("date"),
+            "high": max(levels) if levels else None,     # usually right after waking up
+            "low": min(levels) if levels else None,
+            "charged": d.get("charged"),
+            "drained": d.get("drained"),
+        })
+    return out
+
+
 def optional(label: str, fetch, default):
     """Run an extra request. A failure only prints a warning, so the activities are still saved.
     429 (too many requests) still stops the script, as everywhere else."""
@@ -129,12 +183,19 @@ def main() -> None:
     activities = sorted((simplify(a) for a in raw), key=lambda a: a["start_time"] or "", reverse=True)
     hr_settings = optional("heart rate zones", lambda: fetch_hr_settings(garmin), None)
     resting_hr = optional("resting heart rate", lambda: fetch_resting_hr(garmin, start, date.today()), [])
+    rec_start = date.today() - timedelta(days=RECOVERY_DAYS - 1)
+    recovery = {
+        "hrv": optional("HRV", lambda: fetch_hrv(garmin, rec_start, date.today()), []),
+        "sleep": optional("sleep", lambda: fetch_sleep(garmin, rec_start, date.today()), []),
+        "body_battery": optional("Body Battery", lambda: fetch_body_battery(garmin, rec_start, date.today()), []),
+    }
 
     payload = {
         "fetchedAt": datetime.now().isoformat(timespec="seconds"),
         "activities": activities,
         "hr_settings": hr_settings,
         "resting_hr": resting_hr,
+        "recovery": recovery,
     }
 
     # Write to a temporary file first and swap it in only at the end,
@@ -145,7 +206,8 @@ def main() -> None:
     tmp.replace(OUTPUT)
 
     print(f"Saved {len(activities)} activities, {len(resting_hr)} resting HR days"
-          f"{', HR zones' if hr_settings else ''} to {OUTPUT}")
+          f"{', HR zones' if hr_settings else ''}, {len(recovery['hrv'])} HRV / {len(recovery['sleep'])} sleep /"
+          f" {len(recovery['body_battery'])} Body Battery days to {OUTPUT}")
 
 
 if __name__ == "__main__":

@@ -174,16 +174,51 @@
 
   <!-- ===================== Recovery ===================== -->
   <section id="panel-recovery" role="tabpanel" aria-labelledby="tab-recovery" hidden>
-    <div class="card placeholder">
-      <span class="badge">Coming soon</span>
-      <h2>Recovery</h2>
-      <p>How well you recover between sessions.</p>
-      <ul>
-        <li>Sleep duration and quality</li>
-        <li>Heart rate variability (HRV)</li>
-        <li>Resting heart rate</li>
-        <li>Body Battery and stress</li>
-      </ul>
+
+    <div class="card empty" id="recNoData" hidden>
+      <h2>No recovery data yet</h2>
+      <p class="hint">HRV, sleep and Body Battery come from Garmin. Fetch your data with start.bat. Your watch needs to be worn overnight and synced.</p>
+    </div>
+
+    <div id="recDash" hidden>
+      <section class="card rec-card" id="recToday"></section>
+      <details class="info rec-info"><summary>How the recommendation works</summary>
+        <p><b>Rest day</b>: HRV is below your normal range and resting HR is above it on the same morning, or either of them is off while your training load is high.</p>
+        <p><b>Easy day</b>: any one recovery signal is off (low HRV, high resting HR, poor sleep, low Body Battery), or your training load is high.</p>
+        <p><b>Hard training OK</b>: none of the above.</p>
+        <p><b>High training load</b>: workload ratio (ACWR) 1.3 or higher, or fatigue (ATL) above its own normal range (28-day mean + 1 standard deviation).</p>
+        <p>The recommendation uses the latest night your watch has synced. It is a rule of thumb from your own data, not medical advice: if you feel ill or unusually tired, rest anyway.</p>
+      </details>
+
+      <div class="kpis" id="recStats"></div>
+
+      <div class="grid">
+        <section class="card">
+          <div class="card-head"><div><h2>HRV, last 4 weeks</h2><p class="sub">Nightly average and Garmin's normal range for you.</p></div></div>
+          <div class="chart short"><canvas id="hrvChart" aria-label="Nightly HRV over the last 4 weeks with the normal range" role="img"></canvas></div>
+          <details class="info"><summary>What is this?</summary>
+            <p><b>Heart rate variability (HRV)</b> is the variation in time between heartbeats, measured by your watch while you sleep. Within or above your normal range usually means you have recovered. A drop below it can be a sign of fatigue, illness or stress.</p>
+            <p>The shaded band is Garmin's baseline for you, based on the last 3 weeks. Nights below it are highlighted. The dashed line is the 7-day average.</p>
+          </details>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><h2>Resting heart rate, last 4 weeks</h2><p class="sub">Daily value and your normal range.</p></div></div>
+          <div class="chart short"><canvas id="rhrChart" aria-label="Resting heart rate over the last 4 weeks with the normal range" role="img"></canvas></div>
+          <details class="info"><summary>What is this?</summary>
+            <p><b>Resting heart rate</b> is your lowest heart rate of the day. A value above your normal range can point to fatigue, illness, heat, stress or alcohol.</p>
+            <p>The shaded band is your normal range: the mean ± 1 standard deviation of the 28 days before each date, so about two thirds of your days fall inside it. It appears once there are 14 days of data. Days above it are highlighted.</p>
+          </details>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-head"><div><h2>Last night's sleep</h2></div></div>
+          <div id="sleepStages"></div>
+          <details class="info"><summary>What is this?</summary>
+            <p>Sleep stages as measured by your watch. <b>Deep sleep</b> matters most for physical recovery, <b>REM</b> for mental recovery. The sleep score (0–100) is Garmin's overall rating of duration, stages and restlessness.</p>
+          </details>
+        </section>
+      </div>
     </div>
   </section>
 

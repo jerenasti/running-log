@@ -191,4 +191,25 @@ details.easy-list table { min-width: 520px; }
 .acwr-detail { margin: 10px 0 0; font-size: .8rem; color: var(--text-3); }
 .hr-info { margin-top: var(--gap); }
 
+/* ---------- Recovery ---------- */
+.st-none { background: var(--text-3); }
+.dot.big { width: .85rem; height: .85rem; }
+.muted { color: var(--text-3); }
+.rec-head { display: flex; align-items: center; gap: .6rem; }
+.card h2.rec-label { font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
+.rec-why { margin: 10px 0 0; padding-left: 1.2rem; color: var(--text-2); font-size: .9rem; }
+.rec-attention { margin: 12px 0 0; }
+.rules { margin-top: 14px; min-width: 600px; }
+.rules tr.group th { padding-top: 14px; color: var(--text-2); font-weight: 600; font-size: .78rem; border-bottom: 1px solid var(--border); }
+.rules td.rule { white-space: normal; color: var(--text-3); font-size: .8rem; min-width: 22ch; }
+.rules td .status { font-size: .82rem; font-weight: 400; }
+.rec-info { margin: 8px 0 var(--gap) 2px; }
+
+.stages { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin: 12px 0 0; gap: 2px; }
+.stages span { height: 100%; }
+.stage-deep { background: var(--text); }
+.stage-light { background: var(--chart-bar); }
+.stage-rem { background: var(--chart-line); }
+.stage-awake { background: var(--status-watch); }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

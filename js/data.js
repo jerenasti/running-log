@@ -26,7 +26,7 @@ export function garminToActivities(json) {
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr,
     maxHr: a.max_hr ?? null, teLabel: a.te_label ?? null, zones: a.hr_zones_s ?? null,
   })).filter(a => a.date).sort((a, b) => a.date - b.date);
-  // Garmin-only extras for the Fitness and load tab
-  const meta = { hrSettings: json.hr_settings ?? null, restingHr: json.resting_hr ?? [] };
+  // Garmin extras for the Fitness and load and Recovery tabs
+  const meta = { hrSettings: json.hr_settings ?? null, restingHr: json.resting_hr ?? [], recovery: json.recovery ?? null };
   return { acts, meta };
 }

@@ -7,6 +7,7 @@ import { fmtDate, fmtTime } from './format.js';
 import { initTabs } from './nav.js';
 import { initTraining, renderTraining } from './tabs/training.js';
 import { renderFitness } from './tabs/fitness.js';
+import { renderRecovery } from './tabs/recovery.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
@@ -21,6 +22,7 @@ function render() {
   // Charts are drawn only for the visible tab (a hidden canvas has no size)
   if (currentTab === 'training') renderTraining();
   if (currentTab === 'fitness') renderFitness();
+  if (currentTab === 'recovery') renderRecovery();
 }
 
 // Redraw charts when the system switches between light and dark mode

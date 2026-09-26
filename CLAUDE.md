@@ -50,14 +50,17 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
 ## Structure
 
 - `fetch_garmin.py`: fetches activities → `data/activities.json`:
-  `{fetchedAt, activities: [{id, start_time, type, name, distance_m, duration_s, avg_hr, max_hr, avg_speed_mps, te_label, hr_zones_s: [z1..z5 seconds] | null}], hr_settings: {max_hr, zone_floors: [5 bpm], method} | null, resting_hr: [{date, bpm}]}`.
-  3 requests per run: activities, `/biometric-service/heartRateZones`, resting HR for the whole period (`/userstats-service/wellness/daily/…`, metricId 60). The extra two are optional (warning on failure).
+  `{fetchedAt, activities: [{id, start_time, type, name, distance_m, duration_s, avg_hr, max_hr, avg_speed_mps, te_label, hr_zones_s: [z1..z5 seconds] | null}], hr_settings: {max_hr, zone_floors: [5 bpm], method} | null, resting_hr: [{date, bpm}],
+  recovery: {hrv: [{date, last_night, weekly_avg, status, baseline_low, baseline_high}], sleep: [{date, duration_s, score, quality, deep_s, light_s, rem_s, awake_s}], body_battery: [{date, high, low, charged, drained}]}}` (recovery = last 28 days).
+  6 requests per run, all date ranges: activities, `/biometric-service/heartRateZones`, resting HR (`/userstats-service/wellness/daily/…`, metricId 60), HRV (`/hrv-service/hrv/daily/{start}/{end}`), sleep (`/sleep-service/stats/sleep/daily/{start}/{end}`), Body Battery. All but activities are optional (warning on failure).
+  Training readiness and running tolerance return empty lists for this watch, so they are not fetched.
   Garmin does **not** provide a per-activity training load (`activityTrainingLoad`) for this account; load is computed in the app (Edwards TRIMP).
 - `index.html`: page structure only (header, tab bar, one `<section role="tabpanel">` per tab). No inline CSS or JS.
 - `css/tokens.css`: all colors, fonts and sizes as CSS variables; dark mode redefines colors only. `css/layout.css`: page structure and responsive grids. `css/components.css`: tabs, cards, KPIs, buttons, tables.
 - `js/app.js`: entry point (Garmin data loading, header status, tabs). `js/state.js`: shared state + localStorage. `js/data.js`: loading and converting `data/activities.json`. `js/format.js`: **all** displayed numbers and dates go through it. `js/parse.js`: date parsing. `js/dates.js`: day keys and ISO week helpers. `js/charts.js`: shared Chart.js theme/options. `js/nav.js`: tabs (hash in URL, arrow-key navigation).
 - `js/tabs/training.js`: the Training tab (activities with a distance only). `js/tabs/fitness.js`: Fitness and load tab. `js/metrics.js`: pure formulas (Edwards TRIMP, CTL 42 d / ATL 7 d EWMA, TSB = yesterday's CTL − ATL, ACWR 7/28 rolling averages, easy-run rules, aerobic efficiency = m/min ÷ avg HR with a 5-run average).
-- Other tabs (Overview, Recovery, Nutrition) are placeholders in `index.html`; a new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
+- `js/tabs/recovery.js`: Recovery tab. `js/recovery.js`: recovery checks and the daily recommendation; every limit is in `RULES` and the tab shows each rule with its value (no black box). HRV normal range = Garmin baseline; resting HR and ATL normal range = mean ± 1 SD of the previous 28 days (min 14 values). Uses the latest synced night, not necessarily today.
+- Other tabs (Overview, Nutrition) are placeholders in `index.html`; a new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
 - Chart.js is loaded as a global from cdnjs in `index.html`.
 - `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task.
 
@@ -65,7 +68,7 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
 
 - Calm, data-dense dashboard. IBM Plex Sans for text, IBM Plex Mono for all numbers.
 - One accent color (`--accent`, amber) used only for highlights: current week, goal bar, header status dot, focus ring, "Coming soon" badge. Everything else is neutral.
-- Status colors (`--status-under/ok/watch/warn`) only for risk gauges such as ACWR. Every metric card has a `details.info` "How it's calculated" text.
+- Status colors (`--status-under/ok/watch/warn`) only for risk and recovery status (ACWR gauge, recommendation, out-of-range points). Every metric card has a `details.info` "How it's calculated" text.
 - Decisions (user): load = Edwards TRIMP, max HR = Garmin setting, easy run = ≥30 min + HR + no hard-session words + (easy/recovery name or Garmin label RECOVERY/AEROBIC_BASE) + avg HR below zone 4.
 - Every section is a `.card`; key figures are `.kpi`. Number formats: km with one decimal (`fmtKm`), pace `m:ss /km` (`fmtPace`), HR whole numbers.
 - Must work at phone width (16px side gutter, no horizontal page scroll) and in both light and dark mode.

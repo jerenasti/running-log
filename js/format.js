@@ -36,6 +36,20 @@ export function fmtDuration(sec) {
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
 }
 
+/** Sleep-style duration: 7 h 05 min */
+export function fmtHm(sec) {
+  if (!Number.isFinite(sec)) return DASH;
+  const m = Math.round(sec / 60);
+  return Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min';
+}
+
+/** Hours and minutes as a clock: 8:57 (shown with the unit "h") */
+export function fmtHClock(sec) {
+  if (!Number.isFinite(sec)) return DASH;
+  const m = Math.round(sec / 60);
+  return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+}
+
 /** 25 Sep */
 export const fmtDay = d => d.getDate() + ' ' + MONTHS[d.getMonth()];
 /** 25 Sep 2026 */
