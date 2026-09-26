@@ -138,20 +138,71 @@ export function parseTime(s) {
   return p.reduce((acc, x) => acc * 60 + x, 0);
 }
 
+/* ---------- Time trials and race results ---------- */
+
+// Keep in sync with TIME_TRIAL in fetch_garmin.py
+export const TIME_TRIAL_WORDS = /time\s*trial|\btt\b|\btest\b|testi|aika-ajo/i;
+const MIN_EFFORT_M = 1000;  // shorter efforts say little about marathon fitness
+
+/** Distance written in a workout name in metres: "5km", "3 k", "10 km", "1 mile" → 5000, 3000, 10000, 1609 */
+export function nominalDistance(name) {
+  const km = (name || '').match(/(\d+(?:[.,]\d+)?)\s*k(?:m)?\b/i);
+  if (km) return parseFloat(km[1].replace(',', '.')) * 1000;
+  const mi = (name || '').match(/(\d+(?:[.,]\d+)?)\s*mi(?:le)?s?\b/i);
+  return mi ? Math.round(parseFloat(mi[1].replace(',', '.')) * 1609.34) : null;
+}
+
 /**
- * Personal calibration from test runs with a result: VDOT of the result ÷ Garmin VO2max on that day.
- * Daniels' formula assumes VO2max = VDOT; real races are usually slower, and a result tells by how much.
+ * The time trial effort inside an activity. Garmin splits each workout step into 1 km laps,
+ * so laps of the same step are added together; warm-up, cool-down and rest are skipped.
+ * The step closest to the distance in the name wins (fastest if several match within 10%).
+ * Without laps the whole activity is used, which is less accurate (it includes the warm-up).
  */
-export function calibration(races, vo2History, today = new Date()) {
+export function trialEffort(a) {
+  const nominal = nominalDistance(a.title);
+  const segments = [];
+  for (const lap of a.laps || []) {
+    if (['WARMUP', 'COOLDOWN', 'REST', 'RECOVERY'].includes(lap.intensity)) { segments.push(null); continue; }
+    const last = segments[segments.length - 1];
+    if (last && last.step === lap.step) { last.m += lap.distance_m; last.s += lap.duration_s; }
+    else segments.push({ step: lap.step, m: lap.distance_m, s: lap.duration_s });
+  }
+  const efforts = segments.filter(x => x && x.m >= MIN_EFFORT_M && x.s > 0);
+  const near = x => nominal && Math.abs(x.m - nominal) / nominal <= 0.1;
+  const fastest = list => list.sort((p, q) => p.s / p.m - q.s / q.m)[0];
+  let pick = null, source = 'workout step';
+  if (efforts.length) pick = nominal ? fastest(efforts.filter(near)) : efforts.sort((p, q) => q.m - p.m)[0];
+  if (!pick && a.km * 1000 >= MIN_EFFORT_M && a.sec > 0) { pick = { m: a.km * 1000, s: a.sec }; source = 'whole activity'; }
+  if (!pick) return null;
+  return { date: a.date, name: a.title, distance_m: pick.m, sec: pick.s, source, vdot: vdot(pick.m, pick.s) };
+}
+
+/** Time trial efforts found among the runs (name contains time trial, TT, test, testi or aika-ajo) */
+export function timeTrials(acts) {
+  return (acts || []).filter(a => /run|juoks|treadmill|trail/i.test(a.type || '') && TIME_TRIAL_WORDS.test(a.title || ''))
+    .map(trialEffort).filter(Boolean);
+}
+
+/** Race results written in content/races.json, in the same shape as time trial efforts */
+export function raceResults(races, today = new Date()) {
+  return (races || []).filter(r => r.result && parseDate(r.date) && parseDate(r.date) <= today).map(r => {
+    const sec = parseTime(r.result), m = r.distance_km * 1000;
+    return { date: parseDate(r.date), name: r.name, distance_m: m, sec, source: 'race result', vdot: vdot(m, sec) };
+  }).filter(r => Number.isFinite(r.vdot));
+}
+
+/**
+ * Personal calibration: VDOT of each effort ÷ Garmin VO2max on that day, averaged.
+ * Daniels' formula assumes VO2max = VDOT; real efforts are usually slower, and they tell by how much.
+ */
+export function calibration(efforts, vo2History) {
   const hist = (vo2History || []).map(h => ({ date: parseDate(h.date), y: h.vo2max }));
-  const ratios = (races || []).filter(r => r.result && parseDate(r.date) <= today).map(r => {
-    const day = parseDate(r.date);
-    const before = hist.filter(h => h.date <= day).pop();
-    const raceVdot = vdot(r.distance_km * 1000, parseTime(r.result));
-    return before && Number.isFinite(raceVdot) ? { race: r, vdot: raceVdot, vo2max: before.y, ratio: raceVdot / before.y } : null;
+  const results = (efforts || []).map(e => {
+    const before = hist.filter(h => h.date <= e.date).pop();
+    return before ? { ...e, vo2max: before.y, ratio: e.vdot / before.y } : null;
   }).filter(Boolean);
-  if (!ratios.length) return { factor: 1, results: [] };
-  return { factor: ratios.reduce((s, r) => s + r.ratio, 0) / ratios.length, results: ratios };
+  if (!results.length) return { factor: 1, results: [] };
+  return { factor: results.reduce((s, r) => s + r.ratio, 0) / results.length, results };
 }
 
 /** Marathon time forecast from the VO2max forecast (a higher VDOT gives a faster time) */

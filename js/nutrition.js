@@ -49,7 +49,7 @@ export function recoveryAdvice(type, kg, fmtGrams) {
 export const FUELING = { training: [30, 60], marathon: [60, 90], startAfterMin: 45 };
 
 /* ---------- Classifying workouts ---------- */
-const HARD_WORDS = /tempo|interval|repeat|hill|threshold|progress|fartlek|vo2|speed/i;
+const HARD_WORDS = /tempo|interval|repeat|hill|threshold|progress|fartlek|vo2|speed|time\s*trial|\btt\b|\btest\b|testi|aika-ajo/i;
 const HARD_LABELS = ['TEMPO', 'LACTATE_THRESHOLD', 'VO2MAX', 'ANAEROBIC_CAPACITY', 'SPRINT'];
 const isRun = type => /run|juoks|treadmill|trail/i.test(type || '');
 

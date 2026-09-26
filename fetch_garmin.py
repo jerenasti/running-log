@@ -18,6 +18,7 @@ If the tokens have expired, renew them with the garmin-mcp-auth tool.
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -32,6 +33,11 @@ from garminconnect import (
 # Default token location. Can be overridden with the GARMINTOKENS environment variable.
 DEFAULT_TOKENSTORE = Path.home() / "AppData" / "Local" / "garminconnect"
 OUTPUT = Path(__file__).parent / "data" / "activities.json"
+
+# Time trials (e.g. from a Runna plan) are recognised by their name. Their laps are fetched
+# so the app can find the trial itself inside the warm-up and cool-down. Keep this in sync
+# with TIME_TRIAL_WORDS in js/forecast.js.
+TIME_TRIAL = re.compile(r"time\s*trial|\btt\b|\btest\b|testi|aika-ajo", re.IGNORECASE)
 
 
 def connect(tokenstore: Path) -> Garmin:
@@ -200,6 +206,23 @@ def fetch_race_predictions(garmin: Garmin, start: date, end: date) -> list[dict]
     return out
 
 
+def fetch_laps(garmin: Garmin, activity_id: int) -> list[dict]:
+    """Laps of one activity. step = the workout step the lap belongs to (Garmin splits long steps into 1 km laps)."""
+    data = garmin.get_activity_splits(activity_id) or {}
+    return [{"distance_m": round(lap.get("distance") or 0), "duration_s": round(lap.get("duration") or 0, 1),
+             "intensity": lap.get("intensityType"), "step": lap.get("wktStepIndex")}
+            for lap in data.get("lapDTOs") or []]
+
+
+def previous_laps() -> dict:
+    """Laps saved by an earlier run, by activity id, so they are not fetched again every day."""
+    try:
+        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        return {a["id"]: a["laps"] for a in old.get("activities", []) if a.get("laps")}
+    except (OSError, ValueError):
+        return {}
+
+
 def optional(label: str, fetch, default):
     """Run an extra request. A failure only prints a warning, so the activities are still saved.
     429 (too many requests) still stops the script, as everywhere else."""
@@ -228,6 +251,10 @@ def main() -> None:
         sys.exit("Garmin returned 429 (too many requests). Wait and try again later.")
 
     activities = sorted((simplify(a) for a in raw), key=lambda a: a["start_time"] or "", reverse=True)
+    cached = previous_laps()
+    for a in activities:
+        if "run" in (a["type"] or "") and TIME_TRIAL.search(a["name"] or ""):
+            a["laps"] = cached.get(a["id"]) or optional(f"laps of {a['name']}", lambda i=a["id"]: fetch_laps(garmin, i), None)
     hr_settings = optional("heart rate zones", lambda: fetch_hr_settings(garmin), None)
     resting_hr = optional("resting heart rate", lambda: fetch_resting_hr(garmin, start, date.today()), [])
     rec_start = date.today() - timedelta(days=RECOVERY_DAYS - 1)

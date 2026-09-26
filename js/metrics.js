@@ -78,7 +78,7 @@ export function acwrSeries(days, n = 28) {
 /* ---------- Easy runs and aerobic efficiency ---------- */
 
 const EASY_WORDS = /easy|recovery|kevyt|palauttava/i;
-const HARD_WORDS = /interval|tempo|repeat|threshold|rolling|progress|fartlek|race|kilpa/i;
+const HARD_WORDS = /interval|tempo|repeat|threshold|rolling|progress|fartlek|race|kilpa|time\s*trial|\btt\b|\btest\b|testi|aika-ajo/i;
 const EASY_LABELS = ['RECOVERY', 'AEROBIC_BASE'];
 const isRun = a => /run|juoks|treadmill|trail/i.test(a.type || '');
 

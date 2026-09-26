@@ -6,7 +6,7 @@ import { state } from '../state.js';
 import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
 import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
-import { vo2Forecast, marathonForecast, garminPredictions, calibration, vdot, timeForVdot, parseTime } from '../forecast.js';
+import { vo2Forecast, marathonForecast, garminPredictions, calibration, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
 import { fmtKm, fmtInt, fmtRatio, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
 import { mondayOf, dayKey, startOfDay, DAY_MS } from '../dates.js';
 import { parseDate } from '../parse.js';
@@ -172,7 +172,7 @@ function drawVo2(fc) {
 function drawMarathon(mf, garmin, goalSec, results) {
   const t = theme();
   const g = new Map(garmin.map(p => [dayKey(p.date), p.sec]));
-  const res = new Map(results.map(r => [r.race.date, r.marathonSec]));
+  const res = new Map(results.map(r => [dayKey(r.date), r.marathonSec]));
   const base = baseOptions(t, items => fmtDate(mf[items[0].dataIndex].date));
   drawChart('marathonChart', {
     type: 'line',
@@ -182,7 +182,7 @@ function drawMarathon(mf, garmin, goalSec, results) {
       { label: 'Garmin prediction', data: mf.map(p => g.get(dayKey(p.date)) ?? null), borderColor: t.text, backgroundColor: t.text, borderWidth: 2,
         pointRadius: 0, pointHoverRadius: 4, pointStyle: 'line', spanGaps: false },
       { label: 'Goal', data: mf.map(() => goalSec), borderColor: t.accent, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 0, pointStyle: 'line' },
-      ...(results.length ? [{ label: 'Test run (as marathon)', data: mf.map(p => res.get(dayKey(p.date)) ?? null), showLine: false,
+      ...(results.length ? [{ label: 'Time trial (as marathon)', data: mf.map(p => res.get(dayKey(p.date)) ?? null), showLine: false,
         pointRadius: 5, pointStyle: 'rectRot', borderColor: t.text, backgroundColor: t.text }] : []),
     ] },
     options: { ...base,
@@ -210,7 +210,8 @@ function renderForecasts(ctx, attention) {
     return;
   }
   const fc = vo2Forecast(meta.vo2max, goalRace.day);
-  const cal = calibration(ctx.races, meta.vo2max);
+  // Calibration: Runna time trials found in the Garmin data, plus race results from content/races.json
+  const cal = calibration([...timeTrials(ctx.acts), ...raceResults(ctx.races)], meta.vo2max);
   const mf = marathonForecast(fc, cal.factor);
   const garmin = garminPredictions(meta.racePredictions);
   const goalSec = parseTime(goalRace.goal);
@@ -235,8 +236,9 @@ function renderForecasts(ctx, attention) {
     and ${bt.inside} of ${bt.n} values fell inside the 80% range.${bt.bias < -0.2 ? ' The model expects progress to slow down; so far it has not.' : ''}` : 'Backtest needs more data.';
 
   const calText = cal.results.length
-    ? `Calibrated with ${cal.results.length} test run${cal.results.length > 1 ? 's' : ''} (your race VDOT is ${Math.round(cal.factor * 100)}% of Garmin's VO2max).`
-    : 'Not calibrated yet: add a test run result to content/races.json.';
+    ? `Calibrated with ${cal.results.length} effort${cal.results.length > 1 ? 's' : ''}: your time trial VDOT is ${Math.round(cal.factor * 100)}% of Garmin's VO2max. ` +
+      cal.results.map(r => `${esc(r.name)} (${fmtDate(r.date)}): ${fmtKm(r.distance_m / 1000)} km in ${fmtDuration(r.sec)}, VDOT ${fmtKm(r.vdot)}${r.source === 'whole activity' ? ', whole activity incl. warm-up' : ''}.`).join(' ')
+    : 'Not calibrated yet: your first Runna time trial calibrates the forecast automatically (name contains time trial, TT, test, testi or aika-ajo).';
   $('#mfStats').innerHTML = `
     <div class="kpi"><div class="kpi-label">VDOT needed for ${esc(goalRace.goal)}</div><div class="kpi-value">${fmtKm(needVdot)}</div><div class="kpi-sub">Daniels' formula</div></div>
     <div class="kpi"><div class="kpi-label">Forecast VDOT on race day</div><div class="kpi-value">${fmtKm(race.mid * cal.factor)}</div>
@@ -246,7 +248,7 @@ function renderForecasts(ctx, attention) {
     <div class="kpi"><div class="kpi-label">Garmin prediction today</div><div class="kpi-value">${lastG ? fmtDuration(lastG.sec) : '–'}</div>
       <div class="kpi-sub">${lastG ? `= VDOT ${fmtKm(lastG.vdot)} · ${fmtDay(lastG.date)}` : 'No data'}</div></div>`;
   $('#mfCal').innerHTML = `${calText} ${!cal.results.length && lastG && raceTime.mid < lastG.sec - 20 * 60
-    ? `The VDOT forecast is much faster than Garmin's prediction: Daniels' formula assumes marathon endurance to match your VO2max, while Garmin also looks at your current training volume. A test run result will show which is closer.` : ''}`;
+    ? `The VDOT forecast is much faster than Garmin's prediction: Daniels' formula assumes marathon endurance to match your VO2max, while Garmin also looks at your current training volume. Your first time trial will show which is closer.` : ''}`;
 
   drawVo2(fc);
   drawMarathon(mf, garmin, goalSec, results);
@@ -254,7 +256,8 @@ function renderForecasts(ctx, attention) {
   // Attention items from the forecast
   if (fc.preliminary) attention.push({ level: 'info', text: `Forecasts are preliminary: ${fc.spanDays} days of VO2max data, 8 weeks recommended.`, tab: 'overview', tabLabel: 'Forecast' });
   if (lastG && lastG.sec > goalSec) attention.push({ level: 'watch', text: `Garmin predicts ${fmtDuration(lastG.sec)} for the marathon today, ${fmtDuration(lastG.sec - goalSec)} slower than your goal ${esc(goalRace.goal)}.`, tab: 'overview', tabLabel: 'Forecast' });
-  if (!cal.results.length) attention.push({ level: 'info', text: 'Marathon forecast is not calibrated: add a test run and its result to content/races.json.', tab: null });
+  if (!cal.results.length) attention.push({ level: 'info', text: 'Marathon forecast is not calibrated yet. It calibrates itself after your first Runna time trial.', tab: null });
+  cal.results.filter(r => r.source === 'whole activity').forEach(r => attention.push({ level: 'watch', text: `Time trial "${esc(r.name)}" had no workout laps, so the whole activity (incl. warm-up) was used. Its VDOT may be too low.`, tab: null }));
 }
 
 /* ---------- Tab ---------- */

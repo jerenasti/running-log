@@ -25,6 +25,8 @@ export function garminToActivities(json) {
     date: parseDate(a.start_time), type: String(a.type || ''), title: String(a.name || ''),
     km: (+a.distance_m || 0) / 1000, sec: +a.duration_s || NaN, hr: a.avg_hr == null ? NaN : +a.avg_hr,
     maxHr: a.max_hr ?? null, teLabel: a.te_label ?? null, zones: a.hr_zones_s ?? null, kcal: a.calories ?? null,
+    laps: a.laps ?? null,  // only for time trials
+
   })).filter(a => a.date).sort((a, b) => a.date - b.date);
   // Garmin extras for the Fitness and load, Recovery and Nutrition tabs
   const meta = {
