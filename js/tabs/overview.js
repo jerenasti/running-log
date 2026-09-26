@@ -7,7 +7,7 @@ import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
 import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, recoveryNeed, hoursToNextSession, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
 import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, goalStatus, forecastSources, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
-import { fmtKm, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
+import { fmtKm, fmtKmWhole, distLabel, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
 import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js';
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
@@ -78,7 +78,7 @@ function renderKpis(ctx) {
   const ctl = days.map(d => d.ctl);
   const ctlNow = ctl[ctl.length - 1], ctlWeekAgo = ctl[ctl.length - 8];
   $('#ovKpis').innerHTML =
-    kpiLink('training', 'Running this week', fmtKm(now), 'km', `Same point last week ${fmtKm(samePoint)} km (whole week ${fmtKm(last)})`, sparkline(weeks)) +
+    kpiLink('training', 'Running this week', fmtKm(now), distLabel(), `Same point last week ${fmtKm(samePoint)} ${distLabel()} (whole week ${fmtKm(last)})`, sparkline(weeks)) +
     kpiLink('fitness', 'Workload ratio (ACWR)', ratio ? fmtRatio(ratio.ratio) : '–', '',
       ratio ? `<i class="dot st-${ratio.zone.key}"></i> ${ratio.zone.label}` : 'Needs 28 days', sparkline(acwrSeries(days, 28).map(d => d.ratio))) +
     kpiLink('recovery', 'HRV last night', lastHrv ? fmtInt(lastHrv.last_night) : '–', 'ms',
@@ -173,7 +173,7 @@ function drawVo2(fc) {
     options: { ...base,
       plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip, filter: c => c.dataset.label !== '_lo' && c.parsed.y != null,
         callbacks: { title: base.plugins.tooltip.callbacks.title,
-          label: c => c.dataset.label === '80% range' ? `80% range: ${fmtKm(s[c.dataIndex].lo)}–${fmtKm(s[c.dataIndex].hi)}` : `${c.dataset.label}: ${fmtKm(c.parsed.y)}` } } },
+          label: c => c.dataset.label === '80% range' ? `80% range: ${fmtDec1(s[c.dataIndex].lo)}–${fmtDec1(s[c.dataIndex].hi)}` : `${c.dataset.label}: ${fmtDec1(c.parsed.y)}` } } },
       scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTicks() } },
         y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtInt(v) } } } },
     plugins: [markerPlugin(s.length - 1, t.accent, 'Race day', t.sans)],
@@ -241,17 +241,17 @@ function renderForecasts(ctx, attention) {
   $('#mfPrelim').innerHTML = prelim;
 
   $('#vo2Stats').innerHTML = `
-    <span>Today <b class="num">${fmtKm(lastVo2.y)}</b></span>
-    <span>Race day <b class="num">${fmtKm(race.mid)}</b> <span class="muted num">(${fmtKm(race.lo)}–${fmtKm(race.hi)})</span></span>
-    <span>Plateau ≈ <b class="num">${fmtKm(fc.plateau)}</b></span>`;
+    <span>Today <b class="num">${fmtDec1(lastVo2.y)}</b></span>
+    <span>Race day <b class="num">${fmtDec1(race.mid)}</b> <span class="muted num">(${fmtDec1(race.lo)}–${fmtDec1(race.hi)})</span></span>
+    <span>Plateau ≈ <b class="num">${fmtDec1(fc.plateau)}</b></span>`;
   const bt = fc.backtest;
   $('#vo2Backtest').innerHTML = bt ? `<b>Backtest:</b> fitted on data up to ${fmtDate(bt.trainUntil)} and forecast the last 2 weeks (${bt.n} values).
-    Mean error <span class="num">${fmtKm(bt.mae)}</span>; the forecast was on average <span class="num">${fmtKm(Math.abs(bt.bias))}</span> ${bt.bias < 0 ? 'too low' : 'too high'},
+    Mean error <span class="num">${fmtDec1(bt.mae)}</span>; the forecast was on average <span class="num">${fmtDec1(Math.abs(bt.bias))}</span> ${bt.bias < 0 ? 'too low' : 'too high'},
     and ${bt.inside} of ${bt.n} values fell inside the 80% range.${bt.bias < -0.2 ? ' The model expects progress to slow down; so far it has not.' : ''}` : 'Backtest needs more data.';
 
   const calText = cal.source === 'efforts'
     ? `Calibrated with ${cal.results.length} effort${cal.results.length > 1 ? 's' : ''}: your time trial VDOT is ${Math.round(cal.factor * 100)}% of Garmin's VO2max. ` +
-      cal.results.map(r => `${esc(r.name)} (${fmtDate(r.date)}): ${fmtKm(r.distance_m / 1000)} km in ${fmtDuration(r.sec)}, VDOT ${fmtKm(r.vdot)}${r.source === 'whole activity' ? ', whole activity incl. warm-up' : ''}.`).join(' ')
+      cal.results.map(r => `${esc(r.name)} (${fmtDate(r.date)}): ${fmtKm(r.distance_m / 1000)} ${distLabel()} in ${fmtDuration(r.sec)}, VDOT ${fmtDec1(r.vdot)}${r.source === 'whole activity' ? ', whole activity incl. warm-up' : ''}.`).join(' ')
     : cal.source === 'runna'
       ? `Calibrated with your Runna plan: its paces correspond to VDOT ${fmtDec1(cal.runnaVdot)}, which is ${Math.round(cal.factor * 100)}% of Garmin's VO2max (${fmtDec1(cal.vo2max)}). Your first time trial will replace this (a run named time trial, TT, test, testi or aika-ajo).`
       : 'Not calibrated yet: your first Runna time trial calibrates the forecast automatically (name contains time trial, TT, test, testi or aika-ajo).';
@@ -368,10 +368,10 @@ export function renderOverview() {
   // Long runs: build-up to the marathon peak, and last week's long run share
   if (goalRace) {
     const lr = longRunOutlook(state.acts, goalRace.day);
-    if (lr.status === 'steep') attention.push({ level: 'watch', text: `Long runs: reaching ${LONG_RUN.targetKm} km by ${fmtDate(lr.peakBy)} needs ${fmtKm(lr.perWeek)} km more per week, more than the usual ${LONG_RUN.maxKmPerWeek}.`, tab: 'training', tabLabel: 'Training' });
+    if (lr.status === 'steep') attention.push({ level: 'watch', text: `Long runs: reaching ${fmtKmWhole(LONG_RUN.targetKm)} ${distLabel()} by ${fmtDate(lr.peakBy)} needs ${fmtKm(lr.perWeek)} ${distLabel()} more per week, more than the usual ${fmtKm(LONG_RUN.maxKmPerWeek)}.`, tab: 'training', tabLabel: 'Training' });
   }
   const lastFull = weeklyLongRuns(state.acts, addDays(mondayOf(new Date()), -7), addDays(mondayOf(new Date()), -7))[0];
-  if (lastFull?.share > LONG_RUN.maxShare) attention.push({ level: 'info', text: `Last week's long run was ${Math.round(lastFull.share * 100)}% of your running (${fmtKm(lastFull.longest)} of ${fmtKm(lastFull.weekKm)} km). Over 35% makes it a big single stress.`, tab: 'training', tabLabel: 'Training' });
+  if (lastFull?.share > LONG_RUN.maxShare) attention.push({ level: 'info', text: `Last week's long run was ${Math.round(lastFull.share * 100)}% of your running (${fmtKm(lastFull.longest)} of ${fmtKm(lastFull.weekKm)} ${distLabel()}). Over 35% makes it a big single stress.`, tab: 'training', tabLabel: 'Training' });
 
   renderForecasts(ctx, attention);
   renderAttention(attention);

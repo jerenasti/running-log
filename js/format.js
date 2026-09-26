@@ -7,8 +7,27 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 export const DASH = '–';
 
-/** Distance in km, always one decimal: 24.3 */
-export const fmtKm = km => Number.isFinite(km) ? nf1.format(km) : DASH;
+/* ---------- Units (Settings → Appearance) ----------
+   Everything is calculated and stored in kilometres; only what is shown changes. */
+export const KM_PER_MILE = 1.609344;
+let unit = 'km';   // 'km' | 'mi'
+export function setUnits(u) { unit = u === 'mi' ? 'mi' : 'km'; }
+export const units = () => unit;
+/** "km" or "mi" */
+export const distLabel = () => unit;
+/** "/km" or "/mi" */
+export const paceLabel = () => '/' + unit;
+/** km → the chosen unit (for charts and inputs) */
+export const distIn = km => unit === 'mi' ? km / KM_PER_MILE : km;
+/** The chosen unit → km (from inputs) */
+export const distFromUnit = v => unit === 'mi' ? v * KM_PER_MILE : v;
+/** Seconds per km → seconds per chosen unit (for charts) */
+export const paceIn = secPerKm => unit === 'mi' ? secPerKm * KM_PER_MILE : secPerKm;
+
+/** Distance (given in km) in the chosen unit, always one decimal: 24.3 */
+export const fmtKm = km => Number.isFinite(km) ? nf1.format(distIn(km)) : DASH;
+/** Distance (given in km) in the chosen unit as a whole number: 32 (targets, limits) */
+export const fmtKmWhole = km => Number.isFinite(km) ? nf0.format(distIn(km)) : DASH;
 
 /** Any value with one decimal: VDOT 41.9 (same format as km, but named for what it is) */
 export const fmtDec1 = n => Number.isFinite(n) ? nf1.format(n) : DASH;
@@ -23,13 +42,16 @@ export const fmtRatio = n => Number.isFinite(n) ? nf2.format(n) : DASH;
 /** Signed whole number: +5, −12, 0 (training form) */
 export const fmtSigned = n => !Number.isFinite(n) ? DASH : (Math.round(n) > 0 ? '+' : Math.round(n) < 0 ? '−' : '') + nf0.format(Math.abs(n));
 
-/** Pace in min:ss per km: 6:09 */
-export function fmtPace(secPerKm) {
-  if (!Number.isFinite(secPerKm) || secPerKm <= 0) return DASH;
-  let m = Math.floor(secPerKm / 60), s = Math.round(secPerKm - m * 60);
+/** Seconds as min:ss: 6:09 (chart ticks whose data is already in the chosen unit) */
+export function fmtClock(sec) {
+  if (!Number.isFinite(sec) || sec <= 0) return DASH;
+  let m = Math.floor(sec / 60), s = Math.round(sec - m * 60);
   if (s === 60) { m++; s = 0; }
   return m + ':' + String(s).padStart(2, '0');
 }
+
+/** Pace (given in seconds per km) as min:ss per chosen unit: 6:09 */
+export const fmtPace = secPerKm => fmtClock(paceIn(secPerKm));
 
 /** Duration as h:mm:ss or m:ss: 1:02:05, 26:10 */
 export function fmtDuration(sec) {

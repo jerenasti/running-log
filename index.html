@@ -131,7 +131,7 @@
           <div class="card-head">
             <h2>Weekly goal</h2>
             <label class="goal-input">Goal
-              <input type="number" id="goalInput" min="0" max="500" step="1" inputmode="numeric" placeholder="–"> km / wk
+              <input type="number" id="goalInput" min="0" max="500" step="1" inputmode="numeric" placeholder="–"> <span id="goalUnit">km / wk</span>
             </label>
           </div>
           <div class="bar" id="goalBar" role="progressbar" aria-label="Progress this week" aria-valuemin="0" aria-valuemax="100"><span></span></div>
@@ -247,7 +247,7 @@
         </section>
 
         <section class="card span-2">
-          <div class="card-head"><div><h2>Training paces</h2><p class="sub">Daniels' paces for your fitness from different sources, next to the paces in your Runna plan. Per km.</p></div></div>
+          <div class="card-head"><div><h2>Training paces</h2><p class="sub">Daniels' paces for your fitness from different sources, next to the paces in your Runna plan.</p></div></div>
           <div class="table-wrap"><table class="rules paces-table" id="pacesTable"></table></div>
           <p class="hint paces-note" id="pacesNote"></p>
           <details class="info"><summary>How the paces are calculated</summary>

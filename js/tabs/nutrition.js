@@ -6,7 +6,7 @@ import {
   DAY_TARGETS, FUELING, PROTEIN_PER_DAY, LONG_MINUTES, TOMORROW_TIPS, recoveryAdvice, recoveryNeed, hoursToNextSession,
   classify, plannedWorkouts, activeRace, dayType, grams, pickMeals, kcalPerKm,
 } from '../nutrition.js';
-import { fmtInt, fmtKm, fmtGrams, fmtHm, fmtDuration, fmtDate, fmtWeekday, esc } from '../format.js';
+import { fmtInt, fmtKm, fmtDec1, distLabel, fmtGrams, fmtHm, fmtDuration, fmtDate, fmtWeekday, esc } from '../format.js';
 import { dayKey, addDays } from '../dates.js';
 
 const $ = s => document.querySelector(s);
@@ -49,7 +49,7 @@ function renderRace(race, ctx) {
   const when = race.daysLeft === 0 ? 'today' : race.daysLeft === 1 ? 'tomorrow' : `in ${race.daysLeft} days`;
   el.innerHTML = `
     <div class="card-head"><div><h2>Race week: ${esc(race.name)} ${when}</h2>
-      <p class="sub">${fmtKm(race.distance_km)} km on ${fmtDate(race.day)}. ${race.long ? 'Carb loading on the two days before.' : 'A carb-rich day before is enough for this distance.'}</p></div></div>
+      <p class="sub">${fmtKm(race.distance_km)} ${distLabel()} on ${fmtDate(race.day)}. ${race.long ? 'Carb loading on the two days before.' : 'A carb-rich day before is enough for this distance.'}</p></div></div>
     <div class="table-wrap"><table class="rules">
       <thead><tr><th>Day</th><th>Plan</th><th class="num">Carbs / day</th><th>What to do</th></tr></thead>
       <tbody>${rows.join('')}</tbody></table></div>
@@ -82,7 +82,7 @@ function renderBasis(kg, weight) {
     <tr><td>${DAY_TARGETS[k].label}${k === 'rest' ? ' / easy' : ''}</td><td class="num">${perKg(DAY_TARGETS[k].carbs)}</td><td class="num">${fmtGrams(grams(kg, DAY_TARGETS[k].carbs))}</td></tr>`).join('');
   $('#basisCard').innerHTML = `
     <div class="card-head"><div><h2>Your daily targets</h2>
-      <p class="sub">${weight ? `Body weight ${fmtKm(weight.kg)} kg (${weight.source === 'manual' ? 'entered in Settings' : `Garmin weigh-in ${fmtDate(new Date(weight.date + 'T00:00'))}`}) × g/kg.` : 'No weight yet, so targets are shown per kg only. Add a Garmin weigh-in or <a href="#settings">enter your weight in Settings</a>.'}</p></div></div>
+      <p class="sub">${weight ? `Body weight ${fmtDec1(weight.kg)} kg (${weight.source === 'manual' ? 'entered in Settings' : `Garmin weigh-in ${fmtDate(new Date(weight.date + 'T00:00'))}`}) × g/kg.` : 'No weight yet, so targets are shown per kg only. Add a Garmin weigh-in or <a href="#settings">enter your weight in Settings</a>.'}</p></div></div>
     <div class="table-wrap"><table class="rules targets">
       <thead><tr><th>Day</th><th class="num">Carbs</th><th class="num">Per day</th></tr></thead>
       <tbody>${rows}
@@ -101,7 +101,7 @@ function renderRecent(ctx) {
     const advice = recoveryAdvice(recoveryNeed({ type, minutes: a.sec / 60, hoursToNext: hoursToNextSession(a, acts, planned) }), kg, fmtGrams);
     return `<div class="meal-block">
       <div class="menu-head"><span class="num">${fmtWeekday(a.date)}</span>${badge(type)}<span class="meal-title">${esc(a.title || a.type)}</span>
-        <span class="muted num">${fmtKm(a.km)} km · ${fmtDuration(a.sec)}${a.kcal ? ` · Garmin estimate ${fmtInt(a.kcal)} kcal` : ''}</span></div>
+        <span class="muted num">${fmtKm(a.km)} ${distLabel()} · ${fmtDuration(a.sec)}${a.kcal ? ` · Garmin estimate ${fmtInt(a.kcal)} kcal` : ''}</span></div>
       <p class="tip">${advice}</p>
       ${a.sec >= LONG_MINUTES * 60 ? `<p class="notice fuel">This run lasted ${fmtHm(a.sec)}. ${fuelText()}</p>` : ''}
       ${mealList(ideas(meals, type, 'recovery', type === 'easy' ? 2 : 3, dayKey(a.date) + a.title))}

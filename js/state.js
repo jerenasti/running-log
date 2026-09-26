@@ -16,6 +16,7 @@ export const state = {
   content: null,   // content/meals.json and the races from the settings: { meals: { data | error }, races: { data | error } } (not saved)
   settings: null,  // settings.json through the app server (serve.py), or null if it isn't available (not saved)
   firstRun: false, // settings.json doesn't exist yet: the first-run wizard is showing (not saved)
+  units: 'km',     // appearance.units ('km' | 'mi'), remembered like the theme
   theme: 'system', // appearance.theme, remembered so the page opens in the right theme before the settings load
 };
 
@@ -24,7 +25,7 @@ export function save() {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       acts: state.acts.map(a => ({ ...a, date: a.date.toISOString() })),
       meta: state.garminMeta,
-      period: state.period, sport: state.sport, theme: state.theme,
+      period: state.period, sport: state.sport, theme: state.theme, units: state.units,
     }));
   } catch (e) { /* storage full or blocked: the app still works without it */ }
 }
@@ -38,6 +39,7 @@ export function restore() {
     // Older versions kept the weekly goal here; app.js moves it into settings.json once
     state.goal = +o.goal || 0;
     state.theme = o.theme || 'system';
+    state.units = o.units === 'mi' ? 'mi' : 'km';
     // Only Garmin data (with zones/label fields) is restored; older saved copies are ignored.
     if (!Array.isArray(o.acts) || !o.acts.length || !('zones' in o.acts[0])) return;
     state.acts = o.acts.map(a => ({ ...a, date: new Date(a.date), sec: a.sec ?? NaN, hr: a.hr ?? NaN }));

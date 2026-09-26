@@ -4,7 +4,7 @@ import { state, save, restore } from './state.js';
 import { fetchGarmin, garminToActivities, fetchContent, fetchStatus } from './data.js';
 import { loadSettings, saveSettings, racesFromSettings, applySettings } from './settings.js';
 import { parseDate } from './parse.js';
-import { fmtDate, fmtTime, esc } from './format.js';
+import { fmtDate, fmtTime, esc, setUnits } from './format.js';
 import { initTabs } from './nav.js';
 import { initTraining, renderTraining } from './tabs/training.js';
 import { renderFitness } from './tabs/fitness.js';
@@ -57,7 +57,9 @@ function useSettings(settings) {
   state.goal = settings.goals.weekly_km || 0;
   state.meta = applySettings(state.garminMeta, settings);
   state.theme = settings.appearance.theme;
+  state.units = settings.appearance.units;
   applyTheme(state.theme);
+  setUnits(state.units);
   save();
   render();
 }
@@ -83,6 +85,7 @@ if (typeof Chart === 'undefined') notice('The chart library failed to load. Relo
 // Show the data saved in the browser right away, then load the latest Garmin data.
 restore();
 applyTheme(state.theme);
+setUnits(state.units);
 state.meta = applySettings(state.garminMeta, null);
 initTraining();
 initSettings({

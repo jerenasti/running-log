@@ -2,7 +2,7 @@
 
 import { state } from '../state.js';
 import { weekReview } from '../plan.js';
-import { fmtKm, fmtInt, fmtRatio, fmtSigned, fmtDuration, fmtHClock, fmtWeekday, fmtDay, fmtDate, esc, DASH } from '../format.js';
+import { fmtKm, fmtDec1, distLabel, fmtInt, fmtRatio, fmtSigned, fmtDuration, fmtHClock, fmtWeekday, fmtDay, fmtDate, esc, DASH } from '../format.js';
 import { mondayOf, isoWeek, addDays } from '../dates.js';
 
 const $ = s => document.querySelector(s);
@@ -21,7 +21,7 @@ function planRow(i) {
   const s = STATUS[i.status];
   const a = i.act;
   const actual = a
-    ? `${i.status === 'moved' ? 'done ' + fmtWeekday(a.date) + ' · ' : ''}${fmtKm(a.km)} km · ${fmtDuration(a.sec)}`
+    ? `${i.status === 'moved' ? 'done ' + fmtWeekday(a.date) + ' · ' : ''}${fmtKm(a.km)} ${distLabel()} · ${fmtDuration(a.sec)}`
     : '';
   return `<li class="plan-row status-${i.status}">
     <span class="num plan-day">${fmtWeekday(i.date)}</span>
@@ -55,10 +55,10 @@ export function renderReview() {
   $('#reviewTable').innerHTML = `
     <thead><tr><th></th><th class="num">${r.inProgress ? 'So far' : 'This week'}</th><th class="num">${r.inProgress ? 'Same point last week' : 'Week before'}</th><th class="num">Change</th></tr></thead>
     <tbody>
-      ${row('Distance', cur.km, prev.km, v => fmtKm(v) + ' km', () => pct(cur.km, prev.km))}
+      ${row('Distance', cur.km, prev.km, v => fmtKm(v) + ' ' + distLabel(), () => pct(cur.km, prev.km))}
       ${row('Runs', cur.runs, prev.runs, fmtInt, d => fmtSigned(d))}
       ${row('Running time', cur.sec, prev.sec, v => fmtHClock(v) + ' h')}
-      ${row('Longest run', cur.longest, prev.longest, v => fmtKm(v) + ' km')}
+      ${row('Longest run', cur.longest, prev.longest, v => fmtKm(v) + ' ' + distLabel())}
       ${row('Training load', cur.trimp, prev.trimp, fmtInt, () => pct(cur.trimp, prev.trimp))}
       ${row('Average HRV', cur.hrv, prev.hrv, v => fmtInt(v) + ' ms', d => fmtSigned(d))}
       ${row('Average resting HR', cur.rhr, prev.rhr, v => fmtInt(v) + ' bpm', d => fmtSigned(d))}
@@ -68,7 +68,7 @@ export function renderReview() {
     <tbody class="review-end">
       <tr><td>Workload ratio (ACWR) at week end</td><td class="num">${load.acwr != null ? fmtRatio(load.acwr) : DASH}</td><td colspan="2"></td></tr>
       <tr><td>Fitness (CTL)</td><td class="num" colspan="3">${load.ctlStart != null ? fmtInt(load.ctlStart) + ' → ' + fmtInt(load.ctlEnd) : DASH}</td></tr>
-      <tr><td>VO2max</td><td class="num" colspan="3">${f.vo2Start != null ? fmtKm(f.vo2Start) + ' → ' + fmtKm(f.vo2End) : f.vo2End != null ? fmtKm(f.vo2End) : DASH}</td></tr>
+      <tr><td>VO2max</td><td class="num" colspan="3">${f.vo2Start != null ? fmtDec1(f.vo2Start) + ' → ' + fmtDec1(f.vo2End) : f.vo2End != null ? fmtDec1(f.vo2End) : DASH}</td></tr>
       <tr><td>Garmin marathon prediction</td><td class="num" colspan="3">${f.garminStart ? fmtDuration(f.garminStart) + ' → ' + fmtDuration(f.garminEnd) : f.garminEnd ? fmtDuration(f.garminEnd) : DASH}</td></tr>
     </tbody>`;
 

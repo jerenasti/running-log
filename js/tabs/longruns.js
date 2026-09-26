@@ -2,15 +2,15 @@
 
 import { state } from '../state.js';
 import { weeklyLongRuns, plannedLongRuns, longRunOutlook, progressionLine, LONG_RUN } from '../longruns.js';
-import { fmtKm, fmtDate, fmtDay, esc } from '../format.js';
+import { fmtKm, fmtKmWhole, fmtDec1, fmtDate, fmtDay, esc, distLabel, distIn } from '../format.js';
 import { mondayOf, isoWeek, addDays } from '../dates.js';
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 
 const $ = s => document.querySelector(s);
 const STATUS = {
-  'on-track': { dot: 'ok',   text: o => `About ${fmtKm(o.perWeek)} km more per week on average reaches ${LONG_RUN.targetKm} km in time.` },
-  steep:      { dot: 'watch', text: o => `That needs ${fmtKm(o.perWeek)} km more per week, more than the usual ${LONG_RUN.maxKmPerWeek} km. Consider a lower peak or a longer build-up.` },
+  'on-track': { dot: 'ok',   text: o => `About ${fmtKm(o.perWeek)} ${distLabel()} more per week on average reaches ${fmtKmWhole(LONG_RUN.targetKm)} ${distLabel()} in time.` },
+  steep:      { dot: 'watch', text: o => `That needs ${fmtKm(o.perWeek)} ${distLabel()} more per week, more than the usual ${fmtKm(LONG_RUN.maxKmPerWeek)} ${distLabel()}. Consider a lower peak or a longer build-up.` },
   reached:    { dot: 'ok',   text: () => `You have already run ${LONG_RUN.peakKm[0]} km or more in the last 4 weeks.` },
   late:       { dot: 'none', text: () => 'The peak date has passed: this is taper time.' },
 };
@@ -37,13 +37,13 @@ export function renderLongRuns() {
   // Key figures
   const s = outlook && STATUS[outlook.status];
   $('#longStats').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Longest, last 4 weeks</div><div class="kpi-value">${fmtKm(outlook ? outlook.current : Math.max(...weeks.map(w => w.longest)))}<span class="unit">km</span></div><div class="kpi-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-label">Longest, last 4 weeks</div><div class="kpi-value">${fmtKm(outlook ? outlook.current : Math.max(...weeks.map(w => w.longest)))}<span class="unit">${distLabel()}</span></div><div class="kpi-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-label">Peak target</div><div class="kpi-value">${LONG_RUN.peakKm[0]}–${LONG_RUN.peakKm[1]}<span class="unit">km</span></div>
       <div class="kpi-sub">${outlook ? 'by ' + fmtDate(outlook.peakBy) : '<button type="button" class="link-btn" data-open-settings="add-main">Add your main race</button>'}</div></div>
-    <div class="kpi"><div class="kpi-label">Needed build-up</div><div class="kpi-value">${outlook?.perWeek != null ? '+' + fmtKm(outlook.perWeek) : '–'}<span class="unit">km / wk</span></div>
+    <div class="kpi"><div class="kpi-label">Needed build-up</div><div class="kpi-value">${outlook?.perWeek != null ? '+' + fmtKm(outlook.perWeek) : '–'}<span class="unit">${distLabel()} / wk</span></div>
       <div class="kpi-sub">${outlook ? `${Math.round(outlook.weeksToPeak)} weeks to the peak` : ''}</div></div>
     <div class="kpi"><div class="kpi-label">Long run share, last week</div><div class="kpi-value">${lastFull?.share != null ? Math.round(lastFull.share * 100) : '–'}<span class="unit">%</span></div>
-      <div class="kpi-sub">${lastFull?.share > LONG_RUN.maxShare ? '<i class="dot st-watch"></i> over 35% of the week' : `of ${fmtKm(lastFull?.weekKm || 0)} km`}</div></div>`;
+      <div class="kpi-sub">${lastFull?.share > LONG_RUN.maxShare ? '<i class="dot st-watch"></i> over 35% of the week' : `of ${fmtKm(lastFull?.weekKm || 0)} ${distLabel()}`}</div></div>`;
   $('#longStatus').innerHTML = s ? `<i class="dot st-${s.dot}"></i><span>${s.text(outlook)}</span>` : '';
 
   // Chart: done (bars), planned by Runna (light bars), needed progression (dashed), target range at the peak
@@ -56,16 +56,18 @@ export function renderLongRuns() {
     const w = weeks[items[0].dataIndex];
     return `Week ${isoWeek(w.monday)} (${fmtDay(w.monday)} – ${fmtDate(addDays(w.monday, 6))})`;
   });
+  // Chart data is in the chosen unit (km or mi); the tooltips format it as it is
+  const peakText = `${fmtKmWhole(LONG_RUN.peakKm[0])}–${fmtKmWhole(LONG_RUN.peakKm[1])} ${distLabel()}`;
   drawChart('longChart', {
     type: 'bar',
     data: { labels, datasets: [
-      { label: 'Longest run', data: weeks.map(w => w.longest || null), backgroundColor: weeks.map(w => w.monday.getTime() === thisMon ? t.accent : t.line),
+      { label: 'Longest run', data: weeks.map(w => w.longest ? distIn(w.longest) : null), backgroundColor: weeks.map(w => w.monday.getTime() === thisMon ? t.accent : t.line),
         borderRadius: 3, maxBarThickness: 22, grouped: false, order: 2 },
-      { label: 'Planned (Runna)', data: weeks.map(w => planned.get(w.monday.getTime())?.km ?? null), backgroundColor: t.bar, borderColor: t.line,
+      { label: 'Planned (Runna)', data: weeks.map(w => { const km = planned.get(w.monday.getTime())?.km; return km != null ? distIn(km) : null; }), backgroundColor: t.bar, borderColor: t.line,
         borderWidth: 1, borderDash: [3, 2], borderRadius: 3, maxBarThickness: 22, grouped: false, order: 3 },
-      { type: 'line', label: 'Needed build-up', data: line, borderColor: t.text3, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, order: 1 },
-      { type: 'line', label: '_lo', data: weeks.map(w => inTarget(w) ? LONG_RUN.peakKm[0] : null), borderWidth: 0, pointRadius: 0, fill: false, order: 10 },
-      { type: 'line', label: `Peak target ${LONG_RUN.peakKm[0]}–${LONG_RUN.peakKm[1]} km`, data: weeks.map(w => inTarget(w) ? LONG_RUN.peakKm[1] : null),
+      { type: 'line', label: 'Needed build-up', data: line.map(v => v != null ? distIn(v) : null), borderColor: t.text3, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, order: 1 },
+      { type: 'line', label: '_lo', data: weeks.map(w => inTarget(w) ? distIn(LONG_RUN.peakKm[0]) : null), borderWidth: 0, pointRadius: 0, fill: false, order: 10 },
+      { type: 'line', label: `Peak target ${peakText}`, data: weeks.map(w => inTarget(w) ? distIn(LONG_RUN.peakKm[1]) : null),
         borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: t.bar + '80', pointStyle: 'rect', order: 10 },
     ] },
     options: { ...base,
@@ -75,12 +77,12 @@ export function renderLongRuns() {
           title: base.plugins.tooltip.callbacks.title,
           label: c => {
             const w = weeks[c.dataIndex];
-            if (c.dataset.label === 'Longest run') return `Longest: ${fmtKm(c.parsed.y)} km (${Math.round((w.share || 0) * 100)}% of ${fmtKm(w.weekKm)} km)`;
-            if (c.dataset.label.startsWith('Planned')) return `Planned: ${fmtKm(c.parsed.y)} km, ${esc(planned.get(w.monday.getTime()).title)}`;
-            if (c.dataset.label.startsWith('Peak')) return `Peak target: ${LONG_RUN.peakKm[0]}–${LONG_RUN.peakKm[1]} km`;
-            return `${c.dataset.label}: ${fmtKm(c.parsed.y)} km`;
+            if (c.dataset.label === 'Longest run') return `Longest: ${fmtDec1(c.parsed.y)} ${distLabel()} (${Math.round((w.share || 0) * 100)}% of ${fmtKm(w.weekKm)} ${distLabel()})`;
+            if (c.dataset.label.startsWith('Planned')) return `Planned: ${fmtDec1(c.parsed.y)} ${distLabel()}, ${esc(planned.get(w.monday.getTime()).title)}`;
+            if (c.dataset.label.startsWith('Peak')) return `Peak target: ${peakText}`;
+            return `${c.dataset.label}: ${fmtDec1(c.parsed.y)} ${distLabel()}`;
           } } } },
       scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: window.innerWidth < 600 ? 5 : 12 } },
-        y: { ...base.scales.y, beginAtZero: true, suggestedMax: LONG_RUN.peakKm[1] + 2, ticks: { ...base.scales.y.ticks, callback: v => v + ' km' } } } },
+        y: { ...base.scales.y, beginAtZero: true, suggestedMax: distIn(LONG_RUN.peakKm[1] + 2), ticks: { ...base.scales.y.ticks, callback: v => v + ' ' + distLabel() } } } },
   });
 }

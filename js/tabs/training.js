@@ -1,7 +1,7 @@
 // Training tab: key figures, weekly goal, weekly distance, pace and heart rate charts, activity table.
 
 import { state, save } from '../state.js';
-import { fmtKm, fmtInt, fmtPace, fmtDuration, fmtDay, fmtDate, esc, DASH } from '../format.js';
+import { fmtKm, fmtInt, fmtPace, fmtClock, fmtDuration, fmtDay, fmtDate, esc, DASH, distLabel, paceLabel, distIn, distFromUnit, paceIn } from '../format.js';
 import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { renderReview, initReview } from './review.js';
@@ -62,22 +62,24 @@ function setSeg(id, v) {
 
 export function renderGoal() {
   const input = $('#goalInput'), bar = $('#goalBar'), text = $('#goalText');
-  if (document.activeElement !== input) input.value = state.goal || '';
+  // The goal is kept in km; the field shows it in the chosen unit
+  if (document.activeElement !== input) input.value = state.goal ? Math.round(distIn(state.goal)) : '';
+  $('#goalUnit').textContent = distLabel() + ' / wk';
   const what = state.sport === 'run' ? 'running' : 'training';
   const thisMon = mondayOf(new Date()).getTime();
   const km = state.acts.filter(a => sportFilter(a) && mondayOf(a.date).getTime() === thisMon).reduce((s, a) => s + a.km, 0);
 
   if (!state.goal) {
     bar.hidden = true;
-    text.textContent = 'This week: ' + fmtKm(km) + ' km of ' + what + '. Set a weekly distance goal to track your progress.';
+    text.textContent = 'This week: ' + fmtKm(km) + ' ' + distLabel() + ' of ' + what + '. Set a weekly distance goal to track your progress.';
     return;
   }
   const pct = Math.round(km / state.goal * 100);
   bar.hidden = false;
   bar.setAttribute('aria-valuenow', String(Math.min(pct, 100)));
   bar.firstElementChild.style.width = Math.min(pct, 100) + '%';
-  text.textContent = 'This week: ' + fmtKm(km) + ' / ' + fmtKm(state.goal) + ' km of ' + what + ' (' + pct + '%). ' +
-    (km >= state.goal ? 'Goal reached.' : fmtKm(state.goal - km) + ' km to go.');
+  text.textContent = 'This week: ' + fmtKm(km) + ' / ' + fmtKm(state.goal) + ' ' + distLabel() + ' of ' + what + ' (' + pct + '%). ' +
+    (km >= state.goal ? 'Goal reached.' : fmtKm(state.goal - km) + ' ' + distLabel() + ' to go.');
 }
 
 function drawCharts(r) {
@@ -96,25 +98,25 @@ function drawCharts(r) {
   drawChart('weekChart', {
     type: 'bar',
     data: { labels, datasets: [
-      { data: r.weeks.map(w => +w.km.toFixed(1)),
+      { data: r.weeks.map(w => +distIn(w.km).toFixed(1)),
         backgroundColor: r.weeks.map(w => w.mon.getTime() === thisMon ? t.accent : t.bar),
         borderRadius: 3, maxBarThickness: 36 },
       // Weekly goal as a dashed line (only if a goal is set)
-      ...(state.goal ? [{ type: 'line', data: r.weeks.map(() => state.goal), borderColor: t.text3, borderDash: [5, 4],
+      ...(state.goal ? [{ type: 'line', data: r.weeks.map(() => distIn(state.goal)), borderColor: t.text3, borderDash: [5, 4],
         borderWidth: 1.25, pointRadius: 0, pointHoverRadius: 0 }] : []),
     ] },
     options: { ...base,
       plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, filter: c => c.datasetIndex === 0,
-        callbacks: { title: tipTitle, label: c => { const w = r.weeks[c.dataIndex]; return fmtKm(w.km) + ' km · ' + w.n + (w.n === 1 ? ' activity' : ' activities'); } } } },
-      scales: { ...base.scales, y: { ...base.scales.y, beginAtZero: true, ticks: { ...base.scales.y.ticks, callback: v => v + ' km' } } } },
+        callbacks: { title: tipTitle, label: c => { const w = r.weeks[c.dataIndex]; return fmtKm(w.km) + ' ' + distLabel() + ' · ' + w.n + (w.n === 1 ? ' activity' : ' activities'); } } } },
+      scales: { ...base.scales, y: { ...base.scales.y, beginAtZero: true, ticks: { ...base.scales.y.ticks, callback: v => v + ' ' + distLabel() } } } },
   });
 
   drawChart('paceChart', {
     type: 'line',
-    data: { labels, datasets: [{ ...lineStyle, data: r.weeks.map(w => w.kmTimed > 0 ? w.sec / w.kmTimed : null) }] },
+    data: { labels, datasets: [{ ...lineStyle, data: r.weeks.map(w => w.kmTimed > 0 ? paceIn(w.sec / w.kmTimed) : null) }] },
     options: { ...base,
-      plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: { title: tipTitle, label: c => fmtPace(c.parsed.y) + ' /km' } } },
-      scales: { ...base.scales, y: { ...base.scales.y, reverse: true, ticks: { ...base.scales.y.ticks, callback: v => fmtPace(v) } } } },
+      plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: { title: tipTitle, label: c => fmtClock(c.parsed.y) + ' ' + paceLabel() } } },
+      scales: { ...base.scales, y: { ...base.scales.y, reverse: true, ticks: { ...base.scales.y.ticks, callback: v => fmtClock(v) } } } },
   });
 
   drawChart('hrChart', {
@@ -135,8 +137,8 @@ function renderTable(r) {
   $('#showAll').textContent = state.showAll ? 'Show only the ' + RECENT_N + ' most recent' : 'Show all ' + r.inRange.length + ' activities';
   $('#recent').innerHTML = rows.length ? rows.map(a => `
     <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type || DASH)}</td>
-    <td class="num">${fmtKm(a.km)} km</td><td class="num">${fmtDuration(a.sec)}</td>
-    <td class="num">${Number.isFinite(a.sec) ? fmtPace(a.sec / a.km) + ' /km' : DASH}</td>
+    <td class="num">${fmtKm(a.km)} ${distLabel()}</td><td class="num">${fmtDuration(a.sec)}</td>
+    <td class="num">${Number.isFinite(a.sec) ? fmtPace(a.sec / a.km) + ' ' + paceLabel() : DASH}</td>
     <td class="num">${fmtInt(a.hr)}</td></tr>`).join('')
     : '<tr><td colspan="6">No activities in the selected range. Choose a longer range.</td></tr>';
 }
@@ -156,12 +158,12 @@ export function renderTraining() {
   const firstData = state.acts.reduce((m, a) => (!m || a.date < m ? a.date : m), null);
   const avg = weeklyAverage(r.weeks, firstData);
   $('#stats').innerHTML =
-    kpi('Total distance', fmtKm(r.tot), 'km', avg.km != null
-      ? `${fmtKm(avg.km)} km per week (${avg.weeks} finished ${avg.weeks === 1 ? 'week' : 'weeks'} with data)`
+    kpi('Total distance', fmtKm(r.tot), distLabel(), avg.km != null
+      ? `${fmtKm(avg.km)} ${distLabel()} per week (${avg.weeks} finished ${avg.weeks === 1 ? 'week' : 'weeks'} with data)`
       : 'No finished week with data yet') +
     kpi(state.sport === 'run' ? 'Runs' : 'Activities', fmtInt(r.inRange.length)) +
-    kpi('Average pace', fmtPace(r.pace), '/km') +
-    kpi('Longest activity', r.longest ? fmtKm(r.longest.km) : DASH, 'km', r.longest ? fmtDate(r.longest.date) : '');
+    kpi('Average pace', fmtPace(r.pace), paceLabel()) +
+    kpi('Longest activity', r.longest ? fmtKm(r.longest.km) : DASH, distLabel(), r.longest ? fmtDate(r.longest.date) : '');
 
   renderGoal();
   drawCharts(r);
@@ -181,7 +183,7 @@ export function initTraining() {
   initReview();
   $('#showAll').addEventListener('click', () => { state.showAll = !state.showAll; renderTraining(); });
   // The bar updates while typing; the chart is redrawn only when the field loses focus (change)
-  $('#goalInput').addEventListener('input', e => { state.goal = Math.max(0, Math.round(+e.target.value)) || 0; renderGoal(); });
+  $('#goalInput').addEventListener('input', e => { state.goal = distFromUnit(Math.max(0, +e.target.value || 0)); renderGoal(); });
   $('#goalInput').addEventListener('change', async () => {
     renderTraining();
     // The goal is kept in settings.json (goals.weekly_km)

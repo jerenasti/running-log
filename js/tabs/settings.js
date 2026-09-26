@@ -5,7 +5,7 @@
 
 import { state } from '../state.js';
 import { saveSettings, validateSettings, checkTokens } from '../settings.js';
-import { fmtDate, fmtTime, fmtKm, esc } from '../format.js';
+import { fmtDate, fmtTime, fmtDec1, esc, distIn, distFromUnit, distLabel, units } from '../format.js';
 import { parseDate } from '../parse.js';
 
 const $ = s => document.querySelector(s);
@@ -45,6 +45,12 @@ function readValue(el) {
   const v = el.value.trim();
   if (el.dataset.kind === 'number') return v === '' ? (el.dataset.empty === '0' ? 0 : null) : Number(v);
   if (el.dataset.kind === 'words') return v.split(',').map(w => w.trim()).filter(Boolean);
+  if (el.dataset.kind === 'distance') {
+    if (v === '') return el.dataset.empty === '0' ? 0 : null;
+    // Untouched: keep the exact km value (42.195 must not become 42.198 after a km → mi → km round trip)
+    if (v === el.dataset.shown && el.dataset.km !== '') return Number(el.dataset.km);
+    return distFromUnit(Number(v));
+  }
   return v;
 }
 
@@ -83,6 +89,15 @@ const dateInput = (label, path, value, hint = '') =>
 const timeInput = (label, path, value, hint = '') =>
   field(label, `<input type="text" class="mono" ${attrs(path, hint)} value="${esc(value ?? '')}" placeholder="h:mm:ss" autocomplete="off" spellcheck="false">`, path, hint);
 
+/** A distance kept in km, shown and typed in the chosen unit (Settings → Appearance → Units) */
+function dist(label, path, km, { decimals = 2, hint = '', empty = '' } = {}) {
+  const shown = km == null || km === '' || (empty && !km) ? '' : String(+distIn(km).toFixed(decimals));
+  const input = `<span class="with-unit"><input type="number" class="mono" ${attrs(path, hint)} data-kind="distance"
+    ${empty ? `data-empty="${empty}"` : ''} data-km="${km ?? ''}" data-shown="${shown}" value="${shown}" step="any" min="0" inputmode="decimal"><span class="unit">${distLabel()}</span></span>`;
+  return field(label, input, path, hint);
+}
+const raceHint = () => units() === 'mi' ? 'Marathon 26.22, half 13.11' : 'Marathon 42.195, half 21.0975';
+
 function num(label, path, value, { unit = '', hint = '', step = 'any', min = '', max = '', empty = '', enabledBy = null } = {}) {
   const on = !enabledBy || enabledBy.on;
   const input = `<span class="with-unit"><input type="number" class="mono" ${attrs(path, hint)} data-kind="number"
@@ -111,7 +126,7 @@ function goalsCard(g) {
     ? `<div class="fields">
         ${text('Name', 'goals.main_race.name', g.main_race.name, { placeholder: 'e.g. City Marathon' })}
         ${dateInput('Race day', 'goals.main_race.date', g.main_race.date)}
-        ${num('Distance', 'goals.main_race.distance_km', g.main_race.distance_km, { unit: 'km', min: 0.1, max: 300, hint: 'Marathon 42.195, half 21.0975' })}
+        ${dist('Distance', 'goals.main_race.distance_km', g.main_race.distance_km, { hint: raceHint() })}
         ${timeInput('Goal time', 'goals.main_race.goal', g.main_race.goal, 'h:mm:ss, e.g. 3:30:00')}
       </div>
       <div class="row-actions">${button('Remove main race', 'remove-main')}</div>`
@@ -123,7 +138,7 @@ function goalsCard(g) {
       <div class="fields">
         ${text('Name', `goals.time_trials.${i}.name`, t.name, { placeholder: 'e.g. 10 km test run' })}
         ${dateInput('Date', `goals.time_trials.${i}.date`, t.date)}
-        ${num('Distance', `goals.time_trials.${i}.distance_km`, t.distance_km, { unit: 'km', min: 0.1, max: 300 })}
+        ${dist('Distance', `goals.time_trials.${i}.distance_km`, t.distance_km)}
         ${timeInput('Result', `goals.time_trials.${i}.result`, t.result, 'Optional. Add it after the run.')}
       </div>
       <div class="row-actions">${button('Remove', 'remove-trial', ` data-index="${i}" aria-label="Remove ${esc(t.name || 'time trial')}"`)}</div>
@@ -137,7 +152,7 @@ function goalsCard(g) {
     ${trials || '<p class="hint">No time trials yet. Their results calibrate the marathon forecast.</p>'}
     <div class="row-actions">${button('Add a time trial', 'add-trial')}</div>
     <h3 class="form-sub">Weekly distance</h3>
-    <div class="fields">${num('Weekly goal', 'goals.weekly_km', g.weekly_km || '', { unit: 'km', step: 1, min: 0, max: 500, empty: '0', hint: 'Empty or 0 = no goal' })}</div>
+    <div class="fields">${dist('Weekly goal', 'goals.weekly_km', g.weekly_km, { decimals: 0, empty: '0', hint: 'Empty or 0 = no goal' })}</div>
   </section>`;
 }
 
@@ -157,7 +172,7 @@ function planCard(p) {
 
 function bodyCard(b) {
   const g = state.garminMeta || {};
-  const gWeight = g.weight ? `${fmtKm(g.weight.kg)} kg (${fmtDate(parseDate(g.weight.date))})` : 'no weigh-in';
+  const gWeight = g.weight ? `${fmtDec1(g.weight.kg)} kg (${fmtDate(parseDate(g.weight.date))})` : 'no weigh-in';
   const gMax = g.hrSettings?.max_hr ? `${g.hrSettings.max_hr} bpm` : 'not available';
   const lastRhr = (g.restingHr || []).at(-1);
   const gRest = lastRhr ? `${lastRhr.bpm} bpm (${fmtDate(parseDate(lastRhr.date))})` : 'not available';
@@ -222,6 +237,8 @@ function appearanceCard(a) {
   return `<section class="card">
     <div class="card-head"><div><h2>Appearance</h2><p class="sub">How the app looks.</p></div></div>
     ${choice('Theme', 'appearance.theme', a.theme, [['system', 'Same as the system'], ['dark', 'Dark'], ['light', 'Light']])}
+    ${choice('Units', 'appearance.units', a.units, [['km', 'Kilometres'], ['mi', 'Miles']],
+      'Distances and paces are shown in this unit. Everything is still calculated and saved in kilometres.')}
   </section>`;
 }
 
@@ -381,7 +398,7 @@ function welcomeStep() {
     <div class="fields">
       ${text('Name', 'goals.main_race.name', r.name, { placeholder: 'e.g. City Marathon' })}
       ${dateInput('Race day', 'goals.main_race.date', r.date)}
-      ${num('Distance', 'goals.main_race.distance_km', r.distance_km, { unit: 'km', min: 0.1, max: 300, hint: 'Marathon 42.195, half 21.0975' })}
+      ${dist('Distance', 'goals.main_race.distance_km', r.distance_km, { hint: raceHint() })}
       ${timeInput('Goal time', 'goals.main_race.goal', r.goal, 'h:mm:ss, e.g. 3:30:00')}
     </div>`;
   }
@@ -390,7 +407,7 @@ function welcomeStep() {
     <p class="lead">Where your planned workouts are, and how far you want to run each week.</p>
     ${choice('Plan source', 'plan.source', d.plan.source, [['garmin', 'Garmin calendar'], ['none', 'No plan']],
       'Garmin calendar: workouts scheduled in Garmin Connect, e.g. synced from Runna.')}
-    <div class="fields">${num('Weekly goal', 'goals.weekly_km', d.goals.weekly_km || '', { unit: 'km', step: 1, min: 0, max: 500, empty: '0', hint: 'Empty or 0 = no goal' })}</div>`;
+    <div class="fields">${dist('Weekly goal', 'goals.weekly_km', d.goals.weekly_km, { decimals: 0, empty: '0', hint: 'Empty or 0 = no goal' })}</div>`;
   const hasData = state.acts.length > 0;
   return `
     <h2 id="welcomeHeading" tabindex="-1">All set</h2>

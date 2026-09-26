@@ -3,7 +3,7 @@
 
 import { state } from '../state.js';
 import { loadModel, acwr, efficiencySeries, ACWR_ZONES, MIN_RELIABLE_DAYS, CTL_DAYS, ATL_DAYS, EF_WINDOW } from '../metrics.js';
-import { fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc } from '../format.js';
+import { fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc, paceLabel } from '../format.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
 import { danielsPaces, runnaPaces, runnaVdot, PACE_SHARES } from '../paces.js';
 import { calibration, timeTrials, raceResults, vdot, parseTime, timeForVdot } from '../forecast.js';
@@ -116,7 +116,7 @@ function drawEfficiencyChart(runs) {
         tooltip: { ...base.plugins.tooltip, callbacks: {
           title: base.plugins.tooltip.callbacks.title,
           label: c => c.dataset.label + ': ' + fmtRatio(c.parsed.y),
-          footer: items => { const a = runs[items[0].dataIndex].act; return fmtPace(a.sec / a.km) + ' /km · ' + fmtInt(a.hr) + ' bpm'; },
+          footer: items => { const a = runs[items[0].dataIndex].act; return fmtPace(a.sec / a.km) + ' ' + paceLabel() + ' · ' + fmtInt(a.hr) + ' bpm'; },
         }, footerFont: { family: t.mono, weight: '400' } } },
       scales: { ...base.scales, y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => fmtRatio(v) } } } },
   });
@@ -128,7 +128,7 @@ function renderEasyList(runs) {
       <thead><tr><th>Date</th><th>Run</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th><th class="num">Efficiency</th></tr></thead>
       <tbody>${runs.slice().reverse().map(({ act: a, ef }) => `
         <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type)}</td>
-        <td class="num">${fmtDuration(a.sec)}</td><td class="num">${fmtPace(a.sec / a.km)} /km</td>
+        <td class="num">${fmtDuration(a.sec)}</td><td class="num">${fmtPace(a.sec / a.km)} ${paceLabel()}</td>
         <td class="num">${fmtInt(a.hr)}</td><td class="num">${fmtRatio(ef)}</td></tr>`).join('')}</tbody>
     </table></div>`;
 }
@@ -164,7 +164,7 @@ function renderPaces() {
   };
 
   $('#pacesTable').innerHTML = cols.length ? `
-    <thead><tr><th>Pace</th>${cols.map(c => `<th class="num">${c.label}<br><span class="muted">VDOT ${fmtDec1(c.vdot)} · ${c.note}</span></th>`).join('')}<th>Runna prescribes</th></tr></thead>
+    <thead><tr><th>Pace (${paceLabel()})</th>${cols.map(c => `<th class="num">${c.label}<br><span class="muted">VDOT ${fmtDec1(c.vdot)} · ${c.note}</span></th>`).join('')}<th>Runna prescribes</th></tr></thead>
     <tbody>${Object.entries(PACE_SHARES).map(([k, p]) => `
       <tr><td>${p.label}<br><span class="muted">${p.use}</span></td>${cols.map(c => `<td class="num">${range(c.paces[k])}</td>`).join('')}<td class="num">${prescribed(k)}</td></tr>`).join('')}</tbody>`
     : '<tbody><tr><td class="hint">No VO2max, Runna paces or goal yet.</td></tr></tbody>';
