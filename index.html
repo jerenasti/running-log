@@ -133,6 +133,28 @@
           <p class="goal-text" id="goalText"></p>
         </section>
 
+        <section class="card span-2" id="reviewCard">
+          <div class="card-head">
+            <div><h2>Plan and weekly review</h2><p class="sub"><span id="reviewTitle"></span> · <span id="reviewSub"></span></p></div>
+            <div class="seg" role="group" aria-label="Choose week">
+              <button type="button" id="revPrev" aria-label="Previous week">‹</button>
+              <button type="button" id="revThis">This week</button>
+              <button type="button" id="revNext" aria-label="Next week">›</button>
+            </div>
+          </div>
+          <div class="review-grid">
+            <div><h3 class="mini">Plan</h3><ul class="plan-list" id="planList"></ul></div>
+            <div><h3 class="mini">Week in numbers</h3><div class="table-wrap"><table class="rules review-table" id="reviewTable"></table></div></div>
+          </div>
+          <h3 class="mini">Highlights</h3>
+          <ul class="attention" id="reviewHighlights"></ul>
+          <details class="info"><summary>How it works</summary>
+            <p><b>Plan</b>: workouts from your Runna plan in the Garmin calendar. A run counts for a planned workout when it has the same Garmin workout id (Garmin adds it when you run a scheduled workout). <b>Done</b>: on the planned day. <b>Moved</b>: on another day. <b>Missed</b>: the day has passed with no matching run. <b>Extra</b>: a run that wasn't in the plan.</p>
+            <p><b>Plan history</b>: Garmin's calendar only shows the days around today, so the app saves the plan every morning. Before it started saving, plan workouts are recognised from their Runna name (e.g. "W3 Tue Easy Run" was planned for Tuesday), but missed workouts can't be seen.</p>
+            <p><b>Highlights</b> follow fixed rules: missed sessions, weekly distance up more than 10% from the week before (a common guideline for increasing training safely), average HRV down more than 5 ms, resting HR change of 2 bpm or more, and the change in VO2max.</p>
+          </details>
+        </section>
+
         <section class="card span-2">
           <div class="card-head"><div><h2>Weekly distance</h2><p class="sub">The current week is highlighted.</p></div></div>
           <div class="chart"><canvas id="weekChart" aria-label="Weekly distance as a bar chart" role="img"></canvas></div>

@@ -269,4 +269,25 @@ h3.mini { margin: 16px 0 6px; font-size: .85rem; font-weight: 600; }
 #mfCal { margin: 10px 0 0; line-height: 1.55; }
 #vo2Prelim .notice, #mfPrelim .notice { margin-bottom: 12px; }
 
+/* ---------- Plan and weekly review ---------- */
+.seg button:disabled { opacity: .4; cursor: default; }
+.review-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 24px; }
+@media (min-width: 900px) { .review-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.plan-list { margin: 0; padding: 0; list-style: none; }
+.plan-row {
+  display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto; gap: 2px 10px; align-items: baseline;
+  padding: 7px 0; border-top: 1px solid var(--border); font-size: .85rem;
+}
+.plan-row:first-child { border-top: 0; }
+.plan-title { min-width: 0; overflow-wrap: anywhere; }
+.plan-status { font-size: .8rem; font-weight: 500; }
+.plan-actual { grid-column: 2 / -1; font-size: .78rem; }
+.plan-actual:empty { display: none; }
+.status-upcoming .plan-title, .status-today .plan-title { color: var(--text-2); }
+.review-table { min-width: 0; }
+.review-table td, .review-table th { padding: 6px 8px; }
+.review-table td:first-child { white-space: normal; }
+.review-end tr:first-child td { border-top: 1px solid var(--border-strong); }
+#reviewCard .attention { margin-bottom: 4px; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

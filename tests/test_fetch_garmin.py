@@ -77,12 +77,12 @@ def test_connect_stops_on_invalid_tokens(tmp_path, monkeypatch):
 def test_simplify_activity():
     raw = {"activityId": 1, "startTimeLocal": "2026-09-25 18:05:16", "activityType": {"typeKey": "running"},
            "activityName": "W4 Fri Tempo", "distance": 5119.18, "duration": 1570.05, "averageHR": 164.0, "maxHR": 182.0,
-           "averageSpeed": 3.2609, "trainingEffectLabel": "VO2MAX", "calories": 417.0,
+           "averageSpeed": 3.2609, "trainingEffectLabel": "VO2MAX", "calories": 417.0, "workoutId": 1704302220,
            "hrTimeInZone_1": 24.0, "hrTimeInZone_2": 84.3, "hrTimeInZone_3": 214.5, "hrTimeInZone_4": 1156.9, "hrTimeInZone_5": 59.0}
     a = fg.simplify(raw)
     assert a == {"id": 1, "start_time": "2026-09-25 18:05:16", "type": "running", "name": "W4 Fri Tempo",
                  "distance_m": 5119, "duration_s": 1570, "avg_hr": 164, "max_hr": 182, "avg_speed_mps": 3.261,
-                 "te_label": "VO2MAX", "calories": 417, "hr_zones_s": [24, 84, 214, 1157, 59]}
+                 "te_label": "VO2MAX", "calories": 417, "workout_id": 1704302220, "hr_zones_s": [24, 84, 214, 1157, 59]}
 
 
 def test_simplify_activity_without_heart_rate():
@@ -120,14 +120,44 @@ def test_hrv_sleep_and_body_battery():
     assert fg.fetch_body_battery(g, s, e) == [{"date": "2026-09-25", "high": 100, "low": 32, "charged": 67, "drained": 61}]
 
 
-def test_schedule_keeps_only_future_workouts_once():
+def test_schedule_keeps_workouts_once_with_their_workout_id():
     items = {"calendarItems": [
-        {"id": 1, "itemType": "workout", "date": "2026-09-25", "title": "Past", "sportTypeKey": "running"},
-        {"id": 2, "itemType": "workout", "date": "2026-09-27", "title": "Long Run (12km)", "sportTypeKey": "running"},
+        {"id": 1, "itemType": "workout", "date": "2026-09-25", "title": "Tempo", "sportTypeKey": "running", "workoutId": 11},
+        {"id": 2, "itemType": "workout", "date": "2026-09-27", "title": "Long Run (12km)", "sportTypeKey": "running", "workoutId": 12},
         {"id": 3, "itemType": "activity", "date": "2026-09-27", "title": "Not a workout"},
     ]}
     g = FakeGarmin(get_scheduled_workouts=items)  # both months return the same items, like Garmin's overlapping views
-    assert fg.fetch_schedule(g, date(2026, 9, 26)) == [{"date": "2026-09-27", "title": "Long Run (12km)", "sport": "running"}]
+    assert fg.fetch_schedule(g, date(2026, 9, 26)) == [
+        {"date": "2026-09-25", "title": "Tempo", "sport": "running", "workout_id": 11},
+        {"date": "2026-09-27", "title": "Long Run (12km)", "sport": "running", "workout_id": 12}]
+
+
+TODAY = date(2026, 9, 26)
+w = lambda d, wid, title="W": {"date": d, "title": title, "sport": "running", "workout_id": wid}
+
+
+def test_merge_plan_keeps_past_workouts_garmin_has_dropped():
+    previous = [w("2026-09-20", 1), w("2026-09-23", 2)]
+    fetched = [w("2026-09-25", 3), w("2026-09-27", 4)]
+    assert [x["workout_id"] for x in fg.merge_plan(previous, fetched, TODAY)] == [1, 2, 3, 4]
+
+
+def test_merge_plan_future_follows_garmin():
+    # A workout Runna moved from Sunday to Monday: the old Sunday entry must not stay in the plan
+    previous = [w("2026-09-27", 4)]
+    fetched = [w("2026-09-28", 4)]
+    assert fg.merge_plan(previous, fetched, TODAY) == [w("2026-09-28", 4)]
+
+
+def test_merge_plan_drops_entries_older_than_a_year_and_no_duplicates():
+    previous = [w("2025-09-01", 9), w("2026-09-20", 1)]
+    fetched = [w("2026-09-20", 1)]
+    assert fg.merge_plan(previous, fetched, TODAY) == [w("2026-09-20", 1)]
+
+
+def test_merge_plan_keeps_saved_plan_when_the_calendar_request_failed():
+    previous = [w("2026-09-20", 1), w("2026-09-28", 5)]
+    assert fg.merge_plan(previous, None, TODAY) == previous
 
 
 def test_weight_takes_the_latest_weigh_in_in_kg():

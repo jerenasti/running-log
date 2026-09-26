@@ -11,6 +11,7 @@ import { fmtKm, fmtInt, fmtRatio, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm
 import { mondayOf, dayKey, startOfDay, DAY_MS } from '../dates.js';
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
+import { weekReview } from '../plan.js';
 
 const $ = s => document.querySelector(s);
 const STATUS = { hard: 'ok', easy: 'watch', rest: 'warn', unknown: 'none' };
@@ -302,6 +303,14 @@ export function renderOverview() {
   const tPlan = dayType(tomorrow, { acts: [], planned, race: ctx.race });
   if (tPlan.type === 'long' && tPlan.plan?.minutes >= LONG_MINUTES) attention.push({ level: 'info', text: `Long run tomorrow: practise race fuelling (${FUELING.training[0]}–${FUELING.training[1]} g of carbs per hour).`, tab: 'nutrition', tabLabel: 'Nutrition' });
   if (state.fetchedAt && (Date.now() - state.fetchedAt) > 36 * 3600 * 1000) attention.push({ level: 'watch', text: `Garmin data is ${Math.floor((Date.now() - state.fetchedAt) / 86400000)} days old. Run start.bat or check data/fetch_data.log.`, tab: null });
+
+  // Training plan: missed sessions this week, and last week's distance jump
+  const thisWeek = weekReview(new Date(), { acts: state.acts, schedule: meta.schedule || [], meta });
+  const missed = thisWeek.plan.items.filter(i => i.status === 'missed');
+  if (missed.length) attention.push({ level: 'watch', text: `Missed this week: ${missed.map(i => esc(i.title)).join(', ')}.`, tab: 'training', tabLabel: 'Training' });
+  const lastWeek = weekReview(new Date(Date.now() - 7 * DAY_MS), { acts: state.acts, schedule: meta.schedule || [], meta });
+  const jump = lastWeek.highlights.find(h => h.level === 'watch' && h.text.startsWith('Distance'));
+  if (jump) attention.push({ level: 'watch', text: `Last week: ${esc(jump.text.charAt(0).toLowerCase() + jump.text.slice(1))}`, tab: 'training', tabLabel: 'Training' });
 
   renderForecasts(ctx, attention);
   renderAttention(attention);

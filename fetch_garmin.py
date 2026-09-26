@@ -78,6 +78,7 @@ def simplify(activity: dict) -> dict:
         "avg_speed_mps": round(activity["averageSpeed"], 3) if activity.get("averageSpeed") else None,
         "te_label": activity.get("trainingEffectLabel"),       # Garmin's classification, e.g. "AEROBIC_BASE"
         "calories": round(activity["calories"]) if activity.get("calories") else None,  # Garmin's estimate
+        "workout_id": activity.get("workoutId"),  # set when the run followed a scheduled workout
         # Seconds in heart rate zones 1–5 (null if the activity has no heart rate)
         "hr_zones_s": [round(z or 0) for z in zones] if any(z is not None for z in zones) else None,
     }
@@ -161,14 +162,37 @@ def fetch_body_battery(garmin: Garmin, start: date, end: date) -> list[dict]:
 
 
 def fetch_schedule(garmin: Garmin, today: date) -> list[dict]:
-    """Workouts scheduled in the Garmin calendar from today on (this month and next month)."""
+    """Workouts in the Garmin calendar this month and next month. Runna keeps only the days around today there."""
     next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
     workouts = {}
     for d in (today, next_month):
         for item in (garmin.get_scheduled_workouts(d.year, d.month) or {}).get("calendarItems") or []:
-            if item.get("itemType") == "workout" and (item.get("date") or "") >= today.isoformat():
-                workouts[item.get("id")] = {"date": item["date"], "title": item.get("title"), "sport": item.get("sportTypeKey")}
+            if item.get("itemType") == "workout" and item.get("date"):
+                workouts[item.get("id")] = {"date": item["date"], "title": item.get("title"), "sport": item.get("sportTypeKey"),
+                                            "workout_id": item.get("workoutId")}  # the same id is on the activity when it is done
     return sorted(workouts.values(), key=lambda w: w["date"])
+
+
+def merge_plan(previous: list[dict], fetched: list[dict] | None, today: date) -> list[dict]:
+    """Plan history: Garmin's calendar drops past workouts, so the ones seen on earlier runs are kept.
+    Past days come from earlier runs (plus anything Garmin still shows); from today on, only Garmin's
+    current calendar counts, so a workout moved or removed in Runna disappears from the future.
+    fetched is None when the calendar request failed: then the saved plan is kept as it is."""
+    if fetched is None:
+        return previous
+    key = lambda w: (w["date"], w.get("workout_id") or w.get("title"))
+    oldest = (today - timedelta(days=365)).isoformat()
+    merged = {key(w): w for w in previous if oldest <= w.get("date", "") < today.isoformat()}
+    merged.update({key(w): w for w in fetched})
+    return sorted(merged.values(), key=lambda w: w["date"])
+
+
+def previous_plan() -> list[dict]:
+    """The plan saved by an earlier run."""
+    try:
+        return json.loads(OUTPUT.read_text(encoding="utf-8")).get("schedule") or []
+    except (OSError, ValueError):
+        return []
 
 
 def fetch_weight(garmin: Garmin, start: date, end: date) -> dict | None:
@@ -270,7 +294,8 @@ def main() -> None:
         "hr_settings": hr_settings,
         "resting_hr": resting_hr,
         "recovery": recovery,
-        "schedule": optional("scheduled workouts", lambda: fetch_schedule(garmin, date.today()), []),
+        # Plan history: saved plan + Garmin's current calendar (if the calendar fails, keep the saved plan)
+        "schedule": merge_plan(previous_plan(), optional("scheduled workouts", lambda: fetch_schedule(garmin, date.today()), None), date.today()),
         "weight": optional("weight", lambda: fetch_weight(garmin, start, date.today()), None),
         # Garmin allows at most one year per request for race predictions
         "vo2max": optional("VO2max", lambda: fetch_vo2max(garmin, start, date.today()), []),

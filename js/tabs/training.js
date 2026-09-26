@@ -4,6 +4,7 @@ import { state, save } from '../state.js';
 import { fmtKm, fmtInt, fmtPace, fmtDuration, fmtDay, fmtDate, esc, DASH } from '../format.js';
 import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
+import { renderReview, initReview } from './review.js';
 
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
@@ -158,6 +159,7 @@ export function renderTraining() {
   renderGoal();
   drawCharts(r);
   renderTable(r);
+  renderReview();
 }
 
 /* ---------- Events ---------- */
@@ -168,6 +170,7 @@ export function initTraining() {
   });
   onSeg('period', 'period');
   onSeg('sport', 'sport');
+  initReview();
   $('#showAll').addEventListener('click', () => { state.showAll = !state.showAll; renderTraining(); });
   // The bar updates while typing; the chart is redrawn only when the field loses focus (change)
   $('#goalInput').addEventListener('input', e => { state.goal = Math.max(0, Math.round(+e.target.value)) || 0; save(); renderGoal(); });
