@@ -70,13 +70,15 @@ function renderKpis(ctx) {
   const { acts, days, meta } = ctx;
   const weeks = weeklyKm(acts, 8);
   const [last, now] = weeks.slice(-2);
+  // A week in progress is compared with last week up to the same weekday
+  const samePoint = weekReview(new Date(), { acts, schedule: [], meta: {} }).prev.km;
   const ratio = acwr(days);
   const hrv = meta?.recovery?.hrv || [];
   const lastHrv = hrv[hrv.length - 1];
   const ctl = days.map(d => d.ctl);
   const ctlNow = ctl[ctl.length - 1], ctlWeekAgo = ctl[ctl.length - 8];
   $('#ovKpis').innerHTML =
-    kpiLink('training', 'Running this week', fmtKm(now), 'km', `Last week ${fmtKm(last)} km`, sparkline(weeks)) +
+    kpiLink('training', 'Running this week', fmtKm(now), 'km', `Same point last week ${fmtKm(samePoint)} km (whole week ${fmtKm(last)})`, sparkline(weeks)) +
     kpiLink('fitness', 'Workload ratio (ACWR)', ratio ? fmtRatio(ratio.ratio) : '–', '',
       ratio ? `<i class="dot st-${ratio.zone.key}"></i> ${ratio.zone.label}` : 'Needs 28 days', sparkline(acwrSeries(days, 28).map(d => d.ratio))) +
     kpiLink('recovery', 'HRV last night', lastHrv ? fmtInt(lastHrv.last_night) : '–', 'ms',

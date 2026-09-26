@@ -5,7 +5,7 @@
 // Garmin's calendar only keeps the days around today, so fetch_garmin.py saves the plan history;
 // before that history starts, Runna workouts are recognised from their name ("W3 Tue Easy Run").
 
-import { mondayOf, startOfDay, dayKey, addDays, DAY_MS } from './dates.js';
+import { mondayOf, startOfDay, dayKey, addDays, daysBetween, DAY_MS } from './dates.js';
 import { parseDate } from './parse.js';
 import { loadModel, acwr, edwardsTrimp } from './metrics.js';
 
@@ -57,8 +57,8 @@ export function planItems(schedule, acts, today = new Date()) {
 
 /* ---------- Weekly review ---------- */
 
-function volume(acts, monday) {
-  const end = addDays(monday, 7);
+// `end` is exclusive: the whole week is addDays(monday, 7); "so far" ends after today
+function volume(acts, monday, end = addDays(monday, 7)) {
   const runs = acts.filter(a => isRun(a) && a.km > 0 && a.date >= monday && a.date < end);
   return {
     km: runs.reduce((s, a) => s + a.km, 0),
@@ -69,8 +69,7 @@ function volume(acts, monday) {
   };
 }
 
-function recovery(meta, monday) {
-  const end = addDays(monday, 7);
+function recovery(meta, monday, end = addDays(monday, 7)) {
   const inWeek = x => { const d = parseDate(x.date); return d && d >= monday && d < end; };
   const rec = meta?.recovery || {};
   const sleep = (rec.sleep || []).filter(inWeek);
@@ -113,8 +112,14 @@ export function weekReview(monday, { acts, schedule, meta, today = new Date() })
   const ctlAt = date => { const d = upTo(date); return d.length ? d[d.length - 1].ctl : null; };
   const load = { acwr: acwr(upTo(lastDay))?.ratio ?? null, ctlStart: ctlAt(addDays(monday, -1)), ctlEnd: ctlAt(lastDay) };
 
-  const cur = { ...volume(acts, monday), ...recovery(meta, monday) };
-  const prev = { ...volume(acts, prevMonday), ...recovery(meta, prevMonday) };
+  // A week in progress is compared with the same point of the week before (Monday up to the same
+  // weekday), not with the whole week before, which would always make this week look behind.
+  const curEnd = inProgress ? addDays(today, 1) : end;
+  const prevEnd = inProgress ? addDays(prevMonday, daysBetween(monday, today) + 1) : monday;
+  const cur = { ...volume(acts, monday, curEnd), ...recovery(meta, monday, curEnd) };
+  const prev = { ...volume(acts, prevMonday, prevEnd), ...recovery(meta, prevMonday, prevEnd) };
+  const prevWhole = volume(acts, prevMonday);
+  const vs = inProgress ? 'the same point last week' : 'the week before';
   const forecast = {
     vo2Start: valueAt(meta?.vo2max, 'vo2max', addDays(monday, -1)), vo2End: valueAt(meta?.vo2max, 'vo2max', lastDay),
     garminStart: valueAt(meta?.racePredictions, 'marathon_s', addDays(monday, -1)), garminEnd: valueAt(meta?.racePredictions, 'marathon_s', lastDay),
@@ -132,26 +137,28 @@ export function weekReview(monday, { acts, schedule, meta, today = new Date() })
     });
   }
   if (!plan.tracked) highlights.push({ level: 'info', text: 'Missed sessions can only be seen from the day the app started saving your plan.' });
-  if (!inProgress && prev.km > 0) {
+  if (prev.km > 0) {
     const change = (cur.km - prev.km) / prev.km;
+    // The 10% guideline is about whole weeks, so a week in progress only gets an info note
+    const jump = !inProgress && change > VOLUME_JUMP;
     highlights.push({
-      level: change > VOLUME_JUMP ? 'watch' : 'info',
-      text: `Distance ${change >= 0 ? 'up' : 'down'} ${Math.round(Math.abs(change) * 100)}% from the week before` +
-        (change > VOLUME_JUMP ? ', more than the common 10% guideline.' : '.'),
+      level: jump ? 'watch' : 'info',
+      text: `Distance ${inProgress ? 'so far ' : ''}${change >= 0 ? 'up' : 'down'} ${Math.round(Math.abs(change) * 100)}% from ${vs}` +
+        (jump ? ', more than the common 10% guideline.' : '.'),
     });
   }
   if (Number.isFinite(cur.hrv) && Number.isFinite(prev.hrv)) {
     const d = cur.hrv - prev.hrv;
-    highlights.push({ level: d < -5 ? 'watch' : 'info', text: `Average HRV ${d >= 0 ? 'up' : 'down'} ${Math.round(Math.abs(d))} ms from the week before.` });
+    highlights.push({ level: d < -5 ? 'watch' : 'info', text: `Average HRV ${d >= 0 ? 'up' : 'down'} ${Math.round(Math.abs(d))} ms from ${vs}.` });
   }
   if (Number.isFinite(cur.rhr) && Number.isFinite(prev.rhr) && Math.abs(cur.rhr - prev.rhr) >= 2) {
     const d = cur.rhr - prev.rhr;
-    highlights.push({ level: d > 0 ? 'watch' : 'info', text: `Average resting HR ${d > 0 ? 'up' : 'down'} ${Math.round(Math.abs(d))} bpm.` });
+    highlights.push({ level: d > 0 ? 'watch' : 'info', text: `Average resting HR ${d > 0 ? 'up' : 'down'} ${Math.round(Math.abs(d))} bpm from ${vs}.` });
   }
   if (forecast.vo2Start != null && forecast.vo2End != null && forecast.vo2End !== forecast.vo2Start) {
     const d = forecast.vo2End - forecast.vo2Start;
     highlights.push({ level: d > 0 ? 'ok' : 'info', text: `VO2max ${d > 0 ? 'up' : 'down'} ${Math.abs(d).toFixed(1)} this week.` });
   }
 
-  return { monday, end: addDays(end, -1), inProgress, plan, cur, prev, load, forecast, highlights };
+  return { monday, end: addDays(end, -1), inProgress, plan, cur, prev, prevWhole, load, forecast, highlights };
 }

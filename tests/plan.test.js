@@ -80,5 +80,20 @@ test('weekly review: recovery averages and load', () => {
   assert.equal(r.load.acwr, 1);
   assert.ok(r.load.ctlEnd > r.load.ctlStart, 'fitness grows during steady training');
   assert.ok(Math.abs(r.forecast.vo2End - r.forecast.vo2Start - 0.7) < 1e-9);
-  assert.ok(r.highlights.some(h => h.text === 'Average HRV down 15 ms from the week before.' && h.level === 'watch'));
+  assert.ok(r.highlights.some(h => h.text === 'Average HRV down 15 ms from the same point last week.' && h.level === 'watch'));
+});
+
+test('weekly review: a week in progress is compared with the same point of last week', () => {
+  // Today is Saturday. Last week: Mon–Sat 30 km + Sunday long run 20 km. This week so far: 27 km.
+  const acts = [
+    run({ n: -12, km: 10 }), run({ n: -10, km: 10 }), run({ n: -7, km: 10 }), run({ n: -6, km: 20 }),
+    run({ n: -5, km: 9 }), run({ n: -3, km: 9 }), run({ n: 0, km: 9 }),
+  ];
+  const r = weekReview(TODAY, { acts, schedule: [], meta: {}, today: TODAY });
+  assert.equal(r.cur.km, 27);
+  assert.equal(r.prev.km, 30, 'Sunday of last week is not yet comparable');
+  assert.equal(r.prevWhole.km, 50);
+  const distance = r.highlights.find(h => h.text.startsWith('Distance'));
+  assert.equal(distance.text, 'Distance so far down 10% from the same point last week.');
+  assert.equal(distance.level, 'info');
 });

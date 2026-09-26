@@ -53,7 +53,7 @@ export function renderReview() {
     : '<li class="hint">No planned workouts or runs this week.</li>';
 
   $('#reviewTable').innerHTML = `
-    <thead><tr><th></th><th class="num">${r.inProgress ? 'So far' : 'This week'}</th><th class="num">Before</th><th class="num">Change</th></tr></thead>
+    <thead><tr><th></th><th class="num">${r.inProgress ? 'So far' : 'This week'}</th><th class="num">${r.inProgress ? 'Same point last week' : 'Week before'}</th><th class="num">Change</th></tr></thead>
     <tbody>
       ${row('Distance', cur.km, prev.km, v => fmtKm(v) + ' km', () => pct(cur.km, prev.km))}
       ${row('Runs', cur.runs, prev.runs, fmtInt, d => fmtSigned(d))}
