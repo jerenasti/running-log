@@ -7,7 +7,7 @@ A personal running training tracker. `index.html` shows weekly distance, pace an
 The app fetches Garmin data by itself, with no manual work:
 
 1. A Python script fetches activities from Garmin Connect (at least the last year) and writes them to `data/activities.json`.
-2. `index.html` reads `data/activities.json`. CSV upload remains as a fallback.
+2. `index.html` reads `data/activities.json`. Garmin data is the only data source (CSV upload was removed); sample data exists only for trying the app.
 
 The user is learning to program through this project: briefly explain what you are doing and why. Ask before moving from one major step to the next. Reply in the language the user writes in (usually Finnish).
 
@@ -55,10 +55,10 @@ The Windows Task Scheduler task **"Running Log - Garmin fetch"** runs `fetch_dat
   Garmin does **not** provide a per-activity training load (`activityTrainingLoad`) for this account; load is computed in the app (Edwards TRIMP).
 - `index.html`: page structure only (header, tab bar, one `<section role="tabpanel">` per tab). No inline CSS or JS.
 - `css/tokens.css`: all colors, fonts and sizes as CSS variables; dark mode redefines colors only. `css/layout.css`: page structure and responsive grids. `css/components.css`: tabs, cards, KPIs, buttons, tables.
-- `js/app.js`: entry point (data loading, data source controls, tabs). `js/state.js`: shared state + localStorage. `js/data.js`: Garmin JSON, CSV parsing (English and Finnish column names), sample data. `js/format.js`: **all** displayed numbers and dates go through it. `js/parse.js`, `js/dates.js`: input parsing and ISO week helpers. `js/charts.js`: shared Chart.js theme/options. `js/nav.js`: tabs (hash in URL, arrow-key navigation).
+- `js/app.js`: entry point (data loading, data source controls, tabs). `js/state.js`: shared state + localStorage. `js/data.js`: Garmin JSON and sample data. `js/format.js`: **all** displayed numbers and dates go through it. `js/parse.js`: date parsing. `js/dates.js`: day keys and ISO week helpers. `js/charts.js`: shared Chart.js theme/options. `js/nav.js`: tabs (hash in URL, arrow-key navigation).
 - `js/tabs/training.js`: the Training tab (activities with a distance only). `js/tabs/fitness.js`: Fitness and load tab. `js/metrics.js`: pure formulas (Edwards TRIMP, CTL 42 d / ATL 7 d EWMA, TSB = yesterday's CTL − ATL, ACWR 7/28 rolling averages, easy-run rules, aerobic efficiency = m/min ÷ avg HR with a 5-run average).
 - Other tabs (Overview, Recovery, Nutrition) are placeholders in `index.html`; a new tab gets its own `js/tabs/<name>.js` with `init…()` and `render…()`, called from `app.js`.
-- Chart.js and PapaParse are loaded as globals from cdnjs in `index.html`.
+- Chart.js is loaded as a global from cdnjs in `index.html`.
 - `start.bat`: fetch + server + browser. `fetch_data.bat`: fetch only, used by the scheduled task.
 
 ## Design (direction "Graphite")

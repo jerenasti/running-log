@@ -1,7 +1,6 @@
 // Training tab: key figures, weekly goal, weekly distance, pace and heart rate charts, activity table.
 
 import { state, save } from '../state.js';
-import { FIELDS } from '../data.js';
 import { fmtKm, fmtInt, fmtPace, fmtDuration, fmtDay, fmtDate, esc, DASH } from '../format.js';
 import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
 import { theme, baseOptions, drawChart } from '../charts.js';
@@ -136,9 +135,6 @@ function renderTable(r) {
     <td class="num">${Number.isFinite(a.sec) ? fmtPace(a.sec / a.km) + ' /km' : DASH}</td>
     <td class="num">${fmtInt(a.hr)}</td></tr>`).join('')
     : '<tr><td colspan="6">No activities in the selected range. Choose a longer range.</td></tr>';
-
-  $('#colinfo').innerHTML = '<summary>' + (state.live ? 'Garmin fields' : 'Detected columns') + '</summary><ul>' +
-    Object.keys(FIELDS).map(k => `<li>${FIELDS[k].name}: ${state.cols[k] ? esc(state.cols[k]) : '<span class="missing">not found</span>'}</li>`).join('') + '</ul>';
 }
 
 export function renderTraining() {

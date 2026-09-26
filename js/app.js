@@ -1,7 +1,7 @@
 // Entry point: loads data, wires up the data source controls and the tabs.
 
 import { state, save, restore, clearData } from './state.js';
-import { fetchGarmin, garminToActivities, parseCsvFile, sampleActivities } from './data.js';
+import { fetchGarmin, garminToActivities, sampleActivities, SAMPLE_SOURCE } from './data.js';
 import { parseDate } from './parse.js';
 import { fmtDate, fmtTime } from './format.js';
 import { initTabs } from './nav.js';
@@ -26,8 +26,8 @@ function render() {
   if (currentTab === 'fitness') renderFitness();
 }
 
-function setData({ acts, cols, meta = null }, source, live) {
-  Object.assign(state, { acts, cols, meta, source, live, showAll: false });
+function setData({ acts, meta = null }, source, live) {
+  Object.assign(state, { acts, meta, source, live, showAll: false });
   notice('');
   save();
   render();
@@ -35,31 +35,16 @@ function setData({ acts, cols, meta = null }, source, live) {
 
 const applyGarmin = () => garmin && setData(garminToActivities(garmin), 'Garmin Connect data', true);
 
-async function loadFile(file) {
-  if (!file) return;
-  try { setData(await parseCsvFile(file), file.name, false); }
-  catch (e) { notice(e.message); }
-}
-
 /* ---------- Events ---------- */
-$('#file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
-$('#demo').addEventListener('click', () => setData(sampleActivities(), 'sample data', false));
+$('#demo').addEventListener('click', () => setData(sampleActivities(), SAMPLE_SOURCE, false));
 $('#garmin').addEventListener('click', applyGarmin);
 $('#clear').addEventListener('click', () => { clearData(); render(); });
-
-let dragDepth = 0;
-window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
-window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drag'); } });
-window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag'); loadFile(e.dataTransfer.files[0]); });
 
 // Redraw charts when the system switches between light and dark mode
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
 
 /* ---------- Startup ---------- */
-if (typeof Chart === 'undefined' || typeof Papa === 'undefined') {
-  notice('The app libraries failed to load. Reload the page.');
-}
+if (typeof Chart === 'undefined') notice('The chart library failed to load. Reload the page.');
 
 // Show data saved in the browser right away, then fetch Garmin data in the background.
 const storedAt = restore();
@@ -68,10 +53,11 @@ initTabs(name => { currentTab = name; render(); });
 
 fetchGarmin().then(o => {
   garmin = o;
-  // Garmin data replaces saved data, unless the user uploaded a CSV after this fetch.
-  if (!state.acts.length || state.live || storedAt < Date.parse(o.fetchedAt)) applyGarmin();
-  else render();
+  // Garmin data replaces saved data, unless the user chose sample data after this fetch.
+  const keepSample = !state.live && state.source === SAMPLE_SOURCE && storedAt >= Date.parse(o.fetchedAt);
+  if (keepSample) render(); else applyGarmin();
 }).catch(err => {
-  // No Garmin data: CSV upload and sample data still work as fallbacks.
+  // No Garmin data: explain how to fetch it (sample data still works for trying the app).
   if (!state.acts.length) notice(err.message);
+  render();
 });

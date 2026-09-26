@@ -4,8 +4,7 @@ const STORE_KEY = 'juoksupaivakirja:v1';
 
 export const state = {
   acts: [],        // activities sorted oldest → newest: { date, type, title, km, sec, hr }
-  cols: {},        // which source column/field each value came from
-  source: '',      // "Garmin Connect data", a CSV file name, or "sample data"
+  source: '',      // "Garmin Connect data" or "sample data"
   live: false,     // true when showing Garmin data
   period: '12',    // Training: '12' | '26' | '52' | 'all' weeks
   sport: 'run',    // Training: 'run' | 'all'
@@ -18,7 +17,7 @@ export function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       acts: state.acts.map(a => ({ ...a, date: a.date.toISOString() })),
-      cols: state.cols, source: state.source, live: state.live, meta: state.meta,
+      source: state.source, live: state.live, meta: state.meta,
       period: state.period, sport: state.sport, goal: state.goal,
       savedAt: Date.now(),
     }));
@@ -35,7 +34,6 @@ export function restore() {
     state.goal = +o.goal || 0;
     if (!Array.isArray(o.acts) || !o.acts.length) return 0;
     state.acts = o.acts.map(a => ({ ...a, date: new Date(a.date), sec: a.sec ?? NaN, hr: a.hr ?? NaN }));
-    state.cols = o.cols || {};
     state.source = o.source || '';
     state.live = !!o.live;
     state.meta = o.meta || null;
@@ -46,7 +44,6 @@ export function restore() {
 /** Remove the loaded activities but keep preferences such as the weekly goal. */
 export function clearData() {
   state.acts = [];
-  state.cols = {};
   state.source = '';
   state.live = false;
   state.showAll = false;

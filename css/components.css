@@ -124,15 +124,14 @@ td.title { white-space: normal; min-width: 12ch; }
 details { margin-top: var(--gap); color: var(--text-3); font-size: .82rem; }
 details summary { cursor: pointer; }
 details ul { margin: .5rem 0 0; padding-left: 1.2rem; }
-.missing { color: var(--accent); }
 
 /* ---------- Empty and placeholder states ---------- */
 .empty { border-style: dashed; }
-body.drag .empty { border-color: var(--accent); }
 .empty h2 { margin-bottom: 8px; }
 .empty > .hint:first-of-type { margin-bottom: 12px; }
 .empty ol { padding-left: 1.3rem; margin: 0 0 12px; max-width: 64ch; color: var(--text-2); font-size: .9rem; }
 .empty li { margin: .3rem 0; }
+code { font: .85em var(--font-mono); background: var(--surface-2); padding: .1em .35em; border-radius: 4px; }
 .hint { margin: 0; color: var(--text-3); font-size: .82rem; }
 .live-hint { margin: 0 0 12px; padding: 10px 14px; background: var(--accent-soft); border-radius: var(--radius-sm); font-size: .88rem; }
 .live-hint[hidden] { display: none; }
