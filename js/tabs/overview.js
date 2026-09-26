@@ -6,7 +6,7 @@ import { state } from '../state.js';
 import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
 import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
-import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
+import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, goalStatus, forecastSources, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
 import { fmtKm, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
 import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js';
 import { parseDate } from '../parse.js';
@@ -180,8 +180,8 @@ function drawMarathon(mf, garmin, goalSec, results) {
   drawChart('marathonChart', {
     type: 'line',
     data: { labels: mf.map(p => fmtDay(p.date)), datasets: [
-      ...band(t, mf.map(p => p.slow), mf.map(p => p.fast), 'VDOT forecast, 80% range'),
-      { label: 'VDOT forecast', data: mf.map(p => p.mid), borderColor: t.line, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, pointStyle: 'line' },
+      ...band(t, mf.map(p => p.slow), mf.map(p => p.fast), 'Main forecast, 80% range'),
+      { label: 'Main forecast', data: mf.map(p => p.mid), borderColor: t.line, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, pointStyle: 'line' },
       { label: 'Garmin prediction', data: mf.map(p => g.get(dayKey(p.date)) ?? null), borderColor: t.text, backgroundColor: t.text, borderWidth: 2,
         pointRadius: 0, pointHoverRadius: 4, pointStyle: 'line', spanGaps: false },
       { label: 'Goal', data: mf.map(() => goalSec), borderColor: t.accent, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 0, pointStyle: 'line' },
@@ -191,7 +191,7 @@ function drawMarathon(mf, garmin, goalSec, results) {
     options: { ...base,
       plugins: { ...base.plugins, legend: legend(t), tooltip: { ...base.plugins.tooltip, filter: c => c.dataset.label !== '_lo' && c.parsed.y != null,
         callbacks: { title: base.plugins.tooltip.callbacks.title,
-          label: c => c.dataset.label.startsWith('VDOT forecast,')
+          label: c => c.dataset.label.startsWith('Main forecast,')
             ? `80% range: ${fmtDuration(mf[c.dataIndex].fast)}–${fmtDuration(mf[c.dataIndex].slow)}`
             : `${c.dataset.label}: ${fmtDuration(c.parsed.y)}` } } },
       scales: { ...base.scales, x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: xTicks() } },
@@ -247,17 +247,42 @@ function renderForecasts(ctx, attention) {
     : cal.source === 'runna'
       ? `Calibrated with your Runna plan: its paces correspond to VDOT ${fmtDec1(cal.runnaVdot)}, which is ${Math.round(cal.factor * 100)}% of Garmin's VO2max (${fmtDec1(cal.vo2max)}). Your first time trial will replace this (a run named time trial, TT, test, testi or aika-ajo).`
       : 'Not calibrated yet: your first Runna time trial calibrates the forecast automatically (name contains time trial, TT, test, testi or aika-ajo).';
+  // Main forecast: the calibrated VDOT forecast for race day. It is the only estimate that looks ahead
+  // to race day, and the calibration anchors it in how the user actually runs.
+  const status = goalStatus(goalSec, raceTime);
+  const STATUS_TEXT = {
+    'on-track': ['ok', `On track: even the slow end of the range beats ${esc(goalRace.goal)}.`],
+    possible:   ['watch', `Possible: the middle of the range beats ${esc(goalRace.goal)}, the slow end does not yet.`],
+    behind:     ['warn', `Behind: the middle of the range is slower than ${esc(goalRace.goal)}.`],
+  };
+  const [dot, statusText] = STATUS_TEXT[status];
+  const source = { efforts: 'your time trials', runna: 'your Runna paces' }[cal.source];
   $('#mfStats').innerHTML = `
-    <div class="kpi"><div class="kpi-label">VDOT needed for ${esc(goalRace.goal)}</div><div class="kpi-value">${fmtKm(needVdot)}</div><div class="kpi-sub">Daniels' formula</div></div>
-    <div class="kpi"><div class="kpi-label">Forecast VDOT on race day</div><div class="kpi-value">${fmtKm(race.mid * cal.factor)}</div>
-      <div class="kpi-sub num">${fmtKm(race.lo * cal.factor)}–${fmtKm(race.hi * cal.factor)} · ${{ efforts: 'calibrated with time trials', runna: 'calibrated with Runna paces' }[cal.source] || 'uncalibrated'}</div></div>
-    <div class="kpi"><div class="kpi-label">VDOT forecast, race day</div><div class="kpi-value">${fmtDuration(raceTime.mid)}</div>
-      <div class="kpi-sub num">${fmtDuration(raceTime.fast)}–${fmtDuration(raceTime.slow)}</div></div>
-    <div class="kpi"><div class="kpi-label">Garmin prediction today</div><div class="kpi-value">${lastG ? fmtDuration(lastG.sec) : '–'}</div>
-      <div class="kpi-sub">${lastG ? `= VDOT ${fmtKm(lastG.vdot)} · ${fmtDay(lastG.date)}` : 'No data'}</div></div>`;
-  $('#mfCal').innerHTML = `${calText} ${!cal.source && lastG && raceTime.mid < lastG.sec - 20 * 60
-    ? `The VDOT forecast is much faster than Garmin's prediction: Daniels' formula assumes marathon endurance to match your VO2max, while Garmin also looks at your current training volume. Your first time trial will show which is closer.` : ''}`;
-  if (runnaV) $('#mfCal').innerHTML += ` Runna's paces mean a ${fmtDuration(timeForVdot(runnaV))} marathon today (see Training paces on the Fitness and load tab).`;
+    <div class="main-forecast">
+      <div class="kpi-label">Main forecast · ${esc(goalRace.name)} on ${fmtDate(goalRace.day)}</div>
+      <div class="main-time num">${fmtDuration(raceTime.mid)}</div>
+      <div class="kpi-sub num">likely range ${fmtDuration(raceTime.fast)}–${fmtDuration(raceTime.slow)} (80%)</div>
+      <p class="status main-status"><i class="dot st-${dot}"></i>${statusText}</p>
+      <p class="hint">VDOT ${fmtDec1(race.mid * cal.factor)} on race day; ${esc(goalRace.goal)} needs ${fmtDec1(needVdot)}. ${source ? `Calibrated with ${source}.` : 'Not calibrated yet, so this is optimistic.'}</p>
+    </div>`;
+
+  // Why the estimates differ: each source measures something different
+  const rows = forecastSources({ vo2Today: lastVo2.y, race, factor: cal.factor, runnaVdot: runnaV, garminSec: lastG?.sec });
+  const WHAT = {
+    main: `Garmin's VO2max trend carried to race day, scaled to your real running level${source ? ` (${source}: ${Math.round(cal.factor * 100)}% of VO2max)` : ''}. The main forecast: the only one that looks ahead to race day and is anchored in how you actually run.`,
+    runna: "The level your Runna plan trains you at, from the paces in its workouts. Describes today; Runna raises the paces as you improve.",
+    garmin: "Garmin's race predictor. It also weighs your recent training volume and long runs, which are still short for a marathon, so it is cautious. Describes today.",
+    vo2max: "Garmin's VO2max used directly as VDOT. Daniels' formula then assumes marathon endurance and running economy to match, so it is the most optimistic.",
+  };
+  const LABEL = { main: 'Main forecast', runna: 'Runna plan', garmin: 'Garmin prediction', vo2max: 'VO2max, uncalibrated' };
+  $('#mfCal').innerHTML = `
+    <h3 class="mini">Why the forecasts differ</h3>
+    <div class="table-wrap"><table class="rules sources-table">
+      <thead><tr><th>Source</th><th class="num">Today</th><th class="num">Race day</th><th>What it is</th></tr></thead>
+      <tbody>${rows.map(r => `<tr class="${r.key === 'main' ? 'main-row' : ''}"><td>${LABEL[r.key]}<br><span class="muted">VDOT ${fmtDec1(r.vdotToday)} today</span></td>
+        <td class="num">${fmtDuration(r.today)}</td><td class="num">${r.race ? fmtDuration(r.race.mid) : '–'}</td><td class="rule">${WHAT[r.key]}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <p class="hint">They measure different things. Raw VO2max is only your aerobic capacity. Runna and Garmin describe your race fitness today, and Garmin also counts your long runs, which are still far from marathon length. The main forecast takes today's real level and moves it forward with your VO2max trend. ${calText}</p>`;
 
   drawVo2(fc);
   drawMarathon(mf, garmin, goalSec, results);

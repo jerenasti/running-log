@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  vdot, timeForVdot, parseTime, vo2Forecast, marathonForecast, nominalDistance, trialEffort, timeTrials, raceResults, calibration, chooseCalibration, MARATHON_M, MODEL,
+  vdot, timeForVdot, parseTime, vo2Forecast, marathonForecast, nominalDistance, trialEffort, timeTrials, raceResults, calibration, chooseCalibration, goalStatus, forecastSources, MARATHON_M, MODEL,
 } from '../js/forecast.js';
 import { TODAY, day, iso, run } from './helpers.js';
 
@@ -138,6 +138,26 @@ test('calibration choice: efforts first, then Runna paces, then none', () => {
   assert.equal(withRunna.source, 'runna');
   near(withRunna.factor, 42 / 50, 1e-12, 'Runna factor uses the latest VO2max');
   assert.deepEqual(chooseCalibration([], null, vo2), { factor: 1, results: [], source: null });
+});
+
+test('goal status: on track only when even the slow end reaches the goal', () => {
+  const goal = parseTime('3:30:00');
+  assert.equal(goalStatus(goal, { mid: parseTime('3:15:00'), fast: parseTime('3:05:00'), slow: parseTime('3:28:00') }), 'on-track');
+  assert.equal(goalStatus(goal, { mid: parseTime('3:15:00'), fast: parseTime('3:05:00'), slow: parseTime('3:32:00') }), 'possible');
+  assert.equal(goalStatus(goal, { mid: parseTime('3:35:00'), fast: parseTime('3:25:00'), slow: parseTime('3:45:00') }), 'behind');
+  assert.equal(goalStatus(NaN, { mid: 1 }), null);
+});
+
+test('forecast sources: main first, calibrated; today and race day for each source', () => {
+  const rows = forecastSources({ vo2Today: 50, race: { mid: 55, lo: 52, hi: 58 }, factor: 0.84, runnaVdot: 42, garminSec: parseTime('4:02:51') });
+  assert.deepEqual(rows.map(r => r.key), ['main', 'runna', 'garmin', 'vo2max']);
+  near(rows[0].vdotToday, 42, 1e-9, 'main today = VO2max × factor');
+  near(rows[0].race.mid, timeForVdot(55 * 0.84), 1e-9, 'main race day uses the calibrated VDOT');
+  assert.ok(rows[0].race.fast < rows[0].race.mid && rows[0].race.mid < rows[0].race.slow);
+  assert.equal(rows[1].race, null, 'Runna and Garmin describe today only');
+  near(rows[2].vdotToday, vdot(MARATHON_M, parseTime('4:02:51')), 1e-9, 'Garmin prediction as VDOT');
+  near(rows[3].race.mid, timeForVdot(55), 1e-9, 'raw VO2max is uncalibrated');
+  assert.deepEqual(forecastSources({ vo2Today: 50, race: { mid: 55, lo: 52, hi: 58 } }).map(r => r.key), ['main', 'vo2max']);
 });
 
 test('race results from races.json: only past races with a result', () => {

@@ -219,6 +219,32 @@ export function chooseCalibration(efforts, runnaVdotValue, vo2History) {
   return { factor: 1, results: [], source: null };
 }
 
+/**
+ * How the main forecast relates to the goal: on-track when even the slow end of the range reaches it,
+ * possible when the middle does, behind otherwise. Times in seconds.
+ */
+export function goalStatus(goalSec, race) {
+  if (!race || !(goalSec > 0)) return null;
+  if (race.slow <= goalSec) return 'on-track';
+  if (race.mid <= goalSec) return 'possible';
+  return 'behind';
+}
+
+/**
+ * The marathon estimates side by side, so the UI can explain why they differ.
+ * vo2Today: Garmin's latest VO2max; race: forecast VO2max on race day { mid, lo, hi };
+ * factor: calibration factor; runnaVdot / garminSec may be null.
+ * Each row: { key, vdotToday, today (s), race (null or { mid, fast, slow }) }. The first row is the main forecast.
+ */
+export function forecastSources({ vo2Today, race, factor = 1, runnaVdot = null, garminSec = null, distM = MARATHON_M }) {
+  const times = (v, f) => ({ mid: timeForVdot(v.mid * f, distM), fast: timeForVdot(v.hi * f, distM), slow: timeForVdot(v.lo * f, distM) });
+  const rows = [{ key: 'main', vdotToday: vo2Today * factor, today: timeForVdot(vo2Today * factor, distM), race: times(race, factor) }];
+  if (runnaVdot) rows.push({ key: 'runna', vdotToday: runnaVdot, today: timeForVdot(runnaVdot, distM), race: null });
+  if (garminSec) rows.push({ key: 'garmin', vdotToday: vdot(distM, garminSec), today: garminSec, race: null });
+  rows.push({ key: 'vo2max', vdotToday: vo2Today, today: timeForVdot(vo2Today, distM), race: times(race, 1) });
+  return rows;
+}
+
 /** Marathon time forecast from the VO2max forecast (a higher VDOT gives a faster time) */
 export function marathonForecast(vo2fc, factor = 1, distM = MARATHON_M) {
   return vo2fc.series.map(p => ({
