@@ -254,15 +254,7 @@ details.easy-list table { min-width: 520px; }
 .tip { margin: 0 0 10px; font-size: var(--fs-md); }
 .notice.fuel { margin: 0 0 10px; font-size: var(--fs-md); }
 h3.mini { margin: 16px 0 6px; font-size: var(--fs-md); font-weight: 600; }
-.meals { margin: 0; padding: 0; list-style: none; }
-.meals li { display: flex; align-items: baseline; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--border); font-size: var(--fs-md); }
-.meals li:first-child { border-top: 0; }
-.meals .slot { flex: 0 0 7.5rem; color: var(--text-3); font-size: var(--fs-sm); }
 /* Name, hints and note wrap inside their own column, aligned after the slot label */
-.meal-body { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
-.meals .muted { font-size: var(--fs-xs); }
-.meal-note { flex-basis: 100%; color: var(--text-3); font-size: var(--fs-sm); }
-@media (max-width: 480px) { .meals li { flex-wrap: wrap; } .meals .slot { flex-basis: 100%; } }
 .meal-block { padding: 14px 0; border-top: 1px solid var(--border); }
 .meal-block:first-child { padding-top: 0; border-top: 0; }
 .menu-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 6px; font-size: var(--fs-md); }

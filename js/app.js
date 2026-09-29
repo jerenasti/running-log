@@ -1,7 +1,7 @@
 // Entry point: loads the Garmin data and wires up the tabs.
 
 import { state, save, restore } from './state.js';
-import { fetchGarmin, garminToActivities, fetchContent, fetchStatus } from './data.js';
+import { fetchGarmin, garminToActivities, fetchStatus } from './data.js';
 import { loadSettings, saveSettings, racesFromSettings, applySettings } from './settings.js';
 import { parseDate } from './parse.js';
 import { fmtDate, fmtTime, esc, setUnits } from './format.js';
@@ -158,9 +158,9 @@ document.addEventListener('click', e => {
   }
 });
 
-// Meal ideas and the settings (goals, races) load alongside the Garmin data
-Promise.all([fetchContent('meals.json'), loadSettings(), fetchStatus()]).then(async ([meals, loaded, status]) => {
-  state.content = { meals, races: loaded.error ? { error: loaded.error } : null };
+// The settings (goals, races) load alongside the Garmin data
+Promise.all([loadSettings(), fetchStatus()]).then(async ([loaded, status]) => {
+  state.content = { races: loaded.error ? { error: loaded.error } : null };
   state.fetchStatus = status;
   if (!loaded.settings) return render();
   let settings = loaded.settings;

@@ -5,15 +5,15 @@
 import { state } from '../state.js';
 import { assess } from '../recovery.js';
 import { loadModel, acwr, acwrSeries, MIN_RELIABLE_DAYS } from '../metrics.js';
-import { classify, plannedWorkouts, activeRace, dayType, pickMeals, recoveryAdvice, recoveryNeed, hoursToNextSession, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
+import { plannedWorkouts, activeRace, dayType, TOMORROW_TIPS, DAY_TARGETS, LONG_MINUTES, FUELING } from '../nutrition.js';
 import { vo2Forecast, marathonForecast, garminPredictions, chooseCalibration, goalStatus, forecastSources, timeTrials, raceResults, vdot, timeForVdot, parseTime } from '../forecast.js';
-import { fmtKm, fmtKmWhole, distLabel, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, fmtGrams, fmtWeekday, esc } from '../format.js';
-import { mondayOf, dayKey, startOfDay, addDays, daysBetween } from '../dates.js';
+import { fmtKm, fmtKmWhole, distLabel, fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtDuration, fmtHm, esc } from '../format.js';
+import { mondayOf, dayKey, addDays, daysBetween } from '../dates.js';
 import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart, legend, band, mainLine, secondaryLine, points, xTickLimit } from '../charts.js';
 import { weekReview } from '../plan.js';
 import { organizeAttention } from '../attention.js';
-import { describeWorkout, describePlanned, planTitles } from '../workouts.js';
+import { describePlanned } from '../workouts.js';
 import { runnaPaces, runnaVdot } from '../paces.js';
 import { longRunOutlook, weeklyLongRuns, LONG_RUN } from '../longruns.js';
 
@@ -108,28 +108,15 @@ function renderAttention(items) {
     : '<p class="hint">Nothing needs your attention today.</p>';
 }
 
+/** Food tip: the advice for tomorrow's training (no meal suggestions) */
 function renderFood(ctx) {
-  const { acts, planned, race, meals, kg } = ctx;
-  const todayKey = dayKey(new Date());
-  const doneToday = acts.filter(a => isRun(a) && dayKey(a.date) === todayKey).pop();
-  let head, text, list;
-  if (doneToday) {
-    const type = classify({ type: doneToday.type, title: doneToday.title, minutes: doneToday.sec / 60, teLabel: doneToday.teLabel });
-    head = `After today's run: ${esc(describeWorkout(doneToday, planTitles(state.meta?.schedule).get(doneToday.workoutId)).name)}`;
-    text = recoveryAdvice(recoveryNeed({ type, minutes: doneToday.sec / 60, hoursToNext: hoursToNextSession(doneToday, acts, planned) }), kg, fmtGrams);
-    list = pickMeals(meals, type, 'recovery', 2, todayKey).map(m => ({ m, slot: 'After the run' }));
-  } else {
-    const date = new Date(); date.setDate(date.getDate() + 1);
-    const dt = dayType(date, { acts: [], planned, race });
-    head = `Tomorrow: ${DAY_TARGETS[dt.type].label.toLowerCase()}${dt.plan ? ' · ' + esc(describePlanned(dt.plan).name) : ''}`;
-    text = TOMORROW_TIPS[dt.type];
-    list = [...pickMeals(meals, dt.type, 'dinner', 1, 'eve' + dayKey(date)).map(m => ({ m, slot: 'Dinner tonight' })),
-            ...pickMeals(meals, dt.type, 'breakfast', 1, dayKey(date)).map(m => ({ m, slot: 'Breakfast' }))];
-  }
+  const { planned, race } = ctx;
+  const date = addDays(new Date(), 1);
+  const dt = dayType(date, { acts: [], planned, race });
+  const head = `Tomorrow: ${DAY_TARGETS[dt.type].label.toLowerCase()}${dt.plan ? ' · ' + esc(describePlanned(dt.plan).name) : ''}`;
   $('#ovFood').innerHTML = `
     <div class="card-head"><div><h2>Food tip</h2><p class="sub">${head}</p></div><a class="more-link" href="#nutrition">Nutrition</a></div>
-    <p class="tip">${text}</p>
-    <ul class="meals">${list.map(({ m, slot }) => `<li><span class="slot">${slot}</span><div class="meal-body"><span class="meal-name">${esc(m.name)}</span></div></li>`).join('')}</ul>`;
+    <p class="tip">${TOMORROW_TIPS[dt.type]}</p>`;
 }
 
 // What to do when a countdown has nothing to count down to
@@ -324,7 +311,7 @@ export function renderOverview() {
   const planned = plannedWorkouts(meta.schedule, state.acts);
   const ctx = {
     acts: state.acts, meta, days, races, goalRace, planned,
-    race: activeRace(races), meals: c.meals?.data?.meals || [], kg: meta.weight?.kg || null,
+    race: activeRace(races), kg: meta.weight?.kg || null,
   };
 
   renderToday(a);

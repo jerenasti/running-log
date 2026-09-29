@@ -68,14 +68,3 @@ export async function fetchStatus() {
     return res.ok ? await res.json() : null;
   } catch (e) { return null; }
 }
-
-/** Editable content files in content/ (meal ideas, races). A missing or broken file gives an error message. */
-export async function fetchContent(name) {
-  try {
-    const res = await fetch('content/' + name, { cache: 'no-store' });
-    if (!res.ok) return { error: `content/${name} was not found.` };
-    return { data: await res.json() };
-  } catch (e) {
-    return { error: `content/${name} is not valid JSON (${e.message}). Check the quotes and commas.` };
-  }
-}
