@@ -90,28 +90,28 @@ function build(el) {
         <div class="map planner-map" id="planMap" role="region" aria-label="Route planning map"></div>
         <div class="map-legend" id="planLegend"></div>
       </section>
-      <section class="card" id="planSaved">
-        <div class="card-head"><div><h2>Saved routes</h2><p class="sub" id="planSavedSub">Name the route to save it. Saved routes stay on this computer.</p></div></div>
-        <div class="planner-save">
-          <label class="field grow"><span class="field-label">Name</span>
-            <input type="text" id="planName" maxlength="80" placeholder="e.g. Seaside loop" autocomplete="off"></label>
-          <button type="button" class="btn primary" data-save="save">Save</button>
-          <button type="button" class="btn" data-save="copy" hidden>Save as new</button>
-          <button type="button" class="btn" data-save="new">New route</button>
-          <button type="button" class="btn" data-save="gpx">Export GPX</button>
-          <button type="button" class="btn" data-save="send">Send to watch</button>
-        </div>
-        <p class="hint" id="planCourse" role="status"></p>
-        <p class="hint plan-message" id="planSaveMessage" role="status"></p>
-        <div id="savedPlans"></div>
-      </section>
       <div class="kpis" id="planStats"></div>
       <div class="grid">
         <section class="card span-2" id="planProfileCard">
           <div class="card-head"><div><h2>Elevation</h2><p class="sub" id="planProfileSub">Add at least two points to see the profile.</p></div></div>
           <div class="chart short"><canvas id="planProfile" aria-label="Elevation profile of the planned route" role="img"></canvas></div>
         </section>
-        <section class="card span-2" id="planHillsCard">
+        <section class="card" id="planSaved">
+          <div class="card-head"><div><h2>Saved routes</h2><p class="sub" id="planSavedSub">Name the route to save it. Saved routes stay on this computer.</p></div></div>
+          <div class="planner-save">
+            <label class="field grow"><span class="field-label">Name</span>
+              <input type="text" id="planName" maxlength="80" placeholder="e.g. Seaside loop" autocomplete="off"></label>
+            <button type="button" class="btn primary" data-save="save">Save</button>
+            <button type="button" class="btn" data-save="copy" hidden>Save as new</button>
+            <button type="button" class="btn" data-save="new">New route</button>
+            <button type="button" class="btn" data-save="gpx">Export GPX</button>
+            <button type="button" class="btn" data-save="send">Send to watch</button>
+          </div>
+          <p class="hint" id="planCourse" role="status"></p>
+          <p class="hint plan-message" id="planSaveMessage" role="status"></p>
+          <div id="savedPlans"></div>
+        </section>
+        <section class="card" id="planHillsCard">
           <div class="card-head"><div><h2>Hills</h2><p class="sub">At least ${HILLS.minGain} m up at an average grade of ${HILLS.minGrade * 100} % or more.</p></div></div>
           <div id="planHills"><p class="hint">No hills yet.</p></div>
           <details class="info"><summary>How it's calculated</summary>
@@ -217,6 +217,9 @@ async function update(pts) {
   for (let i = 1; i < pts.length; i++) { const s = segments.get(segmentKey(pts[i - 1], pts[i])); if (s) segs.push(s); }
   line = joinSegments(segs);
   hills = findHills(line);
+  const has = line.length > 1;           // before the first route: no empty numbers or cards
+  for (const id of ['#planStats', '#planProfileCard', '#planHillsCard']) $(id).hidden = !has;
+  $('#planSaved').classList.toggle('span-2', !has);   // alone, it takes the full width
   draw();
   drawWaypoints(pts);
   renderStats();

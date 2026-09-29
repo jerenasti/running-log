@@ -22,6 +22,9 @@ summary:hover, .link-btn:hover, details.info summary:hover { color: var(--text);
 .skip-link:focus { top: var(--space-2); }
 main:focus { outline: none; }
 
+/* `hidden` always hides, even on elements whose class sets a display (e.g. .kpis is a grid) */
+[hidden] { display: none !important; }
+
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Numbers: the same font as the text, with equal-width (tabular) figures so digits line up.
@@ -548,3 +551,16 @@ table.hills tbody tr:hover td { background: var(--surface-2); }
 .btn.primary.danger:hover { filter: brightness(1.08); }
 .check-row { display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-4); cursor: pointer; }
 .check-row input { margin-top: 3px; accent-color: var(--text); }
+
+/* Routes tab: the same 16 px between cards as everywhere, one control height in the toolbar */
+#routesPlanner > * + * { margin-top: var(--gap); }
+.planner-bar > .btn.small, .planner-bar .seg, .planner-bar #planPace { box-sizing: border-box; height: 32px; }
+.planner-bar .seg { align-items: center; }
+.planner-bar .seg button { padding-top: 0; padding-bottom: 0; height: 100%; }
+#savedPlans:not(:empty) { margin-top: var(--space-3); }
+.planner-save .btn { margin-top: 0; }
+/* Disabled buttons look the same everywhere: outlined and quiet, never a faded fill */
+.btn:disabled, .btn.primary:disabled, .btn.primary.danger:disabled {
+  opacity: 1; background: transparent; color: var(--text-3); border-color: var(--border); cursor: default; filter: none;
+}
+.btn:disabled:hover { background: transparent; }
