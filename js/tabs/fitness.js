@@ -11,6 +11,7 @@ import { parseDate } from '../parse.js';
 import { addDays } from '../dates.js';
 import { easyRule } from '../settings.js';
 import { describeWorkout, planTitles } from '../workouts.js';
+import { activityLink } from './activity.js';
 
 const $ = s => document.querySelector(s);
 const CHART_DAYS = 180;  // load chart shows at most the last ~6 months
@@ -124,7 +125,7 @@ function renderEasyList(runs) {
     <div class="table-wrap"><table class="stack">
       <thead><tr><th>Date</th><th>Run</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th><th class="num">Index</th></tr></thead>
       <tbody>${runs.slice().reverse().map(({ act: a, ef, index }) => `
-        <tr><td class="num" data-label="Date">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, planTitles(state.meta?.schedule).get(a.workoutId)))}</td>
+        <tr><td class="num" data-label="Date">${fmtDate(a.date)}</td><td class="title">${activityLink(a, fmtWorkout(describeWorkout(a, planTitles(state.meta?.schedule).get(a.workoutId))))}</td>
         <td class="num" data-label="Time">${fmtDuration(a.sec)}</td><td class="num" data-label="Pace">${fmtPace(a.sec / a.km)} ${paceLabel()}</td>
         <td class="num" data-label="Avg HR">${fmtInt(a.hr)}</td><td class="num" data-label="Index" title="Efficiency ${fmtRatio(ef)} m/min per bpm">${fmtInt(index)}</td></tr>`).join('')}</tbody>
     </table></div>`;

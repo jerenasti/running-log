@@ -13,10 +13,12 @@ import { renderNutrition } from './tabs/nutrition.js';
 import { renderOverview } from './tabs/overview.js';
 import { initSettings, renderSettings, renderWelcome, openSettings, startWelcome } from './tabs/settings.js';
 import { renderViewState } from './tabs/states.js';
+import { renderActivity, leaveActivity } from './tabs/activity.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
 let currentTab = null;
+let activityId = null;      // #activity/<id>
 
 function notice(msg) { $('#notice').textContent = msg || ''; $('#notice').hidden = !msg; }
 
@@ -45,6 +47,7 @@ function render() {
   if (currentTab === 'overview') renderOverview();
   if (currentTab === 'settings') renderSettings();
   if (currentTab === 'welcome') renderWelcome();
+  if (currentTab === 'activity') renderActivity(activityId);
   renderViewState(currentTab);   // loading skeleton or error card instead of an empty view
   markScrollable();
 }
@@ -126,10 +129,13 @@ initSettings({
   },
 });
 initTabs(name => {
-  currentTab = name;
+  const [page, param] = name.split('/');
+  if (currentTab === 'activity' && page !== 'activity') leaveActivity();
+  currentTab = page;
+  activityId = param || null;
   // The browser tab says where you are: "Training · Running Log"
   const label = document.querySelector(`[data-tab="${name}"]`)?.textContent.trim()
-    || { settings: 'Settings', welcome: 'Welcome' }[name];
+    || { settings: 'Settings', welcome: 'Welcome', activity: 'Activity' }[page];
   document.title = label ? `${label} · Running Log` : 'Running Log';
   render();
 });

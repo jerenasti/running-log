@@ -19,7 +19,8 @@ export function initTabs(onShow) {
   const pages = [...document.querySelectorAll('[data-page]')];
 
   function show(name, focus = false) {
-    const page = pages.find(p => p.dataset.page === name);
+    // A page can take a parameter after a slash: #activity/123
+    const page = pages.find(p => p.dataset.page === name.split('/')[0]);
     if (!page && !names.includes(name)) name = DEFAULT_TAB;
     for (const p of pages) p.hidden = p !== page;
     for (const l of document.querySelectorAll('a[href^="#"]')) {
