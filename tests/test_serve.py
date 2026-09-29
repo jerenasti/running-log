@@ -188,3 +188,16 @@ def test_route_heights_from_mml_in_finland_only(server):
     assert seg["elevation"] == "mml" and [p[2] for p in seg["points"]] == [40.0, 40.0] and seen == ["mml"]
     code, seg = call(server, "POST", "/api/route", {"a": [59.33, 18.07], "b": [59.331, 18.07]})
     assert seg["elevation"] == "ors" and seen == ["mml"], "Stockholm: no MML request"
+
+
+def test_course_endpoints_check_the_id_and_use_the_runner(server):
+    calls = []
+    server.course_runner = lambda action, pid: (calls.append((action, pid)), (200, {"ok": True, "course_id": 5}))[1]
+    assert call(server, "POST", "/api/course/send", {"id": "../settings"})[0] == 400
+    assert calls == [], "a bad id never reaches Garmin"
+    code, body = call(server, "POST", "/api/course/send", {"id": "0123456789ab"})
+    assert code == 200 and body["course_id"] == 5 and calls == [("send", "0123456789ab")]
+    call(server, "POST", "/api/course/remove", {"id": "0123456789ab"})
+    assert calls[-1] == ("remove", "0123456789ab")
+    assert call(server, "POST", "/api/course/send", {"id": "0123456789ab"}, {"Origin": "https://evil.example"})[0] == 403
+    assert len(calls) == 2, "another website can't send anything to Garmin"

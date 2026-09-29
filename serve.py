@@ -21,6 +21,8 @@ Standard library only (no packages to install). Besides serving files like `pyth
     GET  /api/plans/<id> the plan: waypoints + routed segments
     POST /api/plans      {id?, name, points, segments, distance, climb} → saved (a new id without one)
     POST /api/plans/delete {id}
+    POST /api/course/send {id}   sends a saved plan to Garmin Connect as a private course (send_course.py)
+    POST /api/course/remove {id} removes that course from Garmin Connect
     POST /api/refresh    starts fetch_garmin.py          → 202, 409 (already running), 429 (too soon)
 
 Safety: listens on 127.0.0.1 only; requests must name localhost as the host (blocks DNS rebinding),
@@ -98,6 +100,34 @@ class Refresher:
             self.proc = subprocess.Popen(self.command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
             self.started_at = time.time()
             return 202, {"started": True}
+
+
+class CourseRunner:
+    """Runs `uv run send_course.py send|remove <plan id>` (the Garmin library lives in uv's environment):
+    one at a time, never retried, 2 minutes at most. Returns the script's JSON answer."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+
+    def __call__(self, action: str, pid: str) -> tuple[int, dict]:
+        uv = shutil.which("uv")
+        if not uv:
+            return 500, {"error": "uv was not found, so the course can't be sent."}
+        if not self.lock.acquire(blocking=False):
+            return 409, {"error": "A course is already being sent."}
+        try:
+            done = subprocess.run([uv, "run", "send_course.py", action, pid], cwd=ROOT, capture_output=True,
+                                  text=True, timeout=120)
+        except subprocess.TimeoutExpired:
+            return 504, {"error": "Garmin did not answer in time. Check Garmin Connect before sending again."}
+        finally:
+            self.lock.release()
+        lines = [ln for ln in done.stdout.splitlines() if ln.strip().startswith("{")]
+        try:
+            answer = json.loads(lines[-1])
+        except (IndexError, ValueError):
+            return 502, {"error": "Sending failed without an answer.", "detail": (done.stderr or "")[-300:]}
+        return (200 if answer.get("ok") else 502), answer
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -211,7 +241,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.discard_body()
             return self.send_json(403, {"error": "Only this app can change settings."})
         path = self.path.split("?")[0]
-        if path in ("/api/settings", "/api/validate", "/api/check-tokens", "/api/route", "/api/plans", "/api/plans/delete"):
+        if path in ("/api/settings", "/api/validate", "/api/check-tokens", "/api/route", "/api/plans", "/api/plans/delete",
+                    "/api/course/send", "/api/course/remove"):
             length = int(self.headers.get("Content-Length") or 0)
             if length > (MAX_PLAN_BODY if path.startswith("/api/plans") else MAX_BODY):
                 self.close_connection = True          # too large to read: answer and close
@@ -259,6 +290,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except plans.PlanError as e:
                 return self.send_json(404, {"error": str(e)})
             return self.send_json(200, {"deleted": body.get("id")})
+        if path in ("/api/course/send", "/api/course/remove"):
+            # Writes to the Garmin account: the Routes tab has asked the user to confirm first
+            pid = body.get("id")
+            if not isinstance(pid, str) or not plans.ID.match(pid):
+                return self.send_json(400, {"error": "Unknown route."})
+            code, answer = self.server.course_runner(path.rsplit("/", 1)[1], pid)
+            return self.send_json(code, answer)
         if path == "/api/refresh":
             code, body = self.server.refresher.start()
             return self.send_json(code, body)
@@ -278,6 +316,7 @@ def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refreshe
     httpd.segments = routing.SegmentCache()
     httpd.plans_dir = None                          # data/plans (tests use a temporary folder)
     httpd.elevation = elevation.add_mml_elevation   # tests pass a fake; the real one calls MML (cached tiles)
+    httpd.course_runner = CourseRunner()             # tests pass a fake; the real one sends to Garmin
     return httpd
 
 

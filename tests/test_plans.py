@@ -31,7 +31,7 @@ def test_save_replace_list_delete(tmp_path):
     other = plans.save({**PLAN, "name": "Hill repeats"}, tmp_path)
     names = [p["name"] for p in plans.summaries(tmp_path)]
     assert sorted(names) == ["Hill repeats", "Seaside loop, long"]
-    assert set(plans.summaries(tmp_path)[0]) == {"id", "name", "distance", "climb", "updated"}, "the list has no coordinates"
+    assert set(plans.summaries(tmp_path)[0]) == {"id", "name", "distance", "climb", "updated", "garmin_course"}, "the list has no coordinates"
     plans.delete(other["id"], tmp_path)
     assert [p["name"] for p in plans.summaries(tmp_path)] == ["Seaside loop, long"]
 

@@ -68,6 +68,7 @@ def save(plan: dict, folder: Path | None = None) -> dict:
     folder.mkdir(parents=True, exist_ok=True)
     now = datetime.now().isoformat(timespec="seconds")
     pid = plan.get("id")
+    old = {}
     if pid is None:
         pid, created = secrets.token_hex(6), now
     else:
@@ -77,6 +78,9 @@ def save(plan: dict, folder: Path | None = None) -> dict:
              "segments": [{"points": s["points"]} for s in plan["segments"]],
              "distance": round(float(plan.get("distance", 0)), 1), "climb": round(float(plan.get("climb", 0)), 1),
              "created": created, "updated": now}
+    if old.get("garmin_course"):
+        # The course on Garmin is the version that was sent; an edited plan is marked so it can be sent again
+        saved["garmin_course"] = {**old["garmin_course"], "changed": True}
     path = folder / f"{pid}.json"
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(saved, separators=(",", ":")), encoding="utf-8")
@@ -105,8 +109,21 @@ def summaries(folder: Path | None = None) -> list[dict]:
             p = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        out.append({k: p.get(k) for k in ("id", "name", "distance", "climb", "updated")})
+        out.append({k: p.get(k) for k in ("id", "name", "distance", "climb", "updated", "garmin_course")})
     return sorted(out, key=lambda p: p.get("updated") or "", reverse=True)
+
+
+def set_course(pid, course: dict | None, folder: Path | None = None) -> None:
+    """Remember (or forget) the Garmin course made from this plan: {id, sent}"""
+    plan = load(pid, folder)
+    if course:
+        plan["garmin_course"] = course
+    else:
+        plan.pop("garmin_course", None)
+    path = _folder(folder) / f"{pid}.json"
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(plan, separators=(",", ":")), encoding="utf-8")
+    tmp.replace(path)
 
 
 def delete(pid, folder: Path | None = None) -> None:

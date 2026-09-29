@@ -26,7 +26,8 @@ let line = [], hills = [];
 let colorBy = 'plain';
 let paceSec = null;                  // s/km on the flat, for the time estimate
 let busy = false, chart = null;
-let plan = { id: null, name: '' };  // the saved plan being edited (id null = not saved yet)
+let plan = { id: null, name: '', course: null };  // the saved plan being edited (id null = not saved yet); course = sent to Garmin
+let sending = false;
 let dirty = false;                   // edited since the last save or open
 let shareView = false;               // privacy zones hidden from the map (for screenshots)
 const zones = () => state.settings?.privacy?.zones || [];
@@ -98,7 +99,9 @@ function build(el) {
           <button type="button" class="btn" data-save="copy" hidden>Save as new</button>
           <button type="button" class="btn" data-save="new">New route</button>
           <button type="button" class="btn" data-save="gpx">Export GPX</button>
+          <button type="button" class="btn" data-save="send">Send to watch</button>
         </div>
+        <p class="hint" id="planCourse" role="status"></p>
         <p class="hint plan-message" id="planSaveMessage" role="status"></p>
         <div id="savedPlans"></div>
       </section>
@@ -145,6 +148,8 @@ function build(el) {
     if (b.dataset.save === 'copy') savePlan(true);
     if (b.dataset.save === 'new') newPlan();
     if (b.dataset.save === 'gpx') exportGpx();
+    if (b.dataset.save === 'send') sendToWatch();
+    if (b.dataset.save === 'unsend') removeFromGarmin();
     if (b.dataset.open) openPlan(b.dataset.open);
     if (b.dataset.delete) deletePlan(b.dataset.delete, b.dataset.name);
   });
@@ -408,6 +413,11 @@ function saveState() {
   box.querySelector('[data-save="save"]').disabled = !ready;
   box.querySelector('[data-save="gpx"]').disabled = !ready;
   box.querySelector('[data-save="copy"]').hidden = !plan.id;
+  // Only a saved plan without unsaved changes can be sent: the watch gets exactly the saved version
+  const send = box.querySelector('[data-save="send"]');
+  send.disabled = !plan.id || dirty || sending;
+  send.title = !plan.id ? 'Save the route first' : dirty ? 'Save your changes first' : 'Send to your Garmin watch as a course';
+  renderCourse();
   $('#planSavedSub').textContent = plan.id
     ? `Editing "${plan.name}"${dirty ? ' · unsaved changes' : ''}.`
     : dirty && ready ? 'Not saved yet. Name the route and save it.' : 'Name the route to save it. Saved routes stay on this computer.';
@@ -428,7 +438,8 @@ async function savePlan(asNew) {
     const res = await fetch('api/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const out = await res.json();
     if (!res.ok) { saveMessage(out.error || Object.values(out.errors || {})[0] || `Saving failed (HTTP ${res.status}).`); return; }
-    plan = { id: out.plan.id, name: out.plan.name };
+    plan = { id: out.plan.id, name: out.plan.name, course: plan.id === out.plan.id ? plan.course : null };
+    if (plan.course) plan.course = { ...plan.course, changed: true };
     dirty = false;
     saveMessage(`Saved "${plan.name}".`);
     saveState();
@@ -442,7 +453,7 @@ async function listPlans() {
     const { plans } = await (await fetch('api/plans', { cache: 'no-store' })).json();
     el.innerHTML = plans.length ? `<ul class="plan-list">${plans.map(p => `
       <li${p.id === plan.id ? ' aria-current="true"' : ''}>
-        <span class="plan-name">${esc(p.name)}</span>
+        <span class="plan-name">${esc(p.name)}</span>${p.garmin_course ? '<span class="kind">On Garmin</span>' : ''}
         <span class="muted num">${fmtKm(p.distance / 1000)} ${distLabel()} · ${fmtInt(p.climb)} m up · ${fmtDate(new Date(p.updated))}</span>
         <span class="plan-actions">
           <button type="button" class="btn small" data-open="${p.id}">Open</button>
@@ -465,7 +476,7 @@ async function openPlan(id) {
     const p = out.plan;
     // The saved segments go into the cache, so opening and editing need no routing requests
     p.segments.forEach((sg, i) => segments.set(segmentKey(p.points[i], p.points[i + 1]), sg));
-    plan = { id: p.id, name: p.name };
+    plan = { id: p.id, name: p.name, course: p.garmin_course || null };
     $('#planName').value = p.name;
     dirty = false;
     saveMessage('');
@@ -478,7 +489,7 @@ async function openPlan(id) {
 
 async function newPlan() {
   if (!(await okToLeave())) return;
-  plan = { id: null, name: '' };
+  plan = { id: null, name: '', course: null };
   $('#planName').value = '';
   dirty = false;
   saveMessage('');
@@ -491,11 +502,78 @@ async function deletePlan(id, name) {
   try {
     const res = await fetch('api/plans/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     if (!res.ok) { saveMessage((await res.json()).error || 'The route could not be deleted.'); return; }
-    if (plan.id === id) { plan = { id: null, name: $('#planName').value.trim() }; dirty = true; }
+    if (plan.id === id) { plan = { id: null, name: $('#planName').value.trim(), course: null }; dirty = true; }
     saveMessage(`Deleted "${name}".`);
     saveState();
     listPlans();
   } catch (e) { saveMessage('Could not reach the app server. Is it still running?'); }
+}
+
+/* ---------- Send to watch (Garmin Connect course) ---------- */
+const courseUrl = id => `https://connect.garmin.com/modern/course/${encodeURIComponent(id)}`;
+
+function renderCourse() {
+  const el = $('#planCourse');
+  if (!el) return;
+  const c = plan.course;
+  el.innerHTML = !c ? '' : `On Garmin since ${fmtDate(new Date(c.sent))}${c.changed ? ' · <b>changed since then</b>: send again to update the watch' : ''} ·
+    <a href="${courseUrl(c.id)}" target="_blank" rel="noopener">Open in Garmin Connect</a> ·
+    <button type="button" class="link-btn" data-save="unsend">Remove from Garmin</button>`;
+}
+
+async function post(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return { ok: res.ok, body: await res.json() };
+}
+
+/** Writes to the Garmin account, so it always asks first, with the route's name and length */
+async function sendToWatch() {
+  if (!plan.id || dirty || sending) return;
+  const ok = await confirmDialog({
+    title: plan.course ? 'Send the route to Garmin again?' : 'Send the route to your watch?',
+    text: 'This creates a private running course on your Garmin Connect account. The Garmin Connect app then syncs it to your watch.'
+      + (plan.course ? ' The course sent before stays on Garmin; remove it there if you no longer need it.' : ''),
+    details: [['Route', plan.name], ['Length', `${fmtKm(line.at(-1).dist / 1000)} ${distLabel()}`], ['Climb', `${fmtInt(climbDescent(line).climb)} m`],
+      ['Visible to', 'Only you']],
+    confirm: 'Send to Garmin',
+  });
+  if (!ok) return;
+  sending = true;
+  saveState();
+  saveMessage('Sending to Garmin Connect…');
+  try {
+    const { ok: sent, body } = await post('api/course/send', { id: plan.id });
+    if (!sent) { saveMessage(body.error || 'Sending failed.'); return; }
+    plan.course = { id: body.course_id, sent: new Date().toISOString() };
+    saveMessage(`Sent "${plan.name}" to Garmin Connect. Sync your watch in the Garmin Connect app; the route is then under Courses on the watch.`);
+    listPlans();
+  } catch (e) {
+    saveMessage('Could not reach the app server. Is it still running?');
+  } finally {
+    sending = false;
+    saveState();
+  }
+}
+
+async function removeFromGarmin() {
+  if (!plan.course || sending) return;
+  const ok = await confirmDialog({ title: 'Remove the course from Garmin?', text: 'The course is deleted from your Garmin Connect account and disappears from the watch at the next sync. The saved route here stays.',
+    details: [['Route', plan.name]], confirm: 'Remove from Garmin', danger: true });
+  if (!ok) return;
+  sending = true;
+  saveState();
+  try {
+    const { ok: removed, body } = await post('api/course/remove', { id: plan.id });
+    if (!removed) { saveMessage(body.error || 'Removing failed.'); return; }
+    plan.course = null;
+    saveMessage(`Removed "${plan.name}" from Garmin Connect.`);
+    listPlans();
+  } catch (e) {
+    saveMessage('Could not reach the app server. Is it still running?');
+  } finally {
+    sending = false;
+    saveState();
+  }
 }
 
 /** Download the planned line as a GPX file */
