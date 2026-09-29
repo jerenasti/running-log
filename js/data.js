@@ -48,6 +48,8 @@ export function garminToActivities(json) {
     maxHr: a.max_hr ?? null, teLabel: a.te_label ?? null, zones: a.hr_zones_s ?? null, kcal: a.calories ?? null,
     laps: a.laps ?? null,  // only for time trials
     workoutId: a.workout_id ?? null,  // links the run to a scheduled workout
+    route: !!a.route,                 // data/routes/<id>.json exists (outdoor run with a saved route)
+    id: a.id ?? null,
 
   })).filter(a => a.date).sort((a, b) => a.date - b.date);
   // Garmin extras for the Fitness and load, Recovery and Nutrition tabs

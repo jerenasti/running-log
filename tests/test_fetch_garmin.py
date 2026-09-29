@@ -328,3 +328,45 @@ def test_optional_request_429_still_stops():
         raise fg.GarminConnectTooManyRequestsError("429")
     with pytest.raises(SystemExit):
         fg.optional("sleep", too_many, [])
+
+
+# ---------- Routes (one request per new outdoor run) ----------
+
+def route_details(lat):
+    desc = [{"key": k, "metricsIndex": i} for i, k in enumerate(["directTimestamp", "directLatitude", "directLongitude", "sumDistance"])]
+    return {"metricDescriptors": desc, "activityDetailMetrics": [{"metrics": [1_700_000_000_000 + t * 1000, lat, 25.0, t * 3.0]} for t in range(12)]}
+
+
+def test_routes_fetched_once_per_outdoor_run_and_zones_applied(tmp_path, monkeypatch):
+    import routes as rt
+    monkeypatch.setattr(rt, "ROUTES_DIR", tmp_path)
+    monkeypatch.setattr(fg, "WARNINGS", [])
+    acts = [{"id": 1, "type": "running", "distance_m": 5000, "name": "A"},
+            {"id": 2, "type": "treadmill_running", "distance_m": 5000, "name": "B"},
+            {"id": 3, "type": "running", "distance_m": 5000, "name": "C"}]
+    g = FakeGarmin(get_activity_details=route_details(60.0))
+    assert fg.update_routes(g, acts, zones=[]) == 2
+    assert g.calls.count("get_activity_details") == 2, "no request for the treadmill run"
+    assert [a["route"] for a in acts] == [True, False, True]
+    g2 = FakeGarmin(get_activity_details=route_details(60.0))
+    assert fg.update_routes(g2, acts, zones=[{"lat": 60.0, "lon": 25.0, "radius_m": 400}]) == 0
+    assert g2.calls == [], "saved routes are not fetched again"
+    saved = json.loads((tmp_path / "1.json").read_text(encoding="utf-8"))
+    assert saved["hidden"] == len(saved["points"]), "a zone added later hides the saved positions"
+
+
+def test_routes_stop_at_the_first_failure(tmp_path, monkeypatch):
+    import routes as rt
+    monkeypatch.setattr(rt, "ROUTES_DIR", tmp_path)
+    monkeypatch.setattr(fg, "WARNINGS", [])
+    calls = []
+
+    class Failing:
+        def get_activity_details(self, *a, **kw):
+            calls.append(a)
+            raise fg.GarminConnectConnectionError("boom")
+
+    acts = [{"id": i, "type": "running", "distance_m": 5000, "name": str(i)} for i in range(5)]
+    assert fg.update_routes(Failing(), acts, zones=[]) == 0
+    assert len(calls) == 1, "no retry loop over the other runs"
+    assert len(fg.WARNINGS) == 1

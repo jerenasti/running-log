@@ -28,6 +28,7 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
+import routes
 import settings as app_settings
 
 SETTINGS = app_settings.SETTINGS
@@ -297,6 +298,31 @@ def previous_laps() -> dict:
 
 
 STATUS = OUTPUT.parent / "fetch_status.json"
+def fetch_route(garmin: Garmin, activity_id: int, zones: list[dict]) -> dict:
+    """One request: the run's detail data, thinned and with privacy zones removed (see routes.py)"""
+    details = garmin.get_activity_details(str(activity_id), maxchart=4000, maxpoly=0)
+    return routes.route_from_details(activity_id, details, zones)
+
+
+def update_routes(garmin: Garmin, activities: list[dict], zones: list[dict]) -> int:
+    """Fetch the route of every outdoor run that has none saved yet (+1 request each), and apply the
+    privacy zones to the routes saved before. Stops at the first failure: the rest comes next time."""
+    routes.hide_zones_in_saved(zones)
+    have, new = routes.saved_ids(), 0
+    for a in activities:
+        if not routes.is_outdoor_run(a) or a["id"] in have:
+            continue
+        route = optional(f"route of {a['name']}", lambda i=a["id"]: fetch_route(garmin, i, zones), None)
+        if route is None:
+            break
+        routes.save_route(route)
+        new += 1
+    have = routes.saved_ids()
+    for a in activities:
+        a["route"] = a["id"] in have
+    return new
+
+
 WARNINGS: list[str] = []   # optional requests that failed during this run
 
 
@@ -376,6 +402,7 @@ def run() -> None:
     for a in activities:
         if "run" in (a["type"] or "") and TIME_TRIAL.search(a["name"] or ""):
             a["laps"] = cached.get(a["id"]) or optional(f"laps of {a['name']}", lambda i=a["id"]: fetch_laps(garmin, i), None)
+    new_routes = update_routes(garmin, activities, load_settings()["privacy"].get("zones") or [])
     hr_settings = optional("heart rate zones", lambda: fetch_hr_settings(garmin), None)
     resting_hr = optional("resting heart rate", lambda: fetch_resting_hr(garmin, start, date.today()), [])
     rec_start = date.today() - timedelta(days=RECOVERY_DAYS - 1)
@@ -414,7 +441,8 @@ def run() -> None:
           f"{', HR zones' if hr_settings else ''}, {len(recovery['hrv'])} HRV / {len(recovery['sleep'])} sleep /"
           f" {len(recovery['body_battery'])} Body Battery days, {len(payload['schedule'])} scheduled workouts,"
           f" weight {payload['weight']['kg'] if payload['weight'] else 'n/a'}, {len(payload['vo2max'])} VO2max /"
-          f" {len(payload['race_predictions'])} race prediction days to {OUTPUT}")
+          f" {len(payload['race_predictions'])} race prediction days to {OUTPUT}"
+          f" ({new_routes} new routes in {routes.ROUTES_DIR})")
 
 
 if __name__ == "__main__":
