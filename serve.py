@@ -39,6 +39,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import elevation
 import plans
 import routing
 import settings as app_settings
@@ -148,8 +149,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_json(500, {"error": str(e)})
         except routing.RoutingError as e:
             return self.send_json(e.status, {"error": str(e), "code": e.code})
+        seg = self.add_elevation(seg, settings["routing"].get("mml_api_key", ""))
         self.server.segments.put(a, b, profile, seg)
         return self.send_json(200, seg)
+
+    def add_elevation(self, seg: dict, mml_key: str) -> dict:
+        """In Finland, with an MML key, the heights come from the 2 m elevation model; otherwise (and for
+        points the model doesn't cover) openrouteservice's heights stay. seg["elevation"] says which."""
+        seg = {**seg, "elevation": "ors"}
+        if not mml_key or not any(elevation.in_finland(p[0], p[1]) for p in seg["points"]):
+            return seg
+        try:
+            points, done = self.server.elevation(seg["points"], mml_key)
+        except elevation.ElevationError as e:
+            return {**seg, "elevation_note": str(e)}
+        seg.update(points=points, elevation="mml" if done == len(points) else "mixed" if done else "ors")
+        return seg
 
     # ---------- routes ----------
     def do_GET(self) -> None:
@@ -250,6 +265,7 @@ def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refreshe
     httpd.router = router or routing.segment        # tests pass a fake; the real one calls openrouteservice
     httpd.segments = routing.SegmentCache()
     httpd.plans_dir = None                          # data/plans (tests use a temporary folder)
+    httpd.elevation = elevation.add_mml_elevation   # tests pass a fake; the real one calls MML (cached tiles)
     return httpd
 
 

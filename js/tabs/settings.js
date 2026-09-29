@@ -243,6 +243,9 @@ function routingCard(r) {
         autocomplete="off" spellcheck="false" placeholder="Paste your key">`, 'routing.ors_api_key',
         `${set ? 'A key is saved. Type a new one to replace it, or clear the field to remove it.' : 'Free: sign up at account.heigit.org and create a Standard key (2 000 routes a day).'}
          The key stays on this computer: the app server calls openrouteservice, the browser never sees the key.`)}
+      ${field('MML API key (elevation in Finland)', `<input type="password" class="code" ${attrs('routing.mml_api_key', 'x')} value="${esc(r.mml_api_key || '')}"
+        autocomplete="off" spellcheck="false" placeholder="Optional">`, 'routing.mml_api_key',
+        `${r.mml_api_key ? 'A key is saved. ' : ''}Optional. With a key from the National Land Survey of Finland (free, maanmittauslaitos.fi → API key), routes in Finland get heights from the 2 m laser-scanned elevation model (about 0.3 m accurate) instead of the 30–90 m satellite model. Elsewhere openrouteservice's heights are used.`)}
     </div>
   </section>`;
 }

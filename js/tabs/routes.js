@@ -108,7 +108,7 @@ function build(el) {
           <div class="card-head"><div><h2>Hills</h2><p class="sub">At least ${HILLS.minGain} m up at an average grade of ${HILLS.minGrade * 100} % or more.</p></div></div>
           <div id="planHills"><p class="hint">No hills yet.</p></div>
           <details class="info"><summary>How it's calculated</summary>
-            <p><b>Elevation</b> comes from openrouteservice (a satellite elevation model with a 30–90 m grid, so small hills look flatter than they are). It is averaged over 50 m before anything is calculated.</p>
+            <p><b>Elevation</b>: in Finland, with an MML key in Settings, from the National Land Survey's 2 m laser-scanned elevation model (about 0.3 m accurate); otherwise from openrouteservice's satellite model (30–90 m grid, so small hills look flatter than they are). The line under the profile says which one this route uses. Heights are averaged over 50 m before anything is calculated.</p>
             <p><b>Hills</b>: stretches where the grade is at least ${HILLS.minGrade * 100} %, allowing flat bits of up to ${HILLS.maxGap} m, that climb at least ${HILLS.minGain} m.</p>
             <p><b>Time</b>: every 50 m at your pace × a hill factor from Minetti et al. (2002): the energy cost of running at grade i is C(i) = 155.4i⁵ − 30.4i⁴ − 43.3i³ + 46.3i² + 19.5i + 3.6 J/kg/m, and the factor is C(i) ÷ C(0). So +5 % takes about 1.30× as long and +10 % about 1.66×; downhill gives at most 15 % back.</p>
           </details>
@@ -307,10 +307,21 @@ const hillBands = {
   },
 };
 
+/** Where the heights came from: MML's 2 m model (Finland, with a key) or openrouteservice's satellite model */
+function elevationSource() {
+  const segs = hist.current.slice(1).map((p, i) => segments.get(segmentKey(hist.current[i], p))).filter(Boolean);
+  const kinds = new Set(segs.map(s => s.elevation || 'ors'));
+  const note = segs.find(s => s.elevation_note)?.elevation_note;
+  const text = kinds.size === 1 && kinds.has('mml') ? 'Heights: MML 2 m elevation model.'
+    : kinds.has('mml') || kinds.has('mixed') ? 'Heights: MML 2 m where available, elsewhere openrouteservice.'
+    : 'Heights: openrouteservice (30–90 m satellite model).';
+  return note ? `${text} ${note}` : text;
+}
+
 function drawProfile() {
   const has = line.length > 1 && line.some(p => p.ele != null);
   $('#planProfileSub').textContent = has
-    ? 'Point at the profile to see the place on the map. Shaded: hills.'
+    ? `Point at the profile to see the place on the map. Shaded: hills. ${elevationSource()}`
     : 'Add at least two points to see the profile.';
   if (!has) { if (chart) { chart.destroy(); chart = null; } return; }
   const t = theme();

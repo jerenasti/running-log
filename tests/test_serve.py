@@ -167,3 +167,24 @@ def test_plans_through_the_server(server, tmp_path):
     assert call(server, "POST", "/api/plans/delete", {"id": pid}, {"Origin": "https://evil.example"})[0] == 403
     assert call(server, "POST", "/api/plans/delete", {"id": pid})[0] == 200
     assert call(server, "GET", "/api/plans")[1]["plans"] == []
+
+
+def test_route_heights_from_mml_in_finland_only(server):
+    server.router = lambda key, a, b, profile: {"points": [[a[0], a[1], 5.0], [b[0], b[1], 6.0]], "distance": 100, "ascent": 1, "descent": 0}
+    seen = []
+
+    def fake_mml(points, key):
+        seen.append(key)
+        return [[p[0], p[1], 40.0] for p in points], len(points)
+
+    server.elevation = fake_mml
+    settings = json.loads(json.dumps(EXAMPLE))
+    settings["routing"] = {"ors_api_key": "ors", "mml_api_key": ""}
+    call(server, "POST", "/api/settings", settings)
+    assert call(server, "POST", "/api/route", {"a": [60.1, 24.9], "b": [60.101, 24.9]})[1]["elevation"] == "ors", "no MML key"
+    settings["routing"]["mml_api_key"] = "mml"
+    call(server, "POST", "/api/settings", settings)
+    code, seg = call(server, "POST", "/api/route", {"a": [60.2, 24.9], "b": [60.201, 24.9]})
+    assert seg["elevation"] == "mml" and [p[2] for p in seg["points"]] == [40.0, 40.0] and seen == ["mml"]
+    code, seg = call(server, "POST", "/api/route", {"a": [59.33, 18.07], "b": [59.331, 18.07]})
+    assert seg["elevation"] == "ors" and seen == ["mml"], "Stockholm: no MML request"

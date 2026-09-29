@@ -44,13 +44,14 @@ DEFAULTS = {
     },
     "routing": {
         "ors_api_key": "",         # openrouteservice key for the Routes tab; never sent to the browser
+        "mml_api_key": "",         # MML (National Land Survey of Finland) key: 2 m elevation in Finland
     },
 }
 
 # API keys are never sent to the browser: GET /api/settings shows this instead, and a save that sends
 # it back keeps the stored key.
 SECRET_MASK = "•" * 8
-SECRETS = [("routing", "ors_api_key")]
+SECRETS = [("routing", "ors_api_key"), ("routing", "mml_api_key")]
 
 
 def mask_secrets(settings: dict) -> dict:
@@ -284,9 +285,10 @@ def validate(s: dict) -> dict:
     if a["units"] not in ("km", "mi"):
         errors["appearance.units"] = "Choose kilometres or miles."
 
-    key = s["routing"]["ors_api_key"]
-    if not isinstance(key, str) or len(key) > 200 or (key != SECRET_MASK and any(c.isspace() for c in key)):
-        errors["routing.ors_api_key"] = "Paste the key without spaces (at most 200 characters)."
+    for field in ("ors_api_key", "mml_api_key"):
+        key = s["routing"][field]
+        if not isinstance(key, str) or len(key) > 200 or (key != SECRET_MASK and any(c.isspace() for c in key)):
+            errors[f"routing.{field}"] = "Paste the key without spaces (at most 200 characters)."
     return errors
 
 
