@@ -518,3 +518,31 @@ table.splits { min-width: 420px; }
 .wp-marker.start { display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font: var(--type-label); font-variant-numeric: var(--num-variant); }
 table.hills tbody tr { cursor: pointer; }
 table.hills tbody tr:hover td { background: var(--surface-2); }
+
+.planner-save { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
+.planner-save .grow { flex: 1 1 220px; }
+.field-label { font: var(--type-caption); font-variant-numeric: var(--num-variant); color: var(--text-2); }
+.planner-save input { width: 100%; font: var(--type-body); font-variant-numeric: var(--num-variant); color: var(--text); background: var(--bg);
+  border: 1px solid var(--border-control); border-radius: 6px; padding: .45rem .55rem; }
+.planner-save input[aria-invalid="true"] { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.plan-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; }
+.plan-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.plan-list li[aria-current="true"] .plan-name { color: var(--accent-text); }
+.plan-name { font-weight: var(--fw-medium); }
+.plan-actions { margin-left: auto; display: flex; gap: var(--space-2); }
+.plan-actions .btn.small { margin-top: 0; }
+
+/* ---------- Confirmation dialog (js/tabs/dialog.js) ---------- */
+.app-dialog {
+  max-width: min(440px, calc(100vw - 2 * var(--gutter))); padding: var(--space-5); border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-md);
+}
+.app-dialog::backdrop { background: rgba(22, 24, 27, .45); }
+.app-dialog h2 { margin: 0 0 var(--space-2); font: var(--type-card-title); font-variant-numeric: var(--num-variant); }
+.app-dialog p { margin: 0 0 var(--space-3); color: var(--text-2); }
+.dialog-details { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-3); }
+.dialog-details dt { color: var(--text-2); }
+.dialog-details dd { margin: 0; font-weight: var(--fw-medium); }
+.dialog-actions { justify-content: flex-end; margin-top: var(--space-4); }
+.btn.primary.danger { background: var(--error); border-color: var(--error); color: var(--on-accent); }
+.btn.primary.danger:hover { filter: brightness(1.08); }

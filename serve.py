@@ -17,6 +17,10 @@ Standard library only (no packages to install). Besides serving files like `pyth
     POST /api/check-tokens {dir}                        → {found, folder}: is garmin_tokens.json there (never read)
     POST /api/route      {a: [lat, lon], b: [lat, lon]}  → one planned segment {points, distance, ascent, descent}
                          through openrouteservice (key from settings.json, cached in memory)
+    GET  /api/plans      [{id, name, distance, climb, updated}]   saved route plans (data/plans/)
+    GET  /api/plans/<id> the plan: waypoints + routed segments
+    POST /api/plans      {id?, name, points, segments, distance, climb} → saved (a new id without one)
+    POST /api/plans/delete {id}
     POST /api/refresh    starts fetch_garmin.py          → 202, 409 (already running), 429 (too soon)
 
 Safety: listens on 127.0.0.1 only; requests must name localhost as the host (blocks DNS rebinding),
@@ -35,6 +39,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import plans
 import routing
 import settings as app_settings
 
@@ -43,6 +48,7 @@ STATUS = ROOT / "data" / "fetch_status.json"
 REFRESH_LOG = ROOT / "data" / "refresh.log"
 REFRESH_COOLDOWN_S = 15 * 60     # Garmin rate-limits: at most one manual fetch per 15 minutes
 MAX_BODY = 100_000               # bytes; settings are a few kB
+MAX_PLAN_BODY = 3_000_000        # a saved route with its routed line (tens of thousands of points)
 
 
 def read_status() -> dict | None:
@@ -159,6 +165,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == "/api/status":
             r = self.server.refresher
             return self.send_json(200, {"status": read_status(), "running": r.running(), "retry_after_s": r.retry_after()})
+        if path == "/api/plans":
+            return self.send_json(200, {"plans": plans.summaries(self.server.plans_dir)})
+        if path.startswith("/api/plans/"):
+            try:
+                return self.send_json(200, {"plan": plans.load(path.rsplit("/", 1)[1], self.server.plans_dir)})
+            except plans.PlanError as e:
+                return self.send_json(404, {"error": str(e)})
         if path.startswith("/api/"):
             return self.send_json(404, {"error": "Unknown API path."})
         super().do_GET()
@@ -172,9 +185,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not self.host_ok() or not self.post_ok():
             return self.send_json(403, {"error": "Only this app can change settings."})
         path = self.path.split("?")[0]
-        if path in ("/api/settings", "/api/validate", "/api/check-tokens", "/api/route"):
+        if path in ("/api/settings", "/api/validate", "/api/check-tokens", "/api/route", "/api/plans", "/api/plans/delete"):
             length = int(self.headers.get("Content-Length") or 0)
-            if length > MAX_BODY:
+            if length > (MAX_PLAN_BODY if path.startswith("/api/plans") else MAX_BODY):
                 return self.send_json(413, {"error": "The request is too large."})
             try:
                 body = json.loads(self.rfile.read(length) or b"null")
@@ -204,6 +217,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_json(200, {"settings": app_settings.mask_secrets(settings)})
         if path == "/api/route":
             return self.route(body)
+        if path == "/api/plans":
+            errors = plans.validate(body)
+            if errors:
+                return self.send_json(400, {"errors": errors})
+            try:
+                saved = plans.save(body, self.server.plans_dir)
+            except plans.PlanError as e:
+                return self.send_json(404, {"error": str(e)})
+            return self.send_json(200, {"plan": {k: saved[k] for k in ("id", "name", "updated")}})
+        if path == "/api/plans/delete":
+            try:
+                plans.delete(body.get("id"), self.server.plans_dir)
+            except plans.PlanError as e:
+                return self.send_json(404, {"error": str(e)})
+            return self.send_json(200, {"deleted": body.get("id")})
         if path == "/api/refresh":
             code, body = self.server.refresher.start()
             return self.send_json(code, body)
@@ -221,6 +249,7 @@ def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refreshe
     httpd.refresher = refresher or Refresher()
     httpd.router = router or routing.segment        # tests pass a fake; the real one calls openrouteservice
     httpd.segments = routing.SegmentCache()
+    httpd.plans_dir = None                          # data/plans (tests use a temporary folder)
     return httpd
 
 

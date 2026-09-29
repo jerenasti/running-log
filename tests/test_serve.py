@@ -149,3 +149,21 @@ def test_route_uses_the_key_from_settings_caches_and_hides_the_key(server, monke
 def test_route_without_a_key_says_what_to_do(server):
     code, body = call(server, "POST", "/api/route", {"a": [60.1, 24.9], "b": [60.101, 24.9]})
     assert code == 400 and body["code"] == "no_key" and "Settings" in body["error"]
+
+
+# ---------- Saved route plans ----------
+
+def test_plans_through_the_server(server, tmp_path):
+    server.plans_dir = tmp_path / "plans"
+    plan = {"name": "Loop", "points": [[60.1, 24.9], [60.11, 24.92]],
+            "segments": [{"points": [[60.1, 24.9, 10.0], [60.11, 24.92, 11.0]]}], "distance": 1500, "climb": 1}
+    code, body = call(server, "POST", "/api/plans", plan)
+    assert code == 200
+    pid = body["plan"]["id"]
+    assert call(server, "GET", "/api/plans")[1]["plans"][0]["name"] == "Loop"
+    assert call(server, "GET", f"/api/plans/{pid}")[1]["plan"]["points"] == plan["points"]
+    assert call(server, "GET", "/api/plans/..%2Fsettings")[0] == 404
+    assert call(server, "POST", "/api/plans", {**plan, "name": ""})[0] == 400
+    assert call(server, "POST", "/api/plans/delete", {"id": pid}, {"Origin": "https://evil.example"})[0] == 403
+    assert call(server, "POST", "/api/plans/delete", {"id": pid})[0] == 200
+    assert call(server, "GET", "/api/plans")[1]["plans"] == []

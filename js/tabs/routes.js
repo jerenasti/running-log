@@ -6,15 +6,16 @@
 import { state } from '../state.js';
 import {
   addPoint, movePoint, removePoint, backToStart, outAndBack, history, segmentKey, joinSegments,
-  climbDescent, grades, gradeBucket, kmMarkers, findHills, timeEstimate, HILLS, GRADE_STEPS,
+  climbDescent, grades, gradeBucket, kmMarkers, findHills, timeEstimate, toGpx, HILLS, GRADE_STEPS,
 } from '../planner.js';
 import { coloredRuns, indexAtLatLng } from '../route.js';
 import { isEasyRun } from '../metrics.js';
 import { easyRule } from '../settings.js';
-import { fmtKm, fmtDec1, fmtInt, fmtPace, fmtDuration, distLabel, paceLabel, distIn, KM_PER_MILE, units } from '../format.js';
+import { fmtKm, fmtDec1, fmtInt, fmtPace, fmtDuration, fmtDate, esc, distLabel, paceLabel, distIn, KM_PER_MILE, units } from '../format.js';
 import { theme, baseOptions, drawChart, mainLine } from '../charts.js';
 import { loadLeaflet, baseMap, routeColors } from '../map.js';
 import { addDays } from '../dates.js';
+import { confirmDialog } from './dialog.js';
 
 const $ = s => document.querySelector(s);
 const hist = history();
@@ -25,6 +26,8 @@ let line = [], hills = [];
 let colorBy = 'plain';
 let paceSec = null;                  // s/km on the flat, for the time estimate
 let busy = false, chart = null;
+let plan = { id: null, name: '' };  // the saved plan being edited (id null = not saved yet)
+let dirty = false;                   // edited since the last save or open
 
 /* ---------- Pace ---------- */
 /** Default: the average pace of easy runs in the last 8 weeks (total time ÷ total distance), else 6:00/km */
@@ -82,6 +85,19 @@ function build(el) {
         <div class="map planner-map" id="planMap" role="region" aria-label="Route planning map"></div>
         <div class="map-legend" id="planLegend"></div>
       </section>
+      <section class="card" id="planSaved">
+        <div class="card-head"><div><h2>Saved routes</h2><p class="sub" id="planSavedSub">Name the route to save it. Saved routes stay on this computer.</p></div></div>
+        <div class="planner-save">
+          <label class="field grow"><span class="field-label">Name</span>
+            <input type="text" id="planName" maxlength="80" placeholder="e.g. Seaside loop" autocomplete="off"></label>
+          <button type="button" class="btn primary" data-save="save">Save</button>
+          <button type="button" class="btn" data-save="copy" hidden>Save as new</button>
+          <button type="button" class="btn" data-save="new">New route</button>
+          <button type="button" class="btn" data-save="gpx">Export GPX</button>
+        </div>
+        <p class="hint plan-message" id="planSaveMessage" role="status"></p>
+        <div id="savedPlans"></div>
+      </section>
       <div class="kpis" id="planStats"></div>
       <div class="grid">
         <section class="card span-2" id="planProfileCard">
@@ -118,6 +134,18 @@ function build(el) {
     if (p) { paceSec = p; e.target.removeAttribute('aria-invalid'); renderStats(); }
     else { e.target.setAttribute('aria-invalid', 'true'); message('Write the pace as m:ss, e.g. 6:15.'); }
   });
+  $('#planSaved').addEventListener('click', e => {
+    const b = e.target.closest('[data-save], [data-open], [data-delete]');
+    if (!b || busy) return;
+    if (b.dataset.save === 'save') savePlan(false);
+    if (b.dataset.save === 'copy') savePlan(true);
+    if (b.dataset.save === 'new') newPlan();
+    if (b.dataset.save === 'gpx') exportGpx();
+    if (b.dataset.open) openPlan(b.dataset.open);
+    if (b.dataset.delete) deletePlan(b.dataset.delete, b.dataset.name);
+  });
+  $('#planName').addEventListener('input', () => { dirty = true; saveState(); });
+  listPlans();
   document.addEventListener('keydown', e => {
     if (location.hash !== '#routes' || !(e.ctrlKey || e.metaKey) || e.target.matches('input, textarea')) return;
     if (e.key.toLowerCase() === 'z') { e.preventDefault(); update(hist.undo()); }
@@ -147,7 +175,7 @@ function message(text) { const m = $('#planMessage'); if (m) m.textContent = tex
 /** A new set of points: route the new segments; if one fails, the edit is not kept */
 async function edit(next) {
   const ok = await routeSegments(next);
-  if (ok) update(hist.push(next));
+  if (ok) { dirty = true; update(hist.push(next)); }
 }
 
 async function routeSegments(pts) {
@@ -191,6 +219,7 @@ async function update(pts) {
   b.querySelector('[data-plan="back"]').disabled = pts.length < 2;
   b.querySelector('[data-plan="outback"]').disabled = pts.length < 2;
   b.querySelector('[data-plan="clear"]').disabled = !pts.length;
+  saveState();
 }
 
 /* ---------- Map ---------- */
@@ -336,5 +365,118 @@ function renderHills() {
   });
 }
 
-/** The current plan (for saving and GPX in the next step) */
-export const currentPlan = () => ({ points: hist.current, line });
+/* ---------- Saved routes ---------- */
+const saveMessage = text => { $('#planSaveMessage').textContent = text || ''; };
+
+/** Buttons and the "unsaved" note follow the plan's state */
+function saveState() {
+  const ready = hist.current.length > 1 && line.length > 1;
+  const box = $('#planSaved');
+  if (!box) return;
+  box.querySelector('[data-save="save"]').disabled = !ready;
+  box.querySelector('[data-save="gpx"]').disabled = !ready;
+  box.querySelector('[data-save="copy"]').hidden = !plan.id;
+  $('#planSavedSub').textContent = plan.id
+    ? `Editing "${plan.name}"${dirty ? ' · unsaved changes' : ''}.`
+    : dirty && ready ? 'Not saved yet. Name the route and save it.' : 'Name the route to save it. Saved routes stay on this computer.';
+}
+
+/** The segments of the current points, in order (all are cached once the route is drawn) */
+const currentSegments = () => hist.current.slice(1).map((p, i) => segments.get(segmentKey(hist.current[i], p)));
+
+async function savePlan(asNew) {
+  const name = $('#planName').value.trim();
+  if (!name) { $('#planName').setAttribute('aria-invalid', 'true'); $('#planName').focus(); saveMessage('Give the route a name first.'); return; }
+  $('#planName').removeAttribute('aria-invalid');
+  const segs = currentSegments();
+  if (segs.some(x => !x)) { saveMessage('The route is still being planned. Try again in a moment.'); return; }
+  const body = { name, points: hist.current, segments: segs.map(x => ({ points: x.points })),
+    distance: line.at(-1).dist, climb: climbDescent(line).climb, ...(plan.id && !asNew ? { id: plan.id } : {}) };
+  try {
+    const res = await fetch('api/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const out = await res.json();
+    if (!res.ok) { saveMessage(out.error || Object.values(out.errors || {})[0] || `Saving failed (HTTP ${res.status}).`); return; }
+    plan = { id: out.plan.id, name: out.plan.name };
+    dirty = false;
+    saveMessage(`Saved "${plan.name}".`);
+    saveState();
+    listPlans();
+  } catch (e) { saveMessage('Could not reach the app server. Is it still running?'); }
+}
+
+async function listPlans() {
+  const el = $('#savedPlans');
+  try {
+    const { plans } = await (await fetch('api/plans', { cache: 'no-store' })).json();
+    el.innerHTML = plans.length ? `<ul class="plan-list">${plans.map(p => `
+      <li${p.id === plan.id ? ' aria-current="true"' : ''}>
+        <span class="plan-name">${esc(p.name)}</span>
+        <span class="muted num">${fmtKm(p.distance / 1000)} ${distLabel()} · ${fmtInt(p.climb)} m up · ${fmtDate(new Date(p.updated))}</span>
+        <span class="plan-actions">
+          <button type="button" class="btn small" data-open="${p.id}">Open</button>
+          <button type="button" class="btn small" data-delete="${p.id}" data-name="${esc(p.name)}">Delete</button>
+        </span></li>`).join('')}</ul>`
+      : '<p class="hint">No saved routes yet.</p>';
+  } catch (e) { el.innerHTML = '<p class="hint">Saved routes could not be loaded.</p>'; }
+}
+
+/** Unsaved changes are not thrown away without asking */
+const okToLeave = async () => !dirty || hist.current.length < 2 || confirmDialog({
+  title: 'Discard unsaved changes?', text: 'The current route has changes that are not saved.', confirm: 'Discard changes', danger: true });
+
+async function openPlan(id) {
+  if (!(await okToLeave())) return;
+  try {
+    const res = await fetch(`api/plans/${id}`, { cache: 'no-store' });
+    const out = await res.json();
+    if (!res.ok) { saveMessage(out.error || 'The route could not be opened.'); return; }
+    const p = out.plan;
+    // The saved segments go into the cache, so opening and editing need no routing requests
+    p.segments.forEach((sg, i) => segments.set(segmentKey(p.points[i], p.points[i + 1]), sg));
+    plan = { id: p.id, name: p.name };
+    $('#planName').value = p.name;
+    dirty = false;
+    saveMessage('');
+    await update(hist.reset(p.points));
+    if (map && line.length > 1) map.fitBounds(L.latLngBounds(line.map(q => [q.lat, q.lon])), { padding: [30, 30] });
+    listPlans();
+    $('#planMap').scrollIntoView({ block: 'center' });
+  } catch (e) { saveMessage('Could not reach the app server. Is it still running?'); }
+}
+
+async function newPlan() {
+  if (!(await okToLeave())) return;
+  plan = { id: null, name: '' };
+  $('#planName').value = '';
+  dirty = false;
+  saveMessage('');
+  update(hist.reset([]));
+  listPlans();
+}
+
+async function deletePlan(id, name) {
+  if (!(await confirmDialog({ title: `Delete "${name}"?`, text: "The saved route is removed from this computer. This can't be undone.", confirm: 'Delete', danger: true }))) return;
+  try {
+    const res = await fetch('api/plans/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    if (!res.ok) { saveMessage((await res.json()).error || 'The route could not be deleted.'); return; }
+    if (plan.id === id) { plan = { id: null, name: $('#planName').value.trim() }; dirty = true; }
+    saveMessage(`Deleted "${name}".`);
+    saveState();
+    listPlans();
+  } catch (e) { saveMessage('Could not reach the app server. Is it still running?'); }
+}
+
+/** Download the planned line as a GPX file */
+function exportGpx() {
+  if (line.length < 2) return;
+  const name = $('#planName').value.trim() || 'Planned route';
+  const blob = new Blob([toGpx(line, name)], { type: 'application/gpx+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'route'}.gpx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  saveMessage(`Exported ${a.download}.`);
+}
