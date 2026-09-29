@@ -56,6 +56,20 @@ def _bearing(a: dict, b: dict) -> float:
     return (math.degrees(math.atan2(x, y)) + 360) % 360
 
 
+def fill_elevation(geo_points: list[dict], line: list[list[float]]) -> list[dict]:
+    """Garmin's import answer has no heights (elevation: null) even when the GPX had them: take each point's
+    height from the nearest point of our own line, so the course on the watch is not flat"""
+    ours = [p for p in line if len(p) > 2 and p[2] is not None]
+    if not ours:
+        return geo_points
+    for g in geo_points:
+        if g.get("elevation") is None:
+            k = math.cos(math.radians(g["latitude"]))
+            near = min(ours, key=lambda p: (p[0] - g["latitude"]) ** 2 + ((p[1] - g["longitude"]) * k) ** 2)
+            g["elevation"] = near[2]
+    return geo_points
+
+
 def course_payload(geo_points: list[dict], name: str, climb: float, descent: float) -> dict:
     """The body of POST /course-service/course, from the geoPoints Garmin returned for our GPX"""
     if len(geo_points) < 2:
@@ -102,7 +116,8 @@ def send(client, plan: dict) -> dict:
     name = plan["name"]
     parsed = client.post("connectapi", "/course-service/course/import",
                          files={"file": (f"{name}.gpx", io.BytesIO(gpx(line, name)), "application/gpx+xml")}, api=True)
-    payload = course_payload((parsed or {}).get("geoPoints") or [], name, plan.get("climb") or 0.0, descent_of(line))
+    geo = fill_elevation((parsed or {}).get("geoPoints") or [], line)
+    payload = course_payload(geo, name, plan.get("climb") or 0.0, descent_of(line))
     saved = client.post("connectapi", "/course-service/course", json=payload, api=True) or {}
     if not saved.get("courseId"):
         raise CourseError("Garmin did not confirm the course.")

@@ -49,7 +49,7 @@ def test_send_is_two_requests_and_the_course_is_private_running():
     assert body["activityTypePk"] == courses.RUNNING == 1
     assert body["courseName"] == "Seaside <loop>" and body["elevationGainMeter"] == 12.0
     assert 1560 < body["distanceMeter"] < 1580, "two legs of about 785 m, measured from Garmin's points"
-    assert body["geoPoints"][1]["elevation"] == 0.0, "Garmin needs a number"
+    assert body["geoPoints"][1]["elevation"] == 16.0, "a height Garmin left out comes from our own line"
 
 
 def test_send_fails_clearly():
@@ -87,3 +87,21 @@ def test_send_course_script_explains_missing_tokens(tmp_path, monkeypatch, capsy
     out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert out["ok"] is False and out["code"] == "no_tokens" and "garmin-mcp-auth" in out["error"]
     assert "garmin_course" not in plans.load(saved["id"]), "nothing is marked as sent"
+
+
+def test_regression_garmin_import_drops_heights():
+    # The real import answer (30 Sep 2026) had "elevation": null on every point although the GPX had <ele>
+    geo = [{"latitude": 60.1, "longitude": 24.9, "elevation": None}, {"latitude": 60.10501, "longitude": 24.91, "elevation": None},
+           {"latitude": 60.3, "longitude": 25.5, "elevation": 3.0}]
+    out = courses.fill_elevation(geo, courses.plan_line(PLAN))
+    assert [p["elevation"] for p in out] == [10.0, 16.0, 3.0], "nearest height filled in; Garmin's own heights kept"
+    assert courses.fill_elevation([{"latitude": 1, "longitude": 1, "elevation": None}], [[1, 1, None]])[0]["elevation"] is None
+
+
+def test_regression_a_new_course_is_not_ready_to_remove_yet():
+    # Real answer (30 Sep 2026) when removing a course right after sending it
+    import send_course
+    e = Exception("API Error 429 - The course [519948981] is not yet ready to delete or update")
+    out = send_course.explain("remove", e)
+    assert out["code"] == "not_ready" and "again in a minute" in out["error"]
+    assert send_course.explain("send", Exception("boom"))["code"] == "garmin"

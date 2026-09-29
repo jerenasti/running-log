@@ -24,6 +24,17 @@ import fetch_garmin
 import plans
 
 
+def explain(action: str, e: Exception) -> dict:
+    """A Garmin error in plain words. A course that was just created can't be removed for a moment
+    (Garmin: "not yet ready to delete or update", HTTP 429); the user tries again, nothing retries by itself."""
+    text = str(e)
+    if "not yet ready" in text.lower():
+        return {"ok": False, "code": "not_ready",
+                "error": "Garmin is still processing the new course. Try removing it again in a minute."}
+    verb = "remove" if action == "remove" else "accept"
+    return {"ok": False, "code": "garmin", "error": f"Garmin did not {verb} the course ({type(e).__name__}).", "detail": text[:300]}
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 3 or argv[1] not in ("send", "remove"):
         print(json.dumps({"ok": False, "error": "Usage: send_course.py send|remove <plan id>", "code": "usage"}))
@@ -49,8 +60,7 @@ def main(argv: list[str]) -> int:
     except (plans.PlanError, courses.CourseError) as e:
         print(json.dumps({"ok": False, "error": str(e), "code": getattr(e, "code", "plan")}))
     except Exception as e:                                             # Garmin refused or the network failed
-        print(json.dumps({"ok": False, "error": f"Garmin did not accept the course ({type(e).__name__}).",
-                          "code": "garmin", "detail": str(e)[:300]}))
+        print(json.dumps(explain(action, e)))
     return 1
 
 
