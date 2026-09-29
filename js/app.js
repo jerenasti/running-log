@@ -46,7 +46,24 @@ function render() {
   if (currentTab === 'settings') renderSettings();
   if (currentTab === 'welcome') renderWelcome();
   renderViewState(currentTab);   // loading skeleton or error card instead of an empty view
+  markScrollable();
 }
+
+/** Tables wider than the screen scroll sideways: make those areas reachable and named for the keyboard */
+function markScrollable() {
+  for (const w of document.querySelectorAll('.table-wrap')) {
+    const scrolls = w.scrollWidth > w.clientWidth + 1;
+    if (scrolls) {
+      w.tabIndex = 0;
+      w.setAttribute('role', 'region');
+      const title = w.closest('.card, details')?.querySelector('h2, summary')?.textContent.trim();
+      w.setAttribute('aria-label', (title ? title + ': ' : '') + 'table, scrolls sideways');
+    } else {
+      w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label');
+    }
+  }
+}
+window.addEventListener('resize', markScrollable);
 
 /** Light / dark / same as the system (appearance.theme); tokens.css reads <html data-theme> */
 function applyTheme(theme) {

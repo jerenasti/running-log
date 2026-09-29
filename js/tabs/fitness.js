@@ -121,12 +121,12 @@ function drawEfficiencyChart(runs) {
 
 function renderEasyList(runs) {
   $('#easyList').innerHTML = `<summary>Runs counted as easy (${runs.length})</summary>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="stack">
       <thead><tr><th>Date</th><th>Run</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th><th class="num">Index</th></tr></thead>
       <tbody>${runs.slice().reverse().map(({ act: a, ef, index }) => `
-        <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, planTitles(state.meta?.schedule).get(a.workoutId)))}</td>
-        <td class="num">${fmtDuration(a.sec)}</td><td class="num">${fmtPace(a.sec / a.km)} ${paceLabel()}</td>
-        <td class="num">${fmtInt(a.hr)}</td><td class="num" title="Efficiency ${fmtRatio(ef)} m/min per bpm">${fmtInt(index)}</td></tr>`).join('')}</tbody>
+        <tr><td class="num" data-label="Date">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, planTitles(state.meta?.schedule).get(a.workoutId)))}</td>
+        <td class="num" data-label="Time">${fmtDuration(a.sec)}</td><td class="num" data-label="Pace">${fmtPace(a.sec / a.km)} ${paceLabel()}</td>
+        <td class="num" data-label="Avg HR">${fmtInt(a.hr)}</td><td class="num" data-label="Index" title="Efficiency ${fmtRatio(ef)} m/min per bpm">${fmtInt(index)}</td></tr>`).join('')}</tbody>
     </table></div>`;
 }
 

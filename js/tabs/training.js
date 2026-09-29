@@ -137,10 +137,10 @@ function renderTable(r) {
   $('#showAll').hidden = hidden <= 0;
   $('#showAll').textContent = state.showAll ? 'Show only the ' + RECENT_N + ' most recent' : 'Show all ' + r.inRange.length + ' activities';
   $('#recent').innerHTML = rows.length ? rows.map(a => `
-    <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, plans.get(a.workoutId)))}</td>
-    <td class="num">${fmtKm(a.km)} ${distLabel()}</td><td class="num">${fmtDuration(a.sec)}</td>
-    <td class="num">${Number.isFinite(a.sec) ? fmtPace(a.sec / a.km) + ' ' + paceLabel() : DASH}</td>
-    <td class="num">${fmtInt(a.hr)}</td></tr>`).join('')
+    <tr><td class="num" data-label="Date">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, plans.get(a.workoutId)))}</td>
+    <td class="num" data-label="Distance">${fmtKm(a.km)} ${distLabel()}</td><td class="num" data-label="Time">${fmtDuration(a.sec)}</td>
+    <td class="num" data-label="Pace">${Number.isFinite(a.sec) ? fmtPace(a.sec / a.km) + ' ' + paceLabel() : DASH}</td>
+    <td class="num" data-label="Avg HR">${fmtInt(a.hr)}</td></tr>`).join('')
     : '<tr><td colspan="6">No activities in the selected range. Choose a longer range.</td></tr>';
 }
 

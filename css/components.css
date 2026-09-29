@@ -432,3 +432,35 @@ h3.mini { margin: 16px 0 6px; font-size: var(--fs-md); font-weight: 600; }
 .state-error { border-left: 3px solid var(--error); }
 .state-error h2 { margin-bottom: var(--space-2); }
 .state-error .row-actions { margin-top: var(--space-3); }
+
+/* ---------- Tables on phones ----------
+   Wide tables scroll sideways inside .table-wrap; a shadow shows on the side that has more
+   (the "local" backgrounds cover the shadows at the ends). Lists marked .stack become cards. */
+.table-wrap {
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left center / 40px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right center / 40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .16), transparent) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .16), transparent) right center / 12px 100% no-repeat scroll;
+}
+.table-wrap:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
+
+@media (max-width: 599px) {
+  table.stack { min-width: 0; }
+  table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.stack tbody tr {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1) var(--space-3);
+    padding: var(--space-3) 0; border-bottom: 1px solid var(--border);
+  }
+  table.stack tbody tr:last-child { border-bottom: 0; }
+  table.stack td { display: block; padding: 0; border: 0; white-space: normal; text-align: left; }
+  table.stack td.title { grid-column: 1 / -1; order: -2; font-weight: var(--fw-medium); }
+  /* The date goes under the name as a caption; the numbers share one row */
+  table.stack td[data-label="Date"] { grid-column: 1 / -1; order: -1; color: var(--text-3); font: var(--type-caption); font-variant-numeric: var(--num-variant); margin-bottom: var(--space-1); }
+  table.stack td[data-label]::before {
+    content: attr(data-label); display: block;
+    font: var(--type-label); font-variant-numeric: var(--num-variant); color: var(--text-3);
+  }
+  table.stack td[colspan] { grid-column: 1 / -1; }
+  table.stack td[data-label="Date"]::before { display: none; }
+}
