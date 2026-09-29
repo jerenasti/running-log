@@ -125,7 +125,20 @@ initSettings({
     render();
   },
 });
-initTabs(name => { currentTab = name; render(); });
+initTabs(name => {
+  currentTab = name;
+  // The browser tab says where you are: "Training · Running Log"
+  const label = document.querySelector(`[data-tab="${name}"]`)?.textContent.trim()
+    || { settings: 'Settings', welcome: 'Welcome' }[name];
+  document.title = label ? `${label} · Running Log` : 'Running Log';
+  render();
+});
+
+// "Skip to content": move focus to the page content without changing the #tab in the address
+document.querySelector('[data-skip]')?.addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('main').focus();
+});
 
 // Empty states offer a button instead of a dead end, e.g. <button data-open-settings="add-trial">
 document.addEventListener('click', e => {

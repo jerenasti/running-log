@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Running Log</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#F4F5F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16181B" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,6 +18,7 @@
 <script type="module" src="js/app.js"></script>
 </head>
 <body>
+<a class="skip-link" href="#main" data-skip>Skip to content</a>
 
 <header class="wrap app-header">
   <h1 class="brand">Running Log</h1>
@@ -39,7 +43,7 @@
   </div>
 </nav>
 
-<main class="wrap">
+<main class="wrap" id="main" tabindex="-1">
   <p class="notice" id="notice" role="alert" hidden></p>
 
   <!-- ===================== Overview ===================== -->
