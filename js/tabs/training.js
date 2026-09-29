@@ -10,6 +10,7 @@ import { weeklyAverage } from '../metrics.js';
 import { saveSettings } from '../settings.js';
 import { describeWorkout, planTitles } from '../workouts.js';
 import { activityLink } from './activity.js';
+import { renderHeatmap } from './heatmap.js';
 
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
@@ -172,6 +173,7 @@ export function renderTraining() {
   renderTable(r);
   renderReview();
   renderLongRuns();
+  renderHeatmap(r.inRange.filter(isRun).slice().reverse());   // newest first
 }
 
 /* ---------- Events ---------- */

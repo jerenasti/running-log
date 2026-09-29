@@ -191,6 +191,15 @@
           <div class="chart short"><canvas id="hrChart" aria-label="Weekly average heart rate as a line chart" role="img"></canvas></div>
         </section>
 
+        <section class="card span-2" id="heatCard">
+          <div class="card-head"><div><h2>Route heatmap</h2><p class="sub" id="heatSub"></p></div>
+            <button type="button" class="btn small" id="heatAll" hidden>Show all routes</button></div>
+          <div class="map" id="heatMap" role="region" aria-label="Map of all routes in the selected range"></div>
+          <details class="info"><summary>How it works</summary>
+            <p>Every saved route of an outdoor run in the selected range, drawn thin and see-through, so streets you run often look stronger. The map starts around your latest run; routes elsewhere (another city) are one click away. Parts inside your privacy zones were never saved, so they are not on the map. Map tiles come from OpenStreetMap.</p>
+          </details>
+        </section>
+
         <section class="card span-2">
           <div class="card-head"><div><h2>Activities</h2><p class="sub" id="recentSub"></p></div></div>
           <div class="table-wrap">
