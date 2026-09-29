@@ -3,13 +3,14 @@
 
 import { state } from '../state.js';
 import { loadModel, acwr, efficiencySeries, ACWR_ZONES, MIN_RELIABLE_DAYS, CTL_DAYS, ATL_DAYS, EF_WINDOW } from '../metrics.js';
-import { fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc, paceLabel } from '../format.js';
+import { fmtInt, fmtRatio, fmtDec1, fmtSigned, fmtDay, fmtDate, fmtPace, fmtDuration, esc, paceLabel, fmtWorkout } from '../format.js';
 import { theme, baseOptions, drawChart, legend, mainLine, secondaryLine, points, xTickLimit } from '../charts.js';
 import { danielsPaces, runnaPaces, runnaVdot, PACE_SHARES } from '../paces.js';
 import { calibration, timeTrials, raceResults, vdot, parseTime, timeForVdot } from '../forecast.js';
 import { parseDate } from '../parse.js';
 import { addDays } from '../dates.js';
 import { easyRule } from '../settings.js';
+import { describeWorkout, planTitles } from '../workouts.js';
 
 const $ = s => document.querySelector(s);
 const CHART_DAYS = 180;  // load chart shows at most the last ~6 months
@@ -123,7 +124,7 @@ function renderEasyList(runs) {
     <div class="table-wrap"><table>
       <thead><tr><th>Date</th><th>Run</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th><th class="num">Index</th></tr></thead>
       <tbody>${runs.slice().reverse().map(({ act: a, ef, index }) => `
-        <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type)}</td>
+        <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, planTitles(state.meta?.schedule).get(a.workoutId)))}</td>
         <td class="num">${fmtDuration(a.sec)}</td><td class="num">${fmtPace(a.sec / a.km)} ${paceLabel()}</td>
         <td class="num">${fmtInt(a.hr)}</td><td class="num" title="Efficiency ${fmtRatio(ef)} m/min per bpm">${fmtInt(index)}</td></tr>`).join('')}</tbody>
     </table></div>`;

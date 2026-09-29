@@ -93,5 +93,9 @@ export const fmtDate = d => fmtDay(d) + ' ' + d.getFullYear();
 /** 06:05 */
 export const fmtTime = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 
+/** A workout from describeWorkout()/describePlanned(): its kind as a badge, then the tidy name */
+export const fmtWorkout = d => (d.label ? `<span class="kind kind-${d.kind}">${esc(d.label)}</span> ` : '') +
+  (d.repeatsKind ? '' : `<span class="workout-name">${esc(d.name)}</span>`);
+
 /** Escape text before inserting it into HTML */
 export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

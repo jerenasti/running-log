@@ -6,6 +6,7 @@ import {
   DAY_TARGETS, FUELING, PROTEIN_PER_DAY, LONG_MINUTES, TOMORROW_TIPS, recoveryAdvice, recoveryNeed, hoursToNextSession,
   classify, plannedWorkouts, activeRace, dayType, grams, pickMeals, kcalPerKm,
 } from '../nutrition.js';
+import { describeWorkout, describePlanned, planTitles } from '../workouts.js';
 import { fmtInt, fmtKm, fmtDec1, distLabel, fmtGrams, fmtHm, fmtDuration, fmtDate, fmtWeekday, esc } from '../format.js';
 import { dayKey, addDays } from '../dates.js';
 
@@ -70,7 +71,7 @@ function renderTomorrow(ctx) {
   }
   $('#tomorrowCard').innerHTML = `
     <div class="card-head"><div><h2>Tomorrow, ${fmtWeekday(date)}</h2>
-      <p class="sub">${plan ? esc(plan.title) + (plan.km ? ` · about ${fmtHm(plan.minutes * 60)} at your usual pace` : '') : schedule.length ? 'Nothing scheduled in your Garmin calendar.' : 'No scheduled workouts found in your Garmin calendar.'}</p></div>${badge(dt.type)}</div>
+      <p class="sub">${plan ? esc(describePlanned(plan).name) + (plan.km ? ` · about ${fmtHm(plan.minutes * 60)} at your usual pace` : '') : schedule.length ? 'Nothing scheduled in your Garmin calendar.' : 'No scheduled workouts found in your Garmin calendar.'}</p></div>${badge(dt.type)}</div>
     <p class="tip">${TOMORROW_TIPS[dt.type]}</p>
     ${fuel}
     ${mealList([...ideas(meals, dt.type, 'dinner', 1, 'eve' + dayKey(date)), ...ideas(meals, dt.type, 'breakfast', 1, dayKey(date))].map((x, i) => ({ ...x, slot: i ? 'Breakfast' : 'Dinner tonight' })), true)}`;
@@ -100,7 +101,7 @@ function renderRecent(ctx) {
     const type = classify({ type: a.type, title: a.title, minutes: a.sec / 60, teLabel: a.teLabel });
     const advice = recoveryAdvice(recoveryNeed({ type, minutes: a.sec / 60, hoursToNext: hoursToNextSession(a, acts, planned) }), kg, fmtGrams);
     return `<div class="meal-block">
-      <div class="menu-head"><span class="num">${fmtWeekday(a.date)}</span>${badge(type)}<span class="meal-title">${esc(a.title || a.type)}</span>
+      <div class="menu-head"><span class="num">${fmtWeekday(a.date)}</span>${badge(type)}<span class="meal-title">${esc(describeWorkout(a, planTitles(state.meta?.schedule).get(a.workoutId)).name)}</span>
         <span class="muted num">${fmtKm(a.km)} ${distLabel()} · ${fmtDuration(a.sec)}${a.kcal ? ` · Garmin estimate ${fmtInt(a.kcal)} kcal` : ''}</span></div>
       <p class="tip">${advice}</p>
       ${a.sec >= LONG_MINUTES * 60 ? `<p class="notice fuel">This run lasted ${fmtHm(a.sec)}. ${fuelText()}</p>` : ''}
@@ -120,8 +121,8 @@ function renderWeek(ctx) {
     const carbs = grams(kg, DAY_TARGETS[dt.type].carbs);
     const doneKcal = acts.filter(a => dayKey(a.date) === key).reduce((s, a) => s + (a.kcal || 0), 0);
     const energy = dt.source === 'done' && doneKcal ? doneKcal : dt.plan?.km && kpk ? dt.plan.km * kpk : null;
-    const what = dt.source === 'race' ? esc(race.name) : dt.source === 'done' ? 'Done: ' + esc(acts.filter(a => dayKey(a.date) === key).map(a => a.title).join(', '))
-      : dt.plan ? esc(dt.plan.title) : 'No workout scheduled';
+    const what = dt.source === 'race' ? esc(race.name) : dt.source === 'done' ? 'Done: ' + esc(acts.filter(a => dayKey(a.date) === key).map(a => describeWorkout(a).name).join(', '))
+      : dt.plan ? esc(describePlanned(dt.plan).name) : 'No workout scheduled';
     const slots = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner']];
     if (['easy', 'quality', 'long'].includes(dt.type)) slots.push(['recovery', 'After training']);
     if (['carb-load', 'race-prep'].includes(dt.type)) slots.push(['snack', 'Snack']);

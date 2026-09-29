@@ -1,13 +1,14 @@
 // Training tab: key figures, weekly goal, weekly distance, pace and heart rate charts, activity table.
 
 import { state, save } from '../state.js';
-import { fmtKm, fmtInt, fmtPace, fmtClock, fmtDuration, fmtDay, fmtDate, esc, DASH, distLabel, paceLabel, distIn, distFromUnit, paceIn } from '../format.js';
+import { fmtKm, fmtWorkout, fmtInt, fmtPace, fmtClock, fmtDuration, fmtDay, fmtDate, esc, DASH, distLabel, paceLabel, distIn, distFromUnit, paceIn } from '../format.js';
 import { mondayOf, isoWeek, DAY_MS } from '../dates.js';
 import { theme, baseOptions, drawChart, mainLine, secondaryLine } from '../charts.js';
 import { renderReview, initReview } from './review.js';
 import { renderLongRuns } from './longruns.js';
 import { weeklyAverage } from '../metrics.js';
 import { saveSettings } from '../settings.js';
+import { describeWorkout, planTitles } from '../workouts.js';
 
 const RECENT_N = 10;
 const $ = s => document.querySelector(s);
@@ -130,12 +131,13 @@ function drawCharts(r) {
 function renderTable(r) {
   // 10 most recent by default; "Show all" shows the whole selected range
   const rows = (state.showAll ? r.inRange.slice() : r.inRange.slice(-RECENT_N)).reverse();
+  const plans = planTitles(state.meta?.schedule);   // whole names for workouts Garmin cut short
   const hidden = r.inRange.length - RECENT_N;
   $('#recentSub').textContent = state.showAll || hidden <= 0 ? 'All activities in the selected range, newest first.' : RECENT_N + ' most recent activities.';
   $('#showAll').hidden = hidden <= 0;
   $('#showAll').textContent = state.showAll ? 'Show only the ' + RECENT_N + ' most recent' : 'Show all ' + r.inRange.length + ' activities';
   $('#recent').innerHTML = rows.length ? rows.map(a => `
-    <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${esc(a.title || a.type || DASH)}</td>
+    <tr><td class="num">${fmtDate(a.date)}</td><td class="title">${fmtWorkout(describeWorkout(a, plans.get(a.workoutId)))}</td>
     <td class="num">${fmtKm(a.km)} ${distLabel()}</td><td class="num">${fmtDuration(a.sec)}</td>
     <td class="num">${Number.isFinite(a.sec) ? fmtPace(a.sec / a.km) + ' ' + paceLabel() : DASH}</td>
     <td class="num">${fmtInt(a.hr)}</td></tr>`).join('')

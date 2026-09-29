@@ -5,6 +5,7 @@ import { weeklyLongRuns, plannedLongRuns, longRunOutlook, progressionLine, LONG_
 import { fmtKm, fmtKmWhole, fmtDec1, fmtDate, fmtDay, esc, distLabel, distIn } from '../format.js';
 import { mondayOf, isoWeek, addDays } from '../dates.js';
 import { parseDate } from '../parse.js';
+import { describePlanned } from '../workouts.js';
 import { theme, baseOptions, drawChart, legend, band, secondaryLine, xTickLimit } from '../charts.js';
 
 const $ = s => document.querySelector(s);
@@ -77,7 +78,7 @@ export function renderLongRuns() {
           label: c => {
             const w = weeks[c.dataIndex];
             if (c.dataset.label === 'Longest run') return `Longest: ${fmtDec1(c.parsed.y)} ${distLabel()} (${Math.round((w.share || 0) * 100)}% of ${fmtKm(w.weekKm)} ${distLabel()})`;
-            if (c.dataset.label.startsWith('Planned')) return `Planned: ${fmtDec1(c.parsed.y)} ${distLabel()}, ${esc(planned.get(w.monday.getTime()).title)}`;
+            if (c.dataset.label.startsWith('Planned')) return `Planned: ${fmtDec1(c.parsed.y)} ${distLabel()}, ${esc(describePlanned(planned.get(w.monday.getTime())).name)}`;
             if (c.dataset.label.startsWith('Peak')) return `Peak target: ${peakText}`;
             return `${c.dataset.label}: ${fmtDec1(c.parsed.y)} ${distLabel()}`;
           } } } },

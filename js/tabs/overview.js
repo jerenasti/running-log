@@ -13,6 +13,7 @@ import { parseDate } from '../parse.js';
 import { theme, baseOptions, drawChart, legend, band, mainLine, secondaryLine, points, xTickLimit } from '../charts.js';
 import { weekReview } from '../plan.js';
 import { organizeAttention } from '../attention.js';
+import { describeWorkout, describePlanned, planTitles } from '../workouts.js';
 import { runnaPaces, runnaVdot } from '../paces.js';
 import { longRunOutlook, weeklyLongRuns, LONG_RUN } from '../longruns.js';
 
@@ -114,13 +115,13 @@ function renderFood(ctx) {
   let head, text, list;
   if (doneToday) {
     const type = classify({ type: doneToday.type, title: doneToday.title, minutes: doneToday.sec / 60, teLabel: doneToday.teLabel });
-    head = `After today's run: ${esc(doneToday.title || 'run')}`;
+    head = `After today's run: ${esc(describeWorkout(doneToday, planTitles(state.meta?.schedule).get(doneToday.workoutId)).name)}`;
     text = recoveryAdvice(recoveryNeed({ type, minutes: doneToday.sec / 60, hoursToNext: hoursToNextSession(doneToday, acts, planned) }), kg, fmtGrams);
     list = pickMeals(meals, type, 'recovery', 2, todayKey).map(m => ({ m, slot: 'After the run' }));
   } else {
     const date = new Date(); date.setDate(date.getDate() + 1);
     const dt = dayType(date, { acts: [], planned, race });
-    head = `Tomorrow: ${DAY_TARGETS[dt.type].label.toLowerCase()}${dt.plan ? ' · ' + esc(dt.plan.title) : ''}`;
+    head = `Tomorrow: ${DAY_TARGETS[dt.type].label.toLowerCase()}${dt.plan ? ' · ' + esc(describePlanned(dt.plan).name) : ''}`;
     text = TOMORROW_TIPS[dt.type];
     list = [...pickMeals(meals, dt.type, 'dinner', 1, 'eve' + dayKey(date)).map(m => ({ m, slot: 'Dinner tonight' })),
             ...pickMeals(meals, dt.type, 'breakfast', 1, dayKey(date)).map(m => ({ m, slot: 'Breakfast' }))];
@@ -362,7 +363,7 @@ export function renderOverview() {
   // Training plan: missed sessions this week, and last week's distance jump
   const thisWeek = weekReview(new Date(), { acts: state.acts, schedule: meta.schedule || [], meta });
   const missed = thisWeek.plan.items.filter(i => i.status === 'missed');
-  if (missed.length) attention.push({ level: 'watch', text: `Missed this week: ${missed.map(i => esc(i.title)).join(', ')}.`, tab: 'training', tabLabel: 'Training' });
+  if (missed.length) attention.push({ level: 'watch', text: `Missed this week: ${missed.map(i => esc(describePlanned(i).name)).join(', ')}.`, tab: 'training', tabLabel: 'Training' });
   const lastWeek = weekReview(addDays(new Date(), -7), { acts: state.acts, schedule: meta.schedule || [], meta });
   const jump = lastWeek.highlights.find(h => h.level === 'watch' && h.text.startsWith('Distance'));
   if (jump) attention.push({ level: 'watch', text: `Last week: ${esc(jump.text.charAt(0).toLowerCase() + jump.text.slice(1))}`, tab: 'training', tabLabel: 'Training' });

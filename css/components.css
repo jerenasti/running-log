@@ -408,3 +408,12 @@ h3.mini { margin: 16px 0 6px; font-size: var(--fs-md); font-weight: 600; }
 .attention-more { margin-top: var(--space-2); }
 .attention-more > summary { cursor: pointer; color: var(--text-2); font: var(--type-caption); font-variant-numeric: var(--num-variant); padding: var(--space-1) 0; }
 .attention-more[open] > summary { margin-bottom: var(--space-1); }
+
+/* ---------- Workout names: kind badge + tidy name ---------- */
+.kind {
+  display: inline-block; vertical-align: 1px; margin-right: var(--space-1);
+  font: var(--type-label); font-variant-numeric: var(--num-variant);
+  color: var(--text-2); background: var(--surface-2); border-radius: var(--radius-pill); padding: 2px var(--space-2);
+  white-space: nowrap;
+}
+.workout-name { overflow-wrap: anywhere; }

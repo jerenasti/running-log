@@ -2,7 +2,8 @@
 
 import { state } from '../state.js';
 import { weekReview } from '../plan.js';
-import { fmtKm, fmtDec1, distLabel, fmtInt, fmtRatio, fmtSigned, fmtDuration, fmtHClock, fmtWeekday, fmtDay, fmtDate, esc, DASH } from '../format.js';
+import { describePlanned } from '../workouts.js';
+import { fmtWorkout, fmtKm, fmtDec1, distLabel, fmtInt, fmtRatio, fmtSigned, fmtDuration, fmtHClock, fmtWeekday, fmtDay, fmtDate, esc, DASH } from '../format.js';
 import { mondayOf, isoWeek, addDays } from '../dates.js';
 
 const $ = s => document.querySelector(s);
@@ -25,7 +26,7 @@ function planRow(i) {
     : '';
   return `<li class="plan-row status-${i.status}">
     <span class="num plan-day">${fmtWeekday(i.date)}</span>
-    <span class="plan-title">${esc(i.title || i.sport || 'Workout')}${i.inferred ? ' <span class="muted">(from name)</span>' : ''}</span>
+    <span class="plan-title">${fmtWorkout(describePlanned({ title: i.title || i.sport || 'Workout', sport: i.sport || i.act?.type }))}</span>
     <span class="status plan-status"><i class="dot st-${s.dot}"></i>${s.label}</span>
     <span class="muted num plan-actual">${actual}</span></li>`;
 }
