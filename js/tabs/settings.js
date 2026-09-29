@@ -7,6 +7,7 @@ import { state } from '../state.js';
 import { saveSettings, validateSettings, checkTokens } from '../settings.js';
 import { fmtDate, fmtTime, fmtDec1, esc, distIn, distFromUnit, distLabel, units } from '../format.js';
 import { parseDate } from '../parse.js';
+import { skeleton } from './states.js';
 
 const $ = s => document.querySelector(s);
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -246,8 +247,10 @@ function appearanceCard(a) {
 export function renderSettings() {
   const form = $('#settingsForm');
   if (!state.settings) {
-    const why = state.content?.races?.error || 'Loading…';
-    form.innerHTML = `<div class="card"><h2>Settings are not available</h2><p class="hint">${esc(why)}</p></div>`;
+    const why = state.content?.races?.error;
+    form.innerHTML = why
+      ? `<div class="card state-error" role="alert"><h2>Settings are not available</h2><p class="hint">${esc(why)}</p></div>`
+      : skeleton('Loading settings');
     return;
   }
   // Start from the saved settings unless the user is in the middle of editing
@@ -420,7 +423,7 @@ function welcomeStep() {
 
 export function renderWelcome() {
   const form = $('#welcomeForm');
-  if (!state.settings) { form.innerHTML = '<div class="card"><p class="hint">Loading…</p></div>'; return; }
+  if (!state.settings) { form.innerHTML = skeleton('Loading'); return; }
   if (!draft) { draft = clone(state.settings); draftBase = state.settings; }
   if (wizardStep === 1 && !draft.goals.main_race) draft.goals.main_race = BLANK_RACE();
   const count = Object.keys(errors).length;

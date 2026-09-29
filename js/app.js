@@ -12,6 +12,7 @@ import { renderRecovery } from './tabs/recovery.js';
 import { renderNutrition } from './tabs/nutrition.js';
 import { renderOverview } from './tabs/overview.js';
 import { initSettings, renderSettings, renderWelcome, openSettings, startWelcome } from './tabs/settings.js';
+import { renderViewState } from './tabs/states.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
@@ -26,7 +27,9 @@ function renderFetchStatus() {
   const failed = fs?.ok === false;
   const el = $('#updated');
   el.hidden = !fetchedAt && !fs;
-  const last = fetchedAt ? `Last successful fetch ${fmtDate(fetchedAt)} at ${fmtTime(fetchedAt)}` : 'No successful fetch yet';
+  // From the data file, or from the fetch status when the data file couldn't be read
+  const when = fetchedAt || parseDate(fs?.ok ? fs.at : fs?.last_success);
+  const last = when ? `Last successful fetch ${fmtDate(when)} at ${fmtTime(when)}` : 'No successful fetch yet';
   el.innerHTML = `<span>${last}</span>` + (failed
     ? `<a class="fetch-badge failed" href="#overview" title="${esc(fs.message || 'The last fetch failed')}">Fetch failed</a>`
     : `<span class="fetch-badge ok">OK</span>`);
@@ -42,6 +45,7 @@ function render() {
   if (currentTab === 'overview') renderOverview();
   if (currentTab === 'settings') renderSettings();
   if (currentTab === 'welcome') renderWelcome();
+  renderViewState(currentTab);   // loading skeleton or error card instead of an empty view
 }
 
 /** Light / dark / same as the system (appearance.theme); tokens.css reads <html data-theme> */
@@ -64,9 +68,16 @@ function useSettings(settings) {
   render();
 }
 
-/** Load data/activities.json (again) and show it */
+/** Load data/activities.json (again) and show it; state.load says how it went */
 async function loadGarmin() {
-  const o = await fetchGarmin();
+  let o;
+  try {
+    o = await fetchGarmin();
+  } catch (err) {
+    state.load = { status: err.missing ? 'missing' : 'error', error: err };
+    throw err;
+  }
+  state.load = { status: 'ready', error: null };
   fetchedAt = parseDate(o.fetchedAt);
   state.fetchedAt = fetchedAt?.getTime() ?? null;
   const { acts, meta } = garminToActivities(o);
@@ -92,7 +103,7 @@ initSettings({
   onSaved: settings => { state.firstRun = false; useSettings(settings); },
   // After "Refresh now": reload the data and the fetch status
   onRefreshed: async () => {
-    try { await loadGarmin(); notice(''); } catch (err) { notice(err.message); }
+    try { await loadGarmin(); notice(''); } catch (err) { if (state.acts.length) notice(err.message); }
     state.fetchStatus = await fetchStatus();
     render();
   },
@@ -103,6 +114,12 @@ initTabs(name => { currentTab = name; render(); });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-open-settings]');
   if (b) { e.preventDefault(); openSettings(b.dataset.openSettings); }
+  // "Try again" on the error card
+  if (e.target.closest('[data-action="retry-load"]')) {
+    state.load = { status: 'loading', error: null };
+    render();
+    loadGarmin().then(() => { notice(''); render(); }).catch(() => render());
+  }
 });
 
 // Meal ideas and the settings (goals, races) load alongside the Garmin data
@@ -128,7 +145,8 @@ Promise.all([fetchContent('meals.json'), loadSettings(), fetchStatus()]).then(as
 });
 
 loadGarmin().then(render).catch(err => {
-  // Keep showing the saved copy if there is one, and say why it may be out of date.
-  notice(state.acts.length ? 'Could not load the latest Garmin data. ' + err.message + ' Showing the copy saved in this browser.' : err.message);
+  // With a saved copy, keep showing it and say why it may be out of date. Without one, the view
+  // shows the empty state (no data yet) or the error card (renderViewState), not a notice.
+  if (state.acts.length) notice('Could not load the latest Garmin data. ' + err.message + ' Showing the copy saved in this browser.');
   render();
 });

@@ -5,16 +5,37 @@ import { parseDate } from './parse.js';
 
 export const DATA_URL = 'data/activities.json';
 
+/** A load failure. missing = there is simply no data yet (an empty state, not an error). */
+export class LoadError extends Error {
+  constructor(message, { missing = false, detail = '' } = {}) {
+    super(message);
+    this.missing = missing;
+    this.detail = detail;   // technical text, shown only under "Show details"
+  }
+}
+
 /* ---------- Garmin JSON ---------- */
 export async function fetchGarmin() {
   if (location.protocol === 'file:') {
-    throw new Error('The page was opened directly as a file, so the browser will not let it read the Garmin data. Start the app with start.bat.');
+    throw new LoadError('The page was opened directly as a file, so the browser will not let it read the Garmin data. Start the app with start.bat.');
   }
-  // cache: 'no-store' makes the browser always fetch the latest version instead of using its cache.
-  const res = await fetch(DATA_URL, { cache: 'no-store' });
-  if (!res.ok) throw new Error('File ' + DATA_URL + ' was not found. Fetch your Garmin data with start.bat or uv run fetch_garmin.py.');
-  const o = await res.json();
-  if (!o || !Array.isArray(o.activities) || !o.activities.length) throw new Error('File ' + DATA_URL + ' contains no activities.');
+  let res;
+  try {
+    // cache: 'no-store' makes the browser always fetch the latest version instead of using its cache.
+    res = await fetch(DATA_URL, { cache: 'no-store' });
+  } catch (e) {
+    throw new LoadError('Could not reach the app server. Is it still running?', { detail: String(e) });
+  }
+  if (res.status === 404) throw new LoadError('No Garmin data has been fetched yet.', { missing: true });
+  if (!res.ok) throw new LoadError(`The app server could not send the Garmin data (HTTP ${res.status}).`, { detail: `GET ${DATA_URL} → ${res.status}` });
+  let o;
+  try {
+    o = await res.json();
+  } catch (e) {
+    throw new LoadError('The Garmin data file is damaged. Fetching the data again usually fixes it.', { detail: `${DATA_URL}: ${e.message}` });
+  }
+  if (!o || !Array.isArray(o.activities)) throw new LoadError('The Garmin data file is damaged. Fetching the data again usually fixes it.', { detail: `${DATA_URL}: no activities list` });
+  if (!o.activities.length) throw new LoadError('Your Garmin account has no activities in the fetched range yet.', { missing: true });
   return o;
 }
 

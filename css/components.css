@@ -417,3 +417,18 @@ h3.mini { margin: 16px 0 6px; font-size: var(--fs-md); font-weight: 600; }
   white-space: nowrap;
 }
 .workout-name { overflow-wrap: anywhere; }
+
+/* ---------- View states: loading skeleton and error card ---------- */
+.view-state[hidden] { display: none; }
+.skeleton .kpis { margin-bottom: var(--gap); }
+.sk { display: block; background: var(--surface-2); border-radius: var(--radius-xs); animation: sk-pulse 1.4s ease-in-out infinite; }
+.sk-line { height: .8rem; margin: var(--space-2) 0; width: 70%; }
+.sk-line.short { width: 40%; }
+.sk-block { height: 1.8rem; width: 55%; margin: var(--space-2) 0; }
+.sk-chart { height: 160px; margin-top: var(--space-3); }
+.sk-card { min-height: 220px; }
+@keyframes sk-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.state-error { border-left: 3px solid var(--error); }
+.state-error h2 { margin-bottom: var(--space-2); }
+.state-error .row-actions { margin-top: var(--space-3); }
