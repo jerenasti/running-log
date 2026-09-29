@@ -499,3 +499,22 @@ table.splits { min-width: 420px; }
 .splits .split-slow td { background: var(--surface-2); }
 .split-tag { margin: 0; }
 .split-fast .split-tag { color: var(--accent-text); background: transparent; border: 1px solid currentColor; }
+
+/* ---------- Routes tab (route planning) ---------- */
+.planner-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.planner-bar .btn.small { margin-top: 0; }
+.bar-gap { flex: 1; }
+.planner-map { height: 460px; margin-top: var(--space-3); cursor: crosshair; }
+@media (max-width: 599px) { .planner-map { height: 360px; } }
+.plan-message:empty { display: none; }
+.plan-message { color: var(--text); font-weight: var(--fw-medium); margin-top: var(--space-2); }
+#planPace { width: 5.5ch; }
+.km-marker span {
+  display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border-control);
+  font: var(--type-label); font-variant-numeric: var(--num-variant);
+}
+.wp-marker { background: var(--text); border: 2px solid var(--surface); border-radius: 50%; box-shadow: var(--shadow-sm); }
+.wp-marker.start { display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font: var(--type-label); font-variant-numeric: var(--num-variant); }
+table.hills tbody tr { cursor: pointer; }
+table.hills tbody tr:hover td { background: var(--surface-2); }

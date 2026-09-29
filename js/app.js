@@ -14,6 +14,7 @@ import { renderOverview } from './tabs/overview.js';
 import { initSettings, renderSettings, renderWelcome, openSettings, startWelcome } from './tabs/settings.js';
 import { renderViewState } from './tabs/states.js';
 import { renderActivity, leaveActivity } from './tabs/activity.js';
+import { renderRoutes } from './tabs/routes.js';
 
 const $ = s => document.querySelector(s);
 let fetchedAt = null;       // when data/activities.json was written, or null
@@ -48,6 +49,7 @@ function render() {
   if (currentTab === 'settings') renderSettings();
   if (currentTab === 'welcome') renderWelcome();
   if (currentTab === 'activity') renderActivity(activityId);
+  if (currentTab === 'routes') renderRoutes();
   renderViewState(currentTab);   // loading skeleton or error card instead of an empty view
   markScrollable();
 }
