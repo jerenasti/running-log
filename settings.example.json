@@ -29,5 +29,8 @@
   "appearance": {
     "theme": "system",
     "units": "km"
+  },
+  "routing": {
+    "ors_api_key": ""
   }
 }

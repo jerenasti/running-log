@@ -118,3 +118,34 @@ def test_cooldown_counts_the_scheduled_fetch(server):
 def test_static_files_still_work(server):
     code, body = call(server, "GET", "/index.html")
     assert code == 200 and b"Running Log" in body
+
+
+# ---------- Route planning through the server ----------
+
+def test_route_uses_the_key_from_settings_caches_and_hides_the_key(server, monkeypatch):
+    calls = []
+
+    def fake_router(key, a, b, profile):
+        calls.append((key, a, b, profile))
+        return {"points": [[a[0], a[1], 10.0], [b[0], b[1], 12.0]], "distance": 111.2, "ascent": 2.0, "descent": 0.0}
+
+    server.router = fake_router
+    settings = json.loads(json.dumps(EXAMPLE))
+    settings["routing"] = {"ors_api_key": "secret123"}
+    assert call(server, "POST", "/api/settings", settings)[0] == 200
+    code, body = call(server, "GET", "/api/settings")
+    assert "secret123" not in json.dumps(body), "the key never goes to the browser"
+    # Saving the masked value back keeps the key
+    assert call(server, "POST", "/api/settings", body["settings"])[0] == 200
+    code, seg = call(server, "POST", "/api/route", {"a": [60.1, 24.9], "b": [60.101, 24.9]})
+    assert code == 200 and seg["distance"] == 111.2
+    assert calls == [("secret123", [60.1, 24.9], [60.101, 24.9], "foot-walking")]
+    call(server, "POST", "/api/route", {"a": [60.1, 24.9], "b": [60.101, 24.9]})
+    assert len(calls) == 1, "the same segment again comes from the cache"
+    assert call(server, "POST", "/api/route", {"a": [95, 24.9], "b": [60.1, 24.9]})[0] == 400
+    assert call(server, "POST", "/api/route", {"a": [60.1, 24.9], "b": [60.2, 24.9]}, {"Origin": "https://evil.example"})[0] == 403
+
+
+def test_route_without_a_key_says_what_to_do(server):
+    code, body = call(server, "POST", "/api/route", {"a": [60.1, 24.9], "b": [60.101, 24.9]})
+    assert code == 400 and body["code"] == "no_key" and "Settings" in body["error"]

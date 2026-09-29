@@ -42,7 +42,32 @@ DEFAULTS = {
         "theme": "system",         # "system" | "dark" | "light"
         "units": "km",             # "km" | "mi"
     },
+    "routing": {
+        "ors_api_key": "",         # openrouteservice key for the Routes tab; never sent to the browser
+    },
 }
+
+# API keys are never sent to the browser: GET /api/settings shows this instead, and a save that sends
+# it back keeps the stored key.
+SECRET_MASK = "•" * 8
+SECRETS = [("routing", "ors_api_key")]
+
+
+def mask_secrets(settings: dict) -> dict:
+    """A copy for the browser: every set API key replaced by SECRET_MASK"""
+    out = copy.deepcopy(settings)
+    for section, key in SECRETS:
+        if out.get(section, {}).get(key):
+            out[section][key] = SECRET_MASK
+    return out
+
+
+def keep_secrets(new: dict, old: dict) -> dict:
+    """Put the stored key back where the browser sent the mask (the user didn't change it)"""
+    for section, key in SECRETS:
+        if new.get(section, {}).get(key) == SECRET_MASK:
+            new[section][key] = old.get(section, {}).get(key, "")
+    return new
 
 DEFAULT_ZONE_RADIUS_M = 400
 
@@ -258,6 +283,10 @@ def validate(s: dict) -> dict:
         errors["appearance.theme"] = "Choose system, dark or light."
     if a["units"] not in ("km", "mi"):
         errors["appearance.units"] = "Choose kilometres or miles."
+
+    key = s["routing"]["ors_api_key"]
+    if not isinstance(key, str) or len(key) > 200 or (key != SECRET_MASK and any(c.isspace() for c in key)):
+        errors["routing.ors_api_key"] = "Paste the key without spaces (at most 200 characters)."
     return errors
 
 

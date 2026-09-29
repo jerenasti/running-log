@@ -234,6 +234,19 @@ function dataCard(d) {
   </section>`;
 }
 
+function routingCard(r) {
+  const set = !!r.ors_api_key;
+  return `<section class="card">
+    <div class="card-head"><div><h2>Routing</h2><p class="sub">For planning routes on the Routes tab.</p></div></div>
+    <div class="fields one">
+      ${field('openrouteservice API key', `<input type="password" class="code" ${attrs('routing.ors_api_key', 'x')} value="${esc(r.ors_api_key || '')}"
+        autocomplete="off" spellcheck="false" placeholder="Paste your key">`, 'routing.ors_api_key',
+        `${set ? 'A key is saved. Type a new one to replace it, or clear the field to remove it.' : 'Free: sign up at account.heigit.org and create a Standard key (2 000 routes a day).'}
+         The key stays on this computer: the app server calls openrouteservice, the browser never sees the key.`)}
+    </div>
+  </section>`;
+}
+
 function appearanceCard(a) {
   return `<section class="card">
     <div class="card-head"><div><h2>Appearance</h2><p class="sub">How the app looks.</p></div></div>
@@ -269,6 +282,7 @@ export function renderSettings() {
       ${bodyCard(draft.body)}
       ${privacyCard(draft.privacy)}
       ${dataCard(draft.data)}
+      ${routingCard(draft.routing)}
       ${appearanceCard(draft.appearance)}
     </div>
     <div class="form-actions">

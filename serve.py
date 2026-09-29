@@ -15,6 +15,8 @@ Standard library only (no packages to install). Besides serving files like `pyth
     GET  /api/status     {status, running, retry_after_s}  how the last Garmin fetch went
     POST /api/validate   the whole settings object      → 200 {errors} without saving (first-run wizard steps)
     POST /api/check-tokens {dir}                        → {found, folder}: is garmin_tokens.json there (never read)
+    POST /api/route      {a: [lat, lon], b: [lat, lon]}  → one planned segment {points, distance, ascent, descent}
+                         through openrouteservice (key from settings.json, cached in memory)
     POST /api/refresh    starts fetch_garmin.py          → 202, 409 (already running), 429 (too soon)
 
 Safety: listens on 127.0.0.1 only; requests must name localhost as the host (blocks DNS rebinding),
@@ -33,6 +35,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import routing
 import settings as app_settings
 
 ROOT = Path(__file__).parent
@@ -120,6 +123,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    # ---------- route planning (the API key stays on this server) ----------
+    def route(self, body: dict) -> None:
+        """POST /api/route {a: [lat, lon], b: [lat, lon], profile?} → one segment along roads and paths"""
+        def point(v):
+            ok = isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in v)
+            return ok and -90 <= v[0] <= 90 and -180 <= v[1] <= 180
+        a, b, profile = body.get("a"), body.get("b"), body.get("profile", "foot-walking")
+        if not point(a) or not point(b):
+            return self.send_json(400, {"error": "Send two points as [lat, lon]."})
+        cached = self.server.segments.get(a, b, profile)
+        if cached:
+            return self.send_json(200, cached)
+        try:
+            settings, _ = app_settings.load(self.server.settings_path)
+            seg = self.server.router(settings["routing"]["ors_api_key"], a, b, profile)
+        except app_settings.SettingsError as e:
+            return self.send_json(500, {"error": str(e)})
+        except routing.RoutingError as e:
+            return self.send_json(e.status, {"error": str(e), "code": e.code})
+        self.server.segments.put(a, b, profile, seg)
+        return self.send_json(200, seg)
+
     # ---------- routes ----------
     def do_GET(self) -> None:
         if not self.host_ok():
@@ -130,7 +155,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 settings, first_run = app_settings.load(self.server.settings_path)
             except app_settings.SettingsError as e:
                 return self.send_json(500, {"error": str(e)})
-            return self.send_json(200, {"settings": settings, "first_run": first_run})
+            return self.send_json(200, {"settings": app_settings.mask_secrets(settings), "first_run": first_run})
         if path == "/api/status":
             r = self.server.refresher
             return self.send_json(200, {"status": read_status(), "running": r.running(), "retry_after_s": r.retry_after()})
@@ -147,7 +172,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not self.host_ok() or not self.post_ok():
             return self.send_json(403, {"error": "Only this app can change settings."})
         path = self.path.split("?")[0]
-        if path in ("/api/settings", "/api/validate", "/api/check-tokens"):
+        if path in ("/api/settings", "/api/validate", "/api/check-tokens", "/api/route"):
             length = int(self.headers.get("Content-Length") or 0)
             if length > MAX_BODY:
                 return self.send_json(413, {"error": "The request is too large."})
@@ -171,15 +196,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self.send_json(200, {"errors": errors})
             if errors:
                 return self.send_json(400, {"errors": errors})
-            app_settings.save(settings, self.server.settings_path)
-            return self.send_json(200, {"settings": settings})
+            try:
+                old, _ = app_settings.load(self.server.settings_path)
+            except app_settings.SettingsError:
+                old = app_settings.defaults()
+            app_settings.save(app_settings.keep_secrets(settings, old), self.server.settings_path)
+            return self.send_json(200, {"settings": app_settings.mask_secrets(settings)})
+        if path == "/api/route":
+            return self.route(body)
         if path == "/api/refresh":
             code, body = self.server.refresher.start()
             return self.send_json(code, body)
         self.send_json(404, {"error": "Unknown API path."})
 
 
-def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refresher: Refresher | None = None):
+def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refresher: Refresher | None = None, router=None):
     handler = functools.partial(Handler, directory=str(ROOT))
     # 127.0.0.1 only: the server is reachable from this computer, not from the network.
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
@@ -188,6 +219,8 @@ def make_server(port: int, settings_path: Path = app_settings.SETTINGS, refreshe
     httpd.allowed_origins = {f"http://{h}" for h in httpd.allowed_hosts}
     httpd.settings_path = settings_path
     httpd.refresher = refresher or Refresher()
+    httpd.router = router or routing.segment        # tests pass a fake; the real one calls openrouteservice
+    httpd.segments = routing.SegmentCache()
     return httpd
 
 
