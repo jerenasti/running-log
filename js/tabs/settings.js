@@ -46,6 +46,7 @@ function readValue(el) {
   const v = el.value.trim();
   if (el.dataset.kind === 'number') return v === '' ? (el.dataset.empty === '0' ? 0 : null) : Number(v);
   if (el.dataset.kind === 'words') return v.split(',').map(w => w.trim()).filter(Boolean);
+  if (el.dataset.kind === 'bool') return el.checked;
   if (el.dataset.kind === 'distance') {
     if (v === '') return el.dataset.empty === '0' ? 0 : null;
     // Untouched: keep the exact km value (42.195 must not become 42.198 after a km → mi → km round trip)
@@ -208,7 +209,9 @@ function privacyCard(p) {
     <div class="card-head"><div><h2>Privacy</h2><p class="sub">Places to hide from route maps.</p></div></div>
     ${zones || '<p class="hint">No privacy zones yet.</p>'}
     <div class="row-actions">${button('Add a privacy zone', 'add-zone')}</div>
-    <p class="field-hint">Route maps are not in the app yet; these zones will be hidden from them. To find coordinates, right-click a place on openstreetmap.org and choose "Show address".</p>
+    <label class="check-row"><input type="checkbox" name="privacy.hide_in_plans" data-kind="bool"${p.hide_in_plans ? ' checked' : ''}>
+      <span>Hide privacy zones on planned routes you share</span></label>
+    <p class="field-hint">Runs: positions inside a zone are never saved, so they are never on any map. Planned routes: with the box ticked, exported GPX files leave the zones out, and the Routes tab's Share view hides them for screenshots. Planning itself still shows the whole route. To find coordinates, right-click a place on openstreetmap.org and choose "Show address".</p>
   </section>`;
 }
 

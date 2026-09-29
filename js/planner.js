@@ -175,20 +175,41 @@ export function timeEstimate(line, pace) {
   return sec;
 }
 
+/* ---------- Privacy zones ---------- */
+/** Is [lat, lon] inside any privacy zone ({lat, lon, radius_m}) */
+export const inZone = (lat, lon, zones = []) => zones.some(z => distanceM([lat, lon], [z.lat, z.lon]) <= (z.radius_m || 400));
+
+/**
+ * The line without the parts inside privacy zones, as separate pieces (each ≥ 2 points).
+ * Used for shared GPX files and the Share view, so a route never shows where home is.
+ */
+export function withoutZones(line, zones = []) {
+  if (!zones.length) return line.length > 1 ? [line] : [];
+  const pieces = [];
+  let cur = [];
+  for (const p of line) {
+    if (inZone(p.lat, p.lon, zones)) { if (cur.length > 1) pieces.push(cur); cur = []; } else cur.push(p);
+  }
+  if (cur.length > 1) pieces.push(cur);
+  return pieces;
+}
+
 /* ---------- GPX ---------- */
 const xml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 
-/** GPX 1.1 with one track; points with elevation when known */
-export function toGpx(line, name = 'Planned route') {
-  const pts = line.map(p => `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}">${p.ele != null ? `<ele>${p.ele.toFixed(1)}</ele>` : ''}</trkpt>`);
+/**
+ * GPX 1.1 with one track; points with elevation when known. With privacy zones, the parts inside them
+ * are left out and the track is split into one <trkseg> per remaining piece.
+ */
+export function toGpx(line, name = 'Planned route', zones = []) {
+  const pt = p => `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}">${p.ele != null ? `<ele>${p.ele.toFixed(1)}</ele>` : ''}</trkpt>`;
+  const segs = withoutZones(line, zones).map(piece => `    <trkseg>\n${piece.map(pt).join('\n')}\n    </trkseg>`);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Running Log" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata><name>${xml(name)}</name></metadata>
   <trk>
     <name>${xml(name)}</name>
-    <trkseg>
-${pts.join('\n')}
-    </trkseg>
+${segs.join('\n')}
   </trk>
 </gpx>
 `;

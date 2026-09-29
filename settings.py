@@ -32,7 +32,8 @@ DEFAULTS = {
         "resting_hr_source": "garmin", "resting_hr": None,
     },
     "privacy": {
-        "zones": [],               # [{name, lat, lon, radius_m}], hidden from route maps later
+        "zones": [],               # [{name, lat, lon, radius_m}]: never saved from runs, hidden from shared plans
+        "hide_in_plans": True,     # planned routes: leave the zones out of GPX files and the Share view
     },
     "data": {
         "garmin_tokens_dir": "~/AppData/Local/garminconnect",
@@ -272,6 +273,9 @@ def validate(s: dict) -> dict:
                 errors[f"{prefix}.lon"] = err
             if err := _number_error(z.get("radius_m"), 50, 5000, "m", whole=True):
                 errors[f"{prefix}.radius_m"] = err
+
+    if not isinstance(s["privacy"]["hide_in_plans"], bool):
+        errors["privacy.hide_in_plans"] = "Choose yes or no."
 
     d = s["data"]
     if not isinstance(d["garmin_tokens_dir"], str) or not d["garmin_tokens_dir"].strip():

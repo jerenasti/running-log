@@ -6,7 +6,7 @@
 import { state } from '../state.js';
 import {
   addPoint, movePoint, removePoint, backToStart, outAndBack, history, segmentKey, joinSegments,
-  climbDescent, grades, gradeBucket, kmMarkers, findHills, timeEstimate, toGpx, HILLS, GRADE_STEPS,
+  climbDescent, grades, gradeBucket, kmMarkers, findHills, timeEstimate, toGpx, inZone, HILLS, GRADE_STEPS,
 } from '../planner.js';
 import { coloredRuns, indexAtLatLng } from '../route.js';
 import { isEasyRun } from '../metrics.js';
@@ -28,6 +28,9 @@ let paceSec = null;                  // s/km on the flat, for the time estimate
 let busy = false, chart = null;
 let plan = { id: null, name: '' };  // the saved plan being edited (id null = not saved yet)
 let dirty = false;                   // edited since the last save or open
+let shareView = false;               // privacy zones hidden from the map (for screenshots)
+const zones = () => state.settings?.privacy?.zones || [];
+const hideZonesWhenSharing = () => state.settings?.privacy?.hide_in_plans !== false;
 
 /* ---------- Pace ---------- */
 /** Default: the average pace of easy runs in the last 8 weeks (total time ÷ total distance), else 6:00/km */
@@ -73,6 +76,7 @@ function build(el) {
           <button type="button" class="btn small" data-plan="back">Back to start</button>
           <button type="button" class="btn small" data-plan="outback">Out and back</button>
           <button type="button" class="btn small" data-plan="clear">Clear</button>
+          <button type="button" class="btn small" data-plan="share" aria-pressed="false" title="Hide your privacy zones from the map, e.g. for a screenshot">Share view</button>
           <span class="bar-gap"></span>
           <div class="seg" id="planColor" role="group" aria-label="Color the route">
             <button type="button" data-v="plain" aria-pressed="true">Plain</button>
@@ -121,7 +125,7 @@ function build(el) {
     if (!b || busy) return;
     const pts = hist.current;
     ({ undo: () => update(hist.undo()), redo: () => update(hist.redo()), back: () => edit(backToStart(pts)),
-       outback: () => edit(outAndBack(pts)), clear: () => edit([]) })[b.dataset.plan]();
+       outback: () => edit(outAndBack(pts)), clear: () => edit([]), share: toggleShare })[b.dataset.plan]();
   });
   $('#planColor').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -223,31 +227,46 @@ async function update(pts) {
 }
 
 /* ---------- Map ---------- */
+function toggleShare() {
+  shareView = !shareView;
+  $('[data-plan="share"]').setAttribute('aria-pressed', String(shareView));
+  message(shareView ? (zones().length ? 'Share view: your privacy zones and the points are hidden. Take the screenshot now.' : 'Share view: no privacy zones set in Settings, so the whole route shows.') : '');
+  draw();
+  drawWaypoints(hist.current);
+}
+
 function draw() {
   if (!map) return;
   if (layers) layers.remove();
   layers = L.featureGroup();
   const c = routeColors();
+  // Share view: points inside privacy zones have no position, so the line breaks there
+  const hidden = shareView ? line.map(p => inZone(p.lat, p.lon, zones())) : line.map(() => false);
+  const shown = line.map((p, i) => (hidden[i] ? { ...p, lat: null, lon: null } : p));
   if (line.length > 1) {
-    const latlngs = line.map(p => [p.lat, p.lon]);
-    L.polyline(latlngs, { color: c.casing, weight: 8, opacity: 0.9, interactive: false }).addTo(layers);
+    const visible = coloredRuns(shown.map((p, i) => ({ ...p, t: i })), shown.map(() => 0)).map(r => r.latlngs);
+    for (const part of visible) L.polyline(part, { color: c.casing, weight: 8, opacity: 0.9, interactive: false }).addTo(layers);
     if (colorBy === 'grade') {
       const buckets = grades(line).map(g => gradeBucket(g) ?? 2);
-      for (const run of coloredRuns(line.map((p, i) => ({ ...p, t: i })), buckets)) {
+      for (const run of coloredRuns(shown.map((p, i) => ({ ...p, t: i })), buckets)) {
         L.polyline(run.latlngs, { color: c.steps[run.bucket], weight: 5 }).addTo(layers);
       }
     } else {
-      L.polyline(latlngs, { color: c.marker, weight: 4 }).addTo(layers);
+      for (const part of visible) L.polyline(part, { color: c.marker, weight: 4 }).addTo(layers);
       for (const h of hills) {
-        L.polyline(latlngs.slice(h.from, h.to + 1), { color: c.heat, weight: 6 })
-          .bindTooltip(`Hill: ${fmtInt(h.gain)} m up at ${fmtDec1(h.grade * 100)} %`, { sticky: true }).addTo(layers);
+        const hillShown = coloredRuns(shown.slice(h.from, h.to + 1).map((p, i) => ({ ...p, t: i })), shown.slice(h.from, h.to + 1).map(() => 0));
+        for (const run of hillShown) {
+          L.polyline(run.latlngs, { color: c.heat, weight: 6 })
+            .bindTooltip(`Hill: ${fmtInt(h.gain)} m up at ${fmtDec1(h.grade * 100)} %`, { sticky: true }).addTo(layers);
+        }
       }
     }
     for (const m of kmMarkers(line, units() === 'mi' ? KM_PER_MILE * 1000 : 1000)) {
+      if (shareView && inZone(m.lat, m.lon, zones())) continue;
       L.marker([m.lat, m.lon], { interactive: false, keyboard: false,
         icon: L.divIcon({ className: 'km-marker', html: `<span>${Math.round(distIn(m.km))}</span>`, iconSize: [20, 20] }) }).addTo(layers);
     }
-    layers.on('mousemove', e => hover(indexAtLatLng(line, e.latlng.lat, e.latlng.lng)));
+    layers.on('mousemove', e => hover(indexAtLatLng(shown, e.latlng.lat, e.latlng.lng)));
     layers.on('mouseout', () => hover(null));
   }
   layers.addTo(map);
@@ -263,6 +282,7 @@ function drawWaypoints(pts) {
   if (!map) return;
   if (wpLayer) wpLayer.remove();
   wpLayer = L.layerGroup();
+  if (shareView) { wpLayer.addTo(map); return; }    // no draggable points (or a start marker at home) in a screenshot
   pts.forEach((p, i) => {
     const first = i === 0, last = i === pts.length - 1 && i > 0;
     const m = L.marker(p, { draggable: true, keyboard: true, title: first ? 'Start' : last ? 'End' : `Point ${i + 1}`,
@@ -346,7 +366,8 @@ function drawProfile() {
 /** One hovered point for the map and the profile */
 function hover(i, fromChart = false) {
   const p = i == null || i < 0 ? null : line[i];
-  if (hoverMarker && map) { if (p) hoverMarker.setLatLng([p.lat, p.lon]).addTo(map); else hoverMarker.remove(); }
+  const onMap = p && !(shareView && inZone(p.lat, p.lon, zones()));
+  if (hoverMarker && map) { if (onMap) hoverMarker.setLatLng([p.lat, p.lon]).addTo(map); else hoverMarker.remove(); }
   if (chart && !fromChart) {
     const active = p ? [{ datasetIndex: 0, index: i }] : [];
     chart.setActiveElements(active);
@@ -481,7 +502,8 @@ async function deletePlan(id, name) {
 function exportGpx() {
   if (line.length < 2) return;
   const name = $('#planName').value.trim() || 'Planned route';
-  const blob = new Blob([toGpx(line, name)], { type: 'application/gpx+xml' });
+  const hide = hideZonesWhenSharing() && zones().length > 0;
+  const blob = new Blob([toGpx(line, name, hide ? zones() : [])], { type: 'application/gpx+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'route'}.gpx`;
@@ -489,5 +511,5 @@ function exportGpx() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  saveMessage(`Exported ${a.download}.`);
+  saveMessage(`Exported ${a.download}${hide ? ', without the parts inside your privacy zones' : ''}.`);
 }

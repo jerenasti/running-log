@@ -196,13 +196,25 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_json(403, {"error": "Open the app at http://localhost."})
         super().do_HEAD()
 
+    def discard_body(self) -> None:
+        """Read (and drop) a request body we are not going to use. Answering before the client has sent
+        it makes Windows reset the connection, and the client may then never see the answer."""
+        length = min(int(self.headers.get("Content-Length") or 0), MAX_PLAN_BODY)
+        while length > 0:
+            chunk = self.rfile.read(min(length, 65536))
+            if not chunk:
+                break
+            length -= len(chunk)
+
     def do_POST(self) -> None:
         if not self.host_ok() or not self.post_ok():
+            self.discard_body()
             return self.send_json(403, {"error": "Only this app can change settings."})
         path = self.path.split("?")[0]
         if path in ("/api/settings", "/api/validate", "/api/check-tokens", "/api/route", "/api/plans", "/api/plans/delete"):
             length = int(self.headers.get("Content-Length") or 0)
             if length > (MAX_PLAN_BODY if path.startswith("/api/plans") else MAX_BODY):
+                self.close_connection = True          # too large to read: answer and close
                 return self.send_json(413, {"error": "The request is too large."})
             try:
                 body = json.loads(self.rfile.read(length) or b"null")

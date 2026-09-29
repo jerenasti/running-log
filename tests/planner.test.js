@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   distanceM, addPoint, movePoint, removePoint, backToStart, outAndBack, history, segmentKey, joinSegments,
-  climbDescent, grades, gradeBucket, kmMarkers, findHills, hillFactor, timeEstimate, toGpx, HILLS,
+  climbDescent, grades, gradeBucket, kmMarkers, findHills, hillFactor, timeEstimate, toGpx, withoutZones, inZone, HILLS,
 } from '../js/planner.js';
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`);
@@ -117,4 +117,21 @@ test('regression: a steep hill that runs straight into a gentle climb is still f
   assert.equal(hills.length, 1);
   near(hills[0].gain, 24, 3, 'only the steep part');
   assert.ok(hills[0].grade >= 0.05, `grade ${hills[0].grade}`);
+});
+
+test('privacy zones: parts inside are left out of the shared line and the GPX', () => {
+  // 1 km north from (60, 25); home zone of 300 m around the start
+  const line = straight(1000);
+  const zones = [{ lat: 60, lon: 25, radius_m: 300 }];
+  const pieces = withoutZones(line, zones);
+  assert.equal(pieces.length, 1);
+  assert.ok(pieces[0][0].dist > 300, `starts outside the zone (${pieces[0][0].dist} m)`);
+  assert.deepEqual(withoutZones(line, []), [line], 'no zones: the whole line');
+  // A zone in the middle splits the line in two
+  const mid = [{ lat: 60 + 500 / M_PER_DEG, lon: 25, radius_m: 100 }];
+  assert.equal(withoutZones(line, mid).length, 2);
+  const gpx = toGpx(line, 'Loop', mid);
+  assert.equal((gpx.match(/<trkseg>/g) || []).length, 2);
+  assert.ok(!gpx.includes(`lat="${(60 + 500 / M_PER_DEG).toFixed(6)}"`), 'the point in the zone is not in the file');
+  assert.ok(inZone(60, 25, zones) && !inZone(60.01, 25, zones));
 });

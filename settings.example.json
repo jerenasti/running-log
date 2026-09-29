@@ -20,7 +20,8 @@
   "privacy": {
     "zones": [
       { "name": "Home", "lat": 51.5007, "lon": -0.1246, "radius_m": 400 }
-    ]
+    ],
+    "hide_in_plans": true
   },
   "data": {
     "garmin_tokens_dir": "~/AppData/Local/garminconnect",
