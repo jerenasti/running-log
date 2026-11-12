@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "juoksupaivakirja",
+      "name": "running-log",
       "runtimeExecutable": "uv",
       "runtimeArgs": ["run", "--no-project", "python", "serve.py"],
       "port": 8000
